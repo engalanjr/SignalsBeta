@@ -1166,6 +1166,15 @@ class DataService {
                 return;
             }
 
+            // Filter out corrupted account IDs - only allow valid Salesforce account IDs
+            const accountId = row['account_id'] || row['Account Id'] || row['ACCOUNT_ID'] || '';
+            const validAccountIds = ['0013000000DXZ1fAAH', '00138000016Nd5jAAC', '00138000017icJoAAI'];
+            
+            if (!validAccountIds.includes(accountId)) {
+                console.warn(`Invalid account ID detected: "${accountId}", skipping row ${index + 1}`);
+                return;
+            }
+
             // Handle multiple possible column name variations from Domo and CSV
             const signalName = row['name'] || row['Name'] || row['NAME'] || 'Unknown Signal';
             const summary = row['summary'] || row['Summary'] || row['SUMMARY'] || 'No summary available';
@@ -1188,13 +1197,7 @@ class DataService {
                 const accountIdMap = {
                     '0013000000DXZ1fAAH': 'Falvey Insurance Group Ltd',
                     '00138000016Nd5jAAC': 'Brigham Young University-Hawaii',
-                    '001fJ00000Fsh2EQAR': 'Beazley Insurance',
-                    '001fJ00000Fs3UjQAJ': 'McKee Foods',
-                    '0013000001rJMpSAAW': 'ServiceMaster',
-                    '001fJ00000FBzlWQAT': 'Chubb',
-                    '001fJ00000GGfyGQAT': 'Premier Inc.',
-                    '0013000001rJLlKAAW': 'Aflac',
-                    '001fJ00000D1F43QAF': 'J.M. Smucker'
+                    '00138000017icJoAAI': 'Eye Five Inc.'
                 };
                 
                 const accountId = row['account_id'] || row['Account Id'] || '';
@@ -1205,7 +1208,7 @@ class DataService {
             const signal = {
                 // Core signal fields
                 id: signalId,
-                account_id: row['account_id'] || row['Account Id'] || row['ACCOUNT_ID'] || `account-${index + 1}`,
+                account_id: accountId,
                 account_name: accountName,
                 name: signalName,
                 category: category,
