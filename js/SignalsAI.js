@@ -392,8 +392,8 @@ class SignalsAI {
     }
 
     showMoreSignalsForAccount(accountId) {
-        // Find the account
-        const account = this.accounts.find(acc => acc.id === accountId);
+        // Find the account using Map.get() since this.accounts is a Map
+        const account = this.accounts.get(accountId);
         if (!account) return;
 
         // Increment the current page
