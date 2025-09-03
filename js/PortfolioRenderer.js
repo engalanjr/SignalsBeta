@@ -44,8 +44,20 @@ class PortfolioRenderer {
         const highPriorityCount = account.signals.filter(s => s.priority === 'High').length;
         const totalSignals = account.signals.length;
 
-        // Sort signals by call_date DESC, fallback to created_date if call_date is not available
+        // Sort signals by Priority (High > Medium > Low), then by call_date DESC within each priority
         const sortedSignals = account.signals.sort((a, b) => {
+            // Define priority order
+            const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+            
+            // First sort by priority
+            const priorityA = priorityOrder[a.priority] || 0;
+            const priorityB = priorityOrder[b.priority] || 0;
+            
+            if (priorityA !== priorityB) {
+                return priorityB - priorityA; // Higher priority first
+            }
+            
+            // If same priority, sort by call_date DESC (fallback to created_date)
             const dateA = new Date(a.call_date || a.created_date);
             const dateB = new Date(b.call_date || b.created_date);
             return dateB - dateA;
