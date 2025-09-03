@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SignalsAI v8.0 - Customer Success Management</title>
+    
+    <!-- Web App Manifest -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="SignalsAI">
+    
+    <!-- Performance and compatibility -->
+    <meta name="theme-color" content="#007DBA">
+    <meta name="msapplication-navbutton-color" content="#007DBA">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Prevent zoom on input focus (iOS) -->
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <link href="app.css" rel="stylesheet" type="text/css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <i class="fas fa-chart-line"></i>
+                    <h1>SignalsAI (Beta)</h1>
+                </div>
+                <div class="header-actions">
+                    <!-- Add New Signal feature removed -->
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="signal-feed">
+                <i class="fas fa-stream"></i>
+                Signal Feed
+            </button>
+            <button class="nav-tab" data-tab="my-portfolio">
+                <i class="fas fa-briefcase"></i>
+                My Portfolio
+            </button>
+            <button class="nav-tab" data-tab="actions">
+                <i class="fas fa-tasks"></i>
+                Action Plans
+            </button>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Signal Feed Tab -->
+            <div id="signal-feed" class="tab-content active">
+                <!-- Priority Alert Banner -->
+                <div class="priority-alert-banner">
+                    <div class="alert-content">
+                        <i class="fas fa-exclamation-triangle alert-icon"></i>
+                        <span class="alert-text">6 High priority signals identified representing $350k of Renewal
+                            Baseline</span>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <select id="categoryFilter" class="filter-select">
+                        <option value="">All Categories</option>
+                        <option value="Architecture">Architecture</option>
+                        <option value="Relationship">Relationship</option>
+                        <option value="Use Case">Use Case</option>
+                        <option value="User Engagement">User Engagement</option>
+                        <option value="Business">Business</option>
+                        <option value="Enablement">Enablement</option>
+                    </select>
+                    <select id="priorityFilter" class="filter-select">
+                        <option value="">All Priorities</option>
+                        <option value="High">High Priority</option>
+                        <option value="Medium">Medium Priority</option>
+                        <option value="Low">Low Priority</option>
+                    </select>
+                </div>
+
+                <div id="signalsList" class="signals-list">
+                    <!-- Signals will be populated here -->
+                </div>
+            </div>
+
+            <!-- My Portfolio Tab -->
+            <div id="my-portfolio" class="tab-content">
+                <!-- Dashboard Summary Cards -->
+                <div class="portfolio-dashboard-cards">
+                    <div class="dashboard-card attention-card">
+                        <div class="card-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-title">Requires Attention</div>
+                            <div class="card-value" id="requiresAttentionCount">6</div>
+                            <div class="card-description">High priority signals without actions</div>
+                        </div>
+                    </div>
+                    <div class="dashboard-card priority-card">
+                        <div class="card-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-title">High Priority</div>
+                            <div class="card-value" id="highPriorityDashboard">6</div>
+                            <div class="card-description">Across all accounts</div>
+                        </div>
+                    </div>
+                    <div class="dashboard-card accounts-card">
+                        <div class="card-icon">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-title">Active Accounts</div>
+                            <div class="card-value" id="activeAccountsCount">6</div>
+                            <div class="card-description">With recent signals</div>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <div id="accountsList" class="accounts-list">
+                    <!-- Account cards will be populated here -->
+                </div>
+            </div>
+
+            <!-- Action Plans Tab -->
+            <div id="actions" class="tab-content">
+                <div class="actions-overview">
+                    <div class="overview-cards">
+                        <div class="overview-card">
+                            <div class="card-value" id="totalActions">0</div>
+                            <div class="card-label">Total Action Plans</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="card-value" id="pendingActions">0</div>
+                            <div class="card-label">Pending</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="card-value" id="inProgressActions">0</div>
+                            <div class="card-label">In Progress</div>
+                        </div>
+                        <div class="overview-card">
+                            <div class="card-value" id="projectedImpact">+0%</div>
+                            <div class="card-label">Projected Impact</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="actions-filters">
+                    <button class="filter-btn active" data-filter="all">All Action Plans</button>
+                    <button class="filter-btn" data-filter="pending">Pending</button>
+                    <button class="filter-btn" data-filter="in-progress">In Progress</button>
+                    <button class="filter-btn" data-filter="completed">Completed</button>
+                </div>
+
+                <div id="actionsList" class="actions-list">
+                    <!-- Action items will be populated here -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Create Action Plan Drawer -->
+        <div id="createPlanDrawerBackdrop" class="drawer-backdrop"></div>
+        <div id="createPlanDrawer" class="drawer">
+            <div class="drawer-content">
+                <div class="drawer-header">
+                    <h2><i class="fas fa-lightbulb"></i> Create Action Plan</h2>
+                    <button class="drawer-close" id="closePlanDrawer">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="drawer-body">
+                    <!-- Plan creation form will be populated here -->
+                </div>
+                <div class="drawer-footer">
+                    <button class="btn btn-secondary" id="cancelPlan">Cancel</button>
+                    <button class="btn btn-primary" id="createPlan">Create Plan</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Signal Details Drawer -->
+        <div id="signalDrawer" class="drawer">
+            <div class="drawer-content">
+                <div class="drawer-header">
+                    <h2 id="signalTitle">Signal Details</h2>
+                    <button class="drawer-close" id="closeSignalDrawer">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="drawer-body" id="signalDetails">
+                    <!-- Signal details will be populated here -->
+                </div>
+                <div class="drawer-footer">
+                    <button class="btn btn-secondary" id="drawerLikeSignal">
+                        <i class="fas fa-thumbs-up"></i> Like
+                    </button>
+                    <button class="btn btn-secondary" id="drawerNotAccurateSignal">
+                        <i class="fas fa-thumbs-down"></i> Not Accurate
+                    </button>
+                    <button class="btn btn-secondary" id="acknowledgeSignal">
+                        <i class="fas fa-check"></i> Acknowledge
+                    </button>
+                    <button class="btn btn-primary" id="takeAction">
+                        <i class="fas fa-plus"></i> Create Plan
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading SignalsAI data...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- domo.js optional utils -->
+    <script src="https://unpkg.com/ryuu.js@4.6.0/dist/domo.js"
+        integrity="sha384-YYsd9wQ+wDlUWhvpfGdptxmNYIqBC+52oJtWgPKJadbs3sSFTY/+ZotPbEHTTRWz"
+        crossorigin="anonymous"></script>
+
+    <!-- Data Layer (must load first) -->
+    <script src="js/MasterDataLoader.js"></script>
+    <script src="js/DataService.js"></script>
+
+    <!-- Core Services (must load before main app) -->
+    <script src="js/services/NotificationService.js"></script>
+    <script src="js/services/SignalDetailsService.js"></script>
+    <script src="js/services/CommentService.js"></script>
+    <script src="js/services/SignalFeedbackService.js"></script>
+    <script src="js/services/ActionPlanService.js"></script>
+    <script src="js/services/SignalManagementService.js"></script>
+
+    <!-- Event Handling -->
+    <script src="js/EventHandlers.js"></script>
+
+    <!-- Renderers (must load after services they depend on) -->
+    <script src="js/SignalRenderer.js"></script>
+    <script src="js/PortfolioRenderer.js"></script>
+    <script src="js/ActionsRenderer.js"></script>
+
+    <!-- Main Application (must load after all dependencies) -->
+    <script src="js/SignalsAI.js"></script>
+
+    <!-- Application Initialization -->
+    <script>
+        let app;
+        document.addEventListener('DOMContentLoaded', () => {
+            app = new SignalsAI();
+            window.app = app; // Make app globally accessible
+            
+            // Set up the create plan button handler
+            document.addEventListener('click', async (e) => {
+                if (e.target.id === 'createPlan') {
+                    await ActionPlanService.createActionPlan(app);
+                }
+                if (e.target.id === 'cancelPlan' || e.target.id === 'closePlanDrawer') {
+                    ActionPlanService.closePlanDrawer();
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
