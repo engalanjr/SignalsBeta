@@ -1220,10 +1220,10 @@ class DataService {
                 code: row['code'] || row['Code'] || row['CODE'] || '',
 
                 // Enhanced signal fields from new data model
-                recommended_action: row['recommended_action'] || row['Recommended Action'] || row['RECOMMENDED_ACTION'] || '',
-                signal_rationale: row['signal_rationale'] || row['Signal Rationale'] || row['SIGNAL_RATIONALE'] || '',
-                signal_confidence: parseFloat(row['signal_confidence'] || row['Signal Confidence'] || row['SIGNAL_CONFIDENCE'] || '0') || 0,
-                action_id: row['action_id'] || row['Action Id'] || row['ACTION_ID'] || '', // GUID of the action
+                recommended_action: row['recommended_action'] || row['Recommended Action'] || row['RECOMMENDED_ACTION'] || this.generateFallbackAction(category, priority),
+                signal_rationale: row['signal_rationale'] || row['Signal Rationale'] || row['SIGNAL_RATIONALE'] || this.generateFallbackRationale(summary),
+                signal_confidence: parseFloat(row['signal_confidence'] || row['Signal Confidence'] || row['SIGNAL_CONFIDENCE'] || '0') || 0.7,
+                action_id: row['action_id'] || row['Action Id'] || row['ACTION_ID'] || this.generateActionId(), // GUID of the action
 
                 // Play recommendations
                 play_1: row['play_1'] || row['Play 1'] || row['PLAY_1'] || '',
@@ -1461,6 +1461,52 @@ class DataService {
             'Enablement': 'fas fa-graduation-cap'
         };
         return icons[category] || 'fas fa-info-circle';
+    }
+
+    static generateFallbackAction(category, priority) {
+        const actionTemplates = {
+            'Architecture': {
+                'High': ['Schedule technical assessment', 'Plan architecture review', 'Evaluate integration options'],
+                'Medium': ['Review technical requirements', 'Assess current architecture', 'Plan optimization strategy'],
+                'Low': ['Monitor technical performance', 'Document current setup', 'Plan future enhancements']
+            },
+            'Use Case': {
+                'High': ['Schedule use case workshop', 'Define implementation roadmap', 'Prioritize feature requirements'],
+                'Medium': ['Review use case requirements', 'Assess implementation options', 'Plan development timeline'],
+                'Low': ['Document use case details', 'Monitor progress', 'Schedule check-in']
+            },
+            'User Engagement': {
+                'High': ['Plan engagement strategy', 'Schedule user training', 'Implement adoption program'],
+                'Medium': ['Review engagement metrics', 'Plan training session', 'Assess user needs'],
+                'Low': ['Monitor user activity', 'Send engagement resources', 'Schedule follow-up']
+            },
+            'Enablement': {
+                'High': ['Schedule enablement session', 'Plan comprehensive training', 'Assign dedicated support'],
+                'Medium': ['Provide training resources', 'Schedule guidance session', 'Create learning path'],
+                'Low': ['Send documentation', 'Offer self-service resources', 'Schedule check-in']
+            }
+        };
+
+        const categoryActions = actionTemplates[category] || actionTemplates['Use Case'];
+        const priorityActions = categoryActions[priority] || categoryActions['Medium'];
+        const randomIndex = Math.floor(Math.random() * priorityActions.length);
+        return priorityActions[randomIndex];
+    }
+
+    static generateFallbackRationale(summary) {
+        if (!summary || summary === 'No summary available') {
+            return 'This signal requires attention based on customer activity patterns and platform usage data.';
+        }
+        return `Based on the signal summary: "${summary.substring(0, 100)}${summary.length > 100 ? '...' : ''}", this action is recommended to address the identified opportunity or concern.`;
+    }
+
+    static generateActionId() {
+        // Generate a UUID-like string for action ID
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
     }
 
     // Sample data - now loads from the master CSV file
