@@ -391,6 +391,31 @@ class SignalsAI {
         }
     }
 
+    showMoreSignalsForAccount(accountId) {
+        // Find the account
+        const account = this.accounts.find(acc => acc.id === accountId);
+        if (!account) return;
+
+        // Increment the current page
+        if (!account.signalsPagination) {
+            account.signalsPagination = { currentPage: 0, pageSize: 3 };
+        }
+        account.signalsPagination.currentPage++;
+
+        // Re-render the entire portfolio to update the signals display
+        this.renderPortfolio();
+        
+        // Keep the account expanded after re-render
+        setTimeout(() => {
+            const signalsContainer = document.getElementById(`signals-${accountId}`);
+            const chevron = document.getElementById(`chevron-${accountId}`);
+            if (signalsContainer && chevron) {
+                signalsContainer.classList.add('expanded');
+                chevron.classList.add('rotated');
+            }
+        }, 100);
+    }
+
     // Utility methods
     formatNumber(num) {
         if (num >= 1000000) {

@@ -44,9 +44,24 @@ class PortfolioRenderer {
         const highPriorityCount = account.signals.filter(s => s.priority === 'High').length;
         const totalSignals = account.signals.length;
 
-        const sortedSignals = account.signals.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-        const recentSignals = sortedSignals.slice(0, 5);
-        const hasMoreSignals = account.signals.length > 5;
+        // Sort signals by call_date DESC, fallback to created_date if call_date is not available
+        const sortedSignals = account.signals.sort((a, b) => {
+            const dateA = new Date(a.call_date || a.created_date);
+            const dateB = new Date(b.call_date || b.created_date);
+            return dateB - dateA;
+        });
+        
+        // Initialize pagination state if not exists
+        if (!account.signalsPagination) {
+            account.signalsPagination = { currentPage: 0, pageSize: 3 };
+        }
+        
+        const pageSize = account.signalsPagination.pageSize;
+        const currentPage = account.signalsPagination.currentPage;
+        const startIndex = 0;
+        const endIndex = (currentPage + 1) * pageSize;
+        const visibleSignals = sortedSignals.slice(startIndex, endIndex);
+        const hasMoreSignals = endIndex < account.signals.length;
 
         // Ensure account has required properties
         account.health = account.health || this.getHealthFromRiskCategory(account.at_risk_cat);
@@ -130,11 +145,11 @@ class PortfolioRenderer {
                                 <i class="fas fa-bell signals-icon"></i>
                                 <h4 class="signals-title">Recent Signals (Last 7 Days) (${totalSignals})</h4>
                             </div>
-                            ${hasMoreSignals ? `<a href="#" class="more-signals-link" onclick="event.stopPropagation(); window.app.showAllSignalsForAccount('${account.id}')">+${account.signals.length - 5} more</a>` : ''}
+                            ${hasMoreSignals ? `<a href="#" class="more-signals-link" onclick="event.stopPropagation(); window.app.showMoreSignalsForAccount('${account.id}')">+${account.signals.length - visibleSignals.length} more</a>` : ''}
                         </div>
 
-                        <div class="signals-list-portfolio">
-                            ${recentSignals.map(signal => `
+                        <div class="signals-list-portfolio" id="signals-list-${account.id}">
+                            ${visibleSignals.map(signal => `
                                 <div class="portfolio-signal-row">
                                     <div class="signal-priority-badge">
                                         <span class="priority-tag priority-${signal.priority.toLowerCase()}">${signal.priority}</span>
@@ -143,7 +158,7 @@ class PortfolioRenderer {
                                         <span class="signal-name-text">${signal.name}</span>
                                     </div>
                                     <div class="signal-meta-actions">
-                                        <span class="signal-date-text">${app.formatDateSimple(signal.created_date)}</span>
+                                        <span class="signal-date-text">${app.formatDateSimple(signal.call_date || signal.created_date)}</span>
                                         <a href="#" class="view-link" onclick="event.stopPropagation(); window.app.openSignalDetails('${signal.id}')">View</a>
                                     </div>
                                 </div>
