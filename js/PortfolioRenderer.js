@@ -126,23 +126,25 @@ class PortfolioRenderer {
 
                     <div class="signals-section">
                         <div class="signals-header">
-                            <i class="fas fa-bell signals-icon"></i>
-                            <h4 class="signals-title">Recent Signals (Last 7 Days) (${totalSignals})</h4>
-                            ${hasMoreSignals ? '<span class="more-signals-link">+2 more</span>' : ''}
+                            <div class="signals-header-left">
+                                <i class="fas fa-bell signals-icon"></i>
+                                <h4 class="signals-title">Recent Signals (Last 7 Days) (${totalSignals})</h4>
+                            </div>
+                            ${hasMoreSignals ? `<a href="#" class="more-signals-link" onclick="event.stopPropagation(); window.app.showAllSignalsForAccount('${account.id}')">+${account.signals.length - 5} more</a>` : ''}
                         </div>
 
                         <div class="signals-list-portfolio">
                             ${recentSignals.map(signal => `
-                                <div class="portfolio-signal-item" onclick="event.stopPropagation(); window.app.openSignalDetails('${signal.id}')">
-                                    <div class="signal-priority-section">
-                                        <span class="priority-badge-small priority-${signal.priority.toLowerCase()}">${signal.priority}</span>
+                                <div class="portfolio-signal-row">
+                                    <div class="signal-priority-badge">
+                                        <span class="priority-tag priority-${signal.priority.toLowerCase()}">${signal.priority}</span>
                                     </div>
-                                    <div class="signal-name-section">
-                                        <span class="signal-name">${signal.name}</span>
+                                    <div class="signal-name-content">
+                                        <span class="signal-name-text">${signal.name}</span>
                                     </div>
-                                    <div class="signal-date-section">
-                                        <span class="signal-date-small">${app.formatDateSimple(signal.created_date)}</span>
-                                        <button class="view-signal-btn" onclick="event.stopPropagation(); window.app.openSignalDetails('${signal.id}')">View</button>
+                                    <div class="signal-meta-actions">
+                                        <span class="signal-date-text">${app.formatDateSimple(signal.created_date)}</span>
+                                        <a href="#" class="view-link" onclick="event.stopPropagation(); window.app.openSignalDetails('${signal.id}')">View</a>
                                     </div>
                                 </div>
                             `).join('')}
