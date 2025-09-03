@@ -402,8 +402,8 @@ class SignalsAI {
         }
         account.signalsPagination.currentPage++;
 
-        // Re-render the entire portfolio to update the signals display
-        this.renderPortfolio();
+        // Re-render the current tab to update the signals display
+        this.renderCurrentTab();
         
         // Keep the account expanded after re-render
         setTimeout(() => {
