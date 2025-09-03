@@ -6,7 +6,7 @@ class MasterDataLoader {
             console.log('Loading master CSV data...');
             
             // Fetch the master CSV file
-            const response = await fetch('./attached_assets/SignalsAI_CORE_WIP_MASTER_first_50_1755292354741.csv');
+            const response = await fetch('./data.csv');
             
             if (!response.ok) {
                 throw new Error(`Failed to load CSV: ${response.status}`);
