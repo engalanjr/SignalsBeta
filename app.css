@@ -1480,16 +1480,19 @@ body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
+    min-height: 100px; /* Ensure container has height */
 }
 
 .play-checkbox {
-    display: flex;
+    display: flex !important;
     align-items: center;
     padding: 8px;
     border: 1px solid var(--neutral-gray-200);
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.2s;
+    background: white;
+    min-height: 20px;
 }
 
 .play-checkbox:hover {
