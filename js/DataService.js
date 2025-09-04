@@ -1167,12 +1167,20 @@ class DataService {
                 return;
             }
 
-            // Filter out corrupted account IDs - only allow valid Salesforce account IDs
+            // Filter out obviously corrupted account IDs (invalid Salesforce format)
             const accountId = row['account_id'] || row['Account Id'] || row['ACCOUNT_ID'] || '';
-            const validAccountIds = ['0013000000DXZ1fAAH', '00138000016Nd5jAAC', '00138000017icJoAAI'];
             
-            if (!validAccountIds.includes(accountId)) {
-                console.warn(`Invalid account ID detected: "${accountId}", skipping row ${index + 1}`);
+            // Basic validation: Salesforce IDs are 15-18 chars, start with numbers/letters, no spaces
+            const isSalesforceFormat = /^[a-zA-Z0-9]{15,18}$/.test(accountId);
+            const isObviouslyInvalid = accountId.length > 100 || 
+                                     accountId.includes('Teaching') || 
+                                     accountId.includes('assistance') || 
+                                     accountId.includes('Consulting') ||
+                                     accountId.includes('Billed') ||
+                                     accountId.includes(' ');
+            
+            if (!accountId || !isSalesforceFormat || isObviouslyInvalid) {
+                console.warn(`Invalid account ID format detected: "${accountId}", skipping row ${index + 1}`);
                 return;
             }
 
