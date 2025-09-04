@@ -20,7 +20,8 @@ class ActionsRenderer {
         const activeFilter = document.querySelector('.filter-btn.active')?.getAttribute('data-filter') || 'all';
         const filteredPlans = this.filterActionPlans(actionPlans, activeFilter);
 
-        container.innerHTML = filteredPlans.map(plan => this.renderActionPlanCard(plan, app)).join('');
+        // Render as project management table
+        container.innerHTML = this.renderProjectManagementTable(filteredPlans, app);
     }
 
     static updateActionsOverview(app) {
@@ -102,70 +103,75 @@ class ActionsRenderer {
         }
     }
 
-    static renderActionPlanCard(plan, app) {
-        const progressPercentage = this.calculateProgress(plan.planData);
-
+    static renderProjectManagementTable(actionPlans, app) {
         return `
-            <div class="action-plan-card ${plan.urgency}-urgency" onclick="app.viewAccountActionPlan('${plan.accountId}')">
-                <div class="action-plan-header">
-                    <div class="plan-account-info">
-                        <div class="plan-account-name">${plan.accountName}</div>
-                        <div class="plan-meta">
-                            <span class="account-health health-${plan.accountHealth}">${plan.accountHealth}</span>
-                            <span class="signals-count">${plan.signalsCount} signals</span>
-                            <span class="high-priority-count">${plan.highPriorityCount} high priority</span>
-                            <span class="renewal-value">$${app.formatNumber(plan.renewalBaseline)} renewal</span>
-                        </div>
+            <div class="project-management-container">
+                <div class="pm-table-header">
+                    <div class="pm-header-cell checkbox-col">
+                        <input type="checkbox" id="selectAll" onchange="ActionsRenderer.toggleAllTasks(this)">
                     </div>
-                    <div class="plan-status-section">
-                        <span class="plan-status status-${plan.status.toLowerCase().replace(' ', '-')}">${plan.status}</span>
-                        ${plan.urgency === 'critical' ? '<span class="urgency-badge critical">CRITICAL</span>' : ''}
-                        ${plan.urgency === 'high' ? '<span class="urgency-badge high">HIGH</span>' : ''}
+                    <div class="pm-header-cell task-col">Task</div>
+                    <div class="pm-header-cell due-date-col">Due Date</div>
+                    <div class="pm-header-cell plays-col"># Plays</div>
+                    <div class="pm-header-cell priority-col">Priority</div>
+                    <div class="pm-header-cell assignee-col">Assignee</div>
+                </div>
+                
+                ${actionPlans.map(plan => this.renderAccountGroup(plan, app)).join('')}
+            </div>
+        `;
+    }
+
+    static renderAccountGroup(plan, app) {
+        const tasks = this.getTasksFromPlan(plan, app);
+        
+        return `
+            <div class="account-group">
+                <div class="account-group-header">
+                    <div class="account-group-title">
+                        <i class="fas fa-chevron-down group-toggle" onclick="ActionsRenderer.toggleGroup(this)"></i>
+                        <span class="account-name">${plan.accountName}</span>
+                        <span class="task-count">${tasks.length} tasks</span>
+                        <span class="account-health health-${plan.accountHealth}">${plan.accountHealth}</span>
+                        <span class="renewal-value">$${app.formatNumber(plan.renewalBaseline)}</span>
                     </div>
                 </div>
+                
+                <div class="account-tasks">
+                    ${tasks.map(task => this.renderTaskRow(task, app)).join('')}
+                </div>
+            </div>
+        `;
+    }
 
-                <div class="action-plan-progress">
-                    <div class="progress-header">
-                        <span class="progress-label">Action Items Progress</span>
-                        <span class="progress-percentage">${progressPercentage}%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${progressPercentage}%"></div>
-                    </div>
-                    <div class="progress-details">
-                        <span>${plan.planData.actionItems.length} total actions</span>
-                        <span>Next: ${plan.nextAction}</span>
+    static renderTaskRow(task, app) {
+        return `
+            <div class="pm-table-row task-row" data-task-id="${task.id}">
+                <div class="pm-cell checkbox-col">
+                    <input type="checkbox" class="task-checkbox" 
+                           onchange="ActionsRenderer.toggleTaskComplete('${task.id}', this.checked)">
+                </div>
+                <div class="pm-cell task-col">
+                    <div class="task-content">
+                        <span class="task-title">${task.title}</span>
+                        ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
                     </div>
                 </div>
-
-                <div class="action-plan-impact">
-                    <div class="impact-metrics">
-                        <div class="impact-item">
-                            <div class="impact-value">+${Math.round(plan.highPriorityCount * 25)}%</div>
-                            <div class="impact-label">Health Score</div>
-                        </div>
-                        <div class="impact-item">
-                            <div class="impact-value">+${Math.round(plan.signalsCount * 10)}%</div>
-                            <div class="impact-label">Engagement</div>
-                        </div>
-                        <div class="impact-item">
-                            <div class="impact-value">+${Math.round(plan.renewalBaseline / 10000)}%</div>
-                            <div class="impact-label">Renewal Risk</div>
-                        </div>
-                    </div>
+                <div class="pm-cell due-date-col">
+                    <span class="due-date ${task.overdue ? 'overdue' : ''}">${task.dueDate}</span>
                 </div>
-
-                <div class="action-plan-footer">
-                    <div class="plan-timestamp">
-                        Updated ${app.formatDateSimple(plan.lastUpdated)}
-                    </div>
-                    <div class="plan-actions">
-                        <button class="btn btn-secondary" onclick="event.stopPropagation(); app.editActionPlan('${plan.accountId}')">
-                            <i class="fas fa-edit"></i> Edit Plan
-                        </button>
-                        <button class="btn btn-primary" onclick="event.stopPropagation(); app.executeActionPlan('${plan.accountId}')">
-                            <i class="fas fa-play"></i> Execute
-                        </button>
+                <div class="pm-cell plays-col">
+                    <button class="plays-button" onclick="ActionsRenderer.openPlaysModal('${task.actionId}', '${task.title}')">
+                        <span class="plays-count">${task.playsCount}</span>
+                        <span class="plays-label">plays</span>
+                    </button>
+                </div>
+                <div class="pm-cell priority-col">
+                    <span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                </div>
+                <div class="pm-cell assignee-col">
+                    <div class="assignee-avatar">
+                        <span class="assignee-initials">${task.assigneeInitials}</span>
                     </div>
                 </div>
             </div>
@@ -249,5 +255,142 @@ class ActionsRenderer {
         const baseValue = Math.floor(Math.random() * 450000) + 50000;
         // Round to nearest 1000
         return Math.round(baseValue / 1000) * 1000;
+    }
+
+    // Project Management Helper Methods
+    static getTasksFromPlan(plan, app) {
+        const tasks = [];
+        if (!plan.planData.actionItems) return tasks;
+
+        plan.planData.actionItems.forEach((actionItem, index) => {
+            // Get CS plays count for this action
+            const playsCount = this.getPlaysCountForAction(actionItem.actionId, app);
+            
+            // Generate realistic due date (1-14 days from now)
+            const dueDate = this.generateDueDate(index);
+            
+            // Determine priority based on urgency and high priority signals
+            const priority = this.determinePriority(plan, index);
+            
+            // Generate assignee initials
+            const assigneeInitials = this.generateAssigneeInitials();
+
+            tasks.push({
+                id: `${plan.accountId}-${index}`,
+                title: actionItem.action || actionItem.title || actionItem,
+                description: actionItem.rationale ? actionItem.rationale.substring(0, 100) + '...' : '',
+                actionId: actionItem.actionId || `action-${index}`,
+                dueDate: dueDate.formatted,
+                overdue: dueDate.overdue,
+                playsCount: playsCount,
+                priority: priority,
+                assigneeInitials: assigneeInitials,
+                completed: false,
+                accountId: plan.accountId
+            });
+        });
+
+        return tasks;
+    }
+
+    static getPlaysCountForAction(actionId, app) {
+        if (!actionId || !app.data) return 0;
+        
+        // Find signal with this action_id to get plays count
+        const signal = app.data.find(s => s.action_id === actionId);
+        if (!signal) return 0;
+
+        let count = 0;
+        if (signal.play_1_name && signal.play_1_name.trim()) count++;
+        if (signal.play_2_name && signal.play_2_name.trim()) count++;
+        if (signal.play_3_name && signal.play_3_name.trim()) count++;
+        
+        return count;
+    }
+
+    static generateDueDate(index) {
+        const today = new Date();
+        const daysToAdd = Math.floor(Math.random() * 14) + 1; // 1-14 days
+        const dueDate = new Date(today.getTime() + (daysToAdd * 24 * 60 * 60 * 1000));
+        
+        // Sometimes make dates overdue for realism
+        const isOverdue = Math.random() < 0.15; // 15% chance of overdue
+        
+        if (isOverdue && index > 0) {
+            dueDate.setDate(dueDate.getDate() - Math.floor(Math.random() * 5) - 1);
+        }
+
+        const formatted = dueDate.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+        });
+
+        return {
+            formatted,
+            overdue: isOverdue && index > 0,
+            date: dueDate
+        };
+    }
+
+    static determinePriority(plan, index) {
+        if (plan.urgency === 'critical') {
+            return index === 0 ? 'High' : (Math.random() > 0.5 ? 'High' : 'Medium');
+        } else if (plan.urgency === 'high') {
+            return index === 0 ? 'High' : (Math.random() > 0.6 ? 'Medium' : 'Low');
+        } else {
+            return Math.random() > 0.7 ? 'Medium' : 'Low';
+        }
+    }
+
+    static generateAssigneeInitials() {
+        const names = ['JS', 'MK', 'AB', 'RT', 'LW', 'DM', 'SC', 'JH', 'KP', 'NR'];
+        return names[Math.floor(Math.random() * names.length)];
+    }
+
+    // Interactive Methods
+    static toggleAllTasks(checkbox) {
+        const taskCheckboxes = document.querySelectorAll('.task-checkbox');
+        taskCheckboxes.forEach(cb => {
+            cb.checked = checkbox.checked;
+            this.toggleTaskComplete(cb.closest('.task-row').dataset.taskId, cb.checked);
+        });
+    }
+
+    static toggleGroup(chevron) {
+        const group = chevron.closest('.account-group');
+        const tasks = group.querySelector('.account-tasks');
+        
+        if (tasks.style.display === 'none') {
+            tasks.style.display = 'block';
+            chevron.classList.remove('fa-chevron-right');
+            chevron.classList.add('fa-chevron-down');
+        } else {
+            tasks.style.display = 'none';
+            chevron.classList.remove('fa-chevron-down');
+            chevron.classList.add('fa-chevron-right');
+        }
+    }
+
+    static toggleTaskComplete(taskId, completed) {
+        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (taskRow) {
+            if (completed) {
+                taskRow.classList.add('task-completed');
+            } else {
+                taskRow.classList.remove('task-completed');
+            }
+        }
+        
+        // Update task completion in data (if we implement persistence)
+        console.log(`Task ${taskId} marked as ${completed ? 'completed' : 'incomplete'}`);
+    }
+
+    static openPlaysModal(actionId, taskTitle) {
+        // Reuse the existing modal functionality from PortfolioRenderer
+        if (window.PortfolioRenderer && window.PortfolioRenderer.openAddToPlanModal) {
+            window.PortfolioRenderer.openAddToPlanModal(actionId, taskTitle);
+        } else {
+            console.log(`Opening plays modal for action ${actionId}: ${taskTitle}`);
+        }
     }
 }
