@@ -151,7 +151,7 @@ class PortfolioRenderer {
                         <div class="financial-metrics-box">
                             <div class="financial-header">
                                 <i class="fas fa-dollar-sign"></i>
-                                <span>Financial Overview</span>
+                                <span>Account Overview</span>
                             </div>
                             <div class="financial-content">
                                 <div class="financial-metric">
