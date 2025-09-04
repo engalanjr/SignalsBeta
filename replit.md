@@ -53,7 +53,10 @@ The application runs on port 5000 using a Python HTTP server that:
 - Updated pagination system: replaced "+X more" with "Show 3 more" and "Show Less" buttons positioned at bottom of signals section
 - Made AI Recommendations priority badge data-driven: shows "IMMEDIATE" for accounts with high priority signals, "NEAR-TERM" for others
 - Added dates to AI Recommendations: each recommended action now displays its creation date from the CSV data using the created_date field
-- **Implemented "Add to Plan" functionality**: Each AI recommended action now has an "Add to Plan" button that opens a drawer modal with action title, pre-checked Customer Success plays, plan notes area, and "Create Plan" button
+- **Implemented "Add to Plan" functionality**: Each AI recommended action now has an "Add to Plan" button that opens a modal with action title, pre-checked Customer Success plays, plan notes area, and "Create Plan" button
+- **Fixed Customer Success Plays display**: Resolved CSV field mapping issues (play_1_name, play_2_name, play_3_name) to properly show actual play data from CSV
+- **Converted to centered modal**: Changed from side drawer to modern centered modal with fade+scale animation and improved user experience
+- **Enhanced modal layout**: Increased width to 600px, fixed text wrapping so Customer Success Plays display on single lines instead of multiple lines
 - Added smart button state management: actions already in existing plans show "Added!" pill button (non-clickable)
 - Created comprehensive action plan integration with proper data-driven checks and plan creation workflow
 - **Redesigned Action Plans interface**: Transformed from card-based to modern project management table layout inspired by Asana/Monday.com with columns for checkbox, task, due date, # plays, priority, and assignee
