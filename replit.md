@@ -52,6 +52,7 @@ The application runs on port 5000 using a Python HTTP server that:
 - Added toggle functionality: clicking "Liked!" or "Marked Inaccurate" will remove that feedback and return to default state
 - Updated pagination system: replaced "+X more" with "Show 3 more" and "Show Less" buttons positioned at bottom of signals section
 - Made AI Recommendations priority badge data-driven: shows "IMMEDIATE" for accounts with high priority signals, "NEAR-TERM" for others
+- Added dates to AI Recommendations: each recommended action now displays its creation date from the CSV data using the created_date field
 - Configured deployment settings for autoscale target
 
 ## Deployment

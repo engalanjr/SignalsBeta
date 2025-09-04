@@ -1306,6 +1306,18 @@ body {
     color: var(--neutral-gray-800);
     font-weight: 500;
     margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.recommendation-date {
+    font-size: 0.75rem;
+    color: var(--neutral-gray-500);
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .recommendation-actions-list .recommendation-action {

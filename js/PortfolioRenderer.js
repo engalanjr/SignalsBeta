@@ -475,11 +475,11 @@ class PortfolioRenderer {
     }
 
     static getMergedRecommendationsAndRationale(account) {
-        const actionRationaleMap = new Map();
+        const actionDataMap = new Map();
         
         console.log(`Processing recommendations for account ${account.name} with ${account.signals.length} signals`);
         
-        // Create map of recommended_action to signal_rationale
+        // Create map of recommended_action to data object with rationale and date
         account.signals.forEach((signal, index) => {
             console.log(`Signal ${index + 1}: recommended_action="${signal.recommended_action}", action_id="${signal.action_id}"`);
             
@@ -492,20 +492,27 @@ class PortfolioRenderer {
                 
                 const action = signal.recommended_action.trim();
                 const rationale = signal.signal_rationale.trim();
+                const date = signal.created_date || signal.call_date;
                 
-                if (!actionRationaleMap.has(action)) {
-                    actionRationaleMap.set(action, rationale);
-                    console.log(`Added unique action: "${action}" with rationale`);
+                if (!actionDataMap.has(action)) {
+                    actionDataMap.set(action, {
+                        rationale: rationale,
+                        date: date
+                    });
+                    console.log(`Added unique action: "${action}" with rationale and date: ${date}`);
                 }
             }
         });
         
         // If we have action-rationale pairs, display them
-        if (actionRationaleMap.size > 0) {
-            return Array.from(actionRationaleMap.entries()).slice(0, 3).map(([action, rationale]) => `
+        if (actionDataMap.size > 0) {
+            return Array.from(actionDataMap.entries()).slice(0, 3).map(([action, data]) => `
                 <div class="merged-recommendation-item">
-                    <div class="recommendation-action">• ${action}</div>
-                    <div class="recommendation-rationale">${rationale}</div>
+                    <div class="recommendation-action">
+                        • ${action}
+                        <span class="recommendation-date">${window.app ? window.app.formatDateSimple(data.date) : data.date}</span>
+                    </div>
+                    <div class="recommendation-rationale">${data.rationale}</div>
                 </div>
             `).join('');
         }
