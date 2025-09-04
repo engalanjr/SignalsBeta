@@ -1509,6 +1509,14 @@ body {
     color: var(--neutral-gray-800);
 }
 
+.no-plays-message {
+    text-align: center;
+    color: var(--neutral-gray-600);
+    font-style: italic;
+    padding: 20px;
+    margin: 0;
+}
+
 #planNotes {
     width: 100%;
     border: 1px solid var(--neutral-gray-300);

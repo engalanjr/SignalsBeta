@@ -630,32 +630,25 @@ class PortfolioRenderer {
             }
         }
         
-        // Fallback to default plays if none found
-        if (csPlays.length === 0) {
-            csPlays = [
-                'Executive Alignment',
-                'Technical Enablement', 
-                'Adoption Training',
-                'Success Metrics Review',
-                'Escalation Management',
-                'Product Roadmap Discussion'
-            ];
-        }
-        
         const playsContainer = document.getElementById('csPlaysContainer');
         if (!playsContainer) {
             console.error('csPlaysContainer element not found!');
             return;
         }
         
-        const playCheckboxes = csPlays.map(play => `
-            <label class="play-checkbox">
-                <input type="checkbox" value="${play}" checked>
-                <span>${play}</span>
-            </label>
-        `).join('');
-        
-        playsContainer.innerHTML = playCheckboxes;
+        // Show message if no plays found, otherwise show checkboxes
+        if (csPlays.length === 0) {
+            playsContainer.innerHTML = '<p class="no-plays-message">No recommended plays.</p>';
+        } else {
+            const playCheckboxes = csPlays.map(play => `
+                <label class="play-checkbox">
+                    <input type="checkbox" value="${play}" checked>
+                    <span>${play}</span>
+                </label>
+            `).join('');
+            
+            playsContainer.innerHTML = playCheckboxes;
+        }
     }
 
     static async createPlanFromModal() {
