@@ -602,8 +602,8 @@ class PortfolioRenderer {
         // Clear previous notes
         document.getElementById('planNotes').value = '';
         
-        // Pre-check all CS plays
-        this.loadCSPlays();
+        // Load CS plays specific to this action_id
+        this.loadCSPlays(actionId);
     }
 
     static closeAddToPlanModal() {
@@ -611,22 +611,38 @@ class PortfolioRenderer {
         window.currentAddToPlanData = null;
     }
 
-    static loadCSPlays() {
-        console.log('Loading CS plays...');
+    static loadCSPlays(actionId) {
+        // Find the signal with this action_id to get its specific plays
+        let csPlays = [];
         
-        // Default CS plays - could be loaded from config
-        const csPlays = [
-            'Executive Alignment',
-            'Technical Enablement', 
-            'Adoption Training',
-            'Success Metrics Review',
-            'Escalation Management',
-            'Product Roadmap Discussion'
-        ];
+        if (actionId && window.app && window.app.dataService && window.app.dataService.signals) {
+            const signal = window.app.dataService.signals.find(s => s.action_id === actionId);
+            
+            if (signal) {
+                // Extract plays from play_1, play_2, play_3 fields
+                const play1 = signal.play_1?.trim();
+                const play2 = signal.play_2?.trim();
+                const play3 = signal.play_3?.trim();
+                
+                if (play1) csPlays.push(play1);
+                if (play2) csPlays.push(play2);
+                if (play3) csPlays.push(play3);
+            }
+        }
+        
+        // Fallback to default plays if none found
+        if (csPlays.length === 0) {
+            csPlays = [
+                'Executive Alignment',
+                'Technical Enablement', 
+                'Adoption Training',
+                'Success Metrics Review',
+                'Escalation Management',
+                'Product Roadmap Discussion'
+            ];
+        }
         
         const playsContainer = document.getElementById('csPlaysContainer');
-        console.log('CS Plays container found:', playsContainer);
-        
         if (!playsContainer) {
             console.error('csPlaysContainer element not found!');
             return;
@@ -639,9 +655,7 @@ class PortfolioRenderer {
             </label>
         `).join('');
         
-        console.log('Generated play checkboxes HTML:', playCheckboxes);
         playsContainer.innerHTML = playCheckboxes;
-        console.log('CS plays loaded successfully');
     }
 
     static async createPlanFromModal() {
