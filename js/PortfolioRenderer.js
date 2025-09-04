@@ -212,7 +212,7 @@ class PortfolioRenderer {
                         </div>
 
                         <div class="recommendation-priority">
-                            <span class="immediate-badge">immediate</span>
+                            <span class="${account.aiRecommendation.priority}-badge">${account.aiRecommendation.priority.toUpperCase()}</span>
                         </div>
 
                         <div class="recommendations-merged">
@@ -348,7 +348,7 @@ class PortfolioRenderer {
         // If we have specific actions from context, use them
         if (uniqueActions.length > 0) {
             return {
-                priority: highPrioritySignals.length > 0 ? 'immediate' : 'monitor',
+                priority: highPrioritySignals.length > 0 ? 'immediate' : 'near-term',
                 actions: uniqueActions
             };
         }
@@ -394,7 +394,7 @@ class PortfolioRenderer {
             };
         } else {
             return {
-                priority: 'monitor',
+                priority: 'near-term',
                 actions: [
                     'Regular health check',
                     'Share best practices',

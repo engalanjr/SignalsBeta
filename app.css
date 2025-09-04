@@ -1376,6 +1376,17 @@ body {
     box-shadow: 0 1px 3px rgba(255, 140, 66, 0.3);
 }
 
+.near-term-badge {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    box-shadow: 0 1px 3px rgba(25, 118, 210, 0.3);
+}
+
 .recommendation-summary {
     background: #fff3cd;
     border: 1px solid #ffeaa7;

@@ -51,6 +51,7 @@ The application runs on port 5000 using a Python HTTP server that:
 - Like and Not Accurate buttons now properly connected to existing interaction CRUD methods
 - Added toggle functionality: clicking "Liked!" or "Marked Inaccurate" will remove that feedback and return to default state
 - Updated pagination system: replaced "+X more" with "Show 3 more" and "Show Less" buttons positioned at bottom of signals section
+- Made AI Recommendations priority badge data-driven: shows "IMMEDIATE" for accounts with high priority signals, "NEAR-TERM" for others
 - Configured deployment settings for autoscale target
 
 ## Deployment
