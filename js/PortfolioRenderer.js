@@ -180,7 +180,6 @@ class PortfolioRenderer {
                                 <i class="fas fa-bell signals-icon"></i>
                                 <h4 class="signals-title">Recent Signals (${totalSignals})</h4>
                             </div>
-                            ${hasMoreSignals ? `<a href="#" class="more-signals-link" onclick="event.stopPropagation(); window.app.showMoreSignalsForAccount('${account.id}')">+${account.signals.length - visibleSignals.length} more</a>` : ''}
                         </div>
 
                         <div class="signals-list-portfolio" id="signals-list-${account.id}">
@@ -198,6 +197,11 @@ class PortfolioRenderer {
                                     </div>
                                 </div>
                             `).join('')}
+                        </div>
+                        
+                        <div class="signals-pagination">
+                            ${hasMoreSignals ? `<button class="btn btn-secondary show-more-btn" onclick="event.stopPropagation(); window.app.showMoreSignalsForAccount('${account.id}')">Show 3 more</button>` : ''}
+                            ${currentPage > 0 ? `<button class="btn btn-outline show-less-btn" onclick="event.stopPropagation(); window.app.showLessSignalsForAccount('${account.id}')">Show Less</button>` : ''}
                         </div>
                     </div>
 

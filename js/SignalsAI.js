@@ -406,6 +406,21 @@ class SignalsAI {
         PortfolioRenderer.updateSingleAccount(accountId, this);
     }
 
+    showLessSignalsForAccount(accountId) {
+        // Find the account using Map.get() since this.accounts is a Map
+        const account = this.accounts.get(accountId);
+        if (!account) return;
+
+        // Reset to show only the first 3 signals
+        if (!account.signalsPagination) {
+            account.signalsPagination = { currentPage: 0, pageSize: 3 };
+        }
+        account.signalsPagination.currentPage = 0;
+
+        // Update only this specific account instead of re-rendering the whole tab
+        PortfolioRenderer.updateSingleAccount(accountId, this);
+    }
+
     // Utility methods
     formatNumber(num) {
         if (num >= 1000000) {

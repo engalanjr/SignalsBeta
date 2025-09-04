@@ -3560,3 +3560,44 @@ body {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(0, 125, 186, 0.1);
 }
+
+/* Signals Pagination Styling */
+.signals-pagination {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    padding: 12px 0;
+    border-top: 1px solid var(--neutral-gray-100);
+    margin-top: 8px;
+}
+
+.show-more-btn, .show-less-btn {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
+}
+
+.show-more-btn {
+    color: var(--domo-blue);
+    border-color: var(--domo-blue);
+}
+
+.show-more-btn:hover {
+    background: var(--domo-blue);
+    color: white;
+}
+
+.show-less-btn {
+    color: var(--neutral-gray-600);
+    border-color: var(--neutral-gray-300);
+}
+
+.show-less-btn:hover {
+    background: var(--neutral-gray-100);
+    color: var(--neutral-gray-800);
+}

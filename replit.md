@@ -50,6 +50,7 @@ The application runs on port 5000 using a Python HTTP server that:
 - Simplified signal detail experience: removed Recommended Actions, Event Source, Comments sections and Acknowledge/Create Plan buttons
 - Like and Not Accurate buttons now properly connected to existing interaction CRUD methods
 - Added toggle functionality: clicking "Liked!" or "Marked Inaccurate" will remove that feedback and return to default state
+- Updated pagination system: replaced "+X more" with "Show 3 more" and "Show Less" buttons positioned at bottom of signals section
 - Configured deployment settings for autoscale target
 
 ## Deployment
