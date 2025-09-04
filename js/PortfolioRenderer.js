@@ -633,7 +633,11 @@ class PortfolioRenderer {
                 const play3Name = signal.play_3_name;
                 
                 console.log('Loading CS Plays for action:', actionId);
-                console.log('Play 1:', play1Name, 'Play 2:', play2Name, 'Play 3:', play3Name);
+                console.log('Play 1:', play1Name);
+                console.log('Play 2:', play2Name); 
+                console.log('Play 3:', play3Name);
+                console.log('Play 1 type:', typeof play1Name, 'length:', play1Name?.length);
+                console.log('Play 2 type:', typeof play2Name, 'length:', play2Name?.length);
                 
                 if (play1Name && play1Name.trim()) csPlays.push(play1Name.trim());
                 if (play2Name && play2Name.trim()) csPlays.push(play2Name.trim());
@@ -653,12 +657,13 @@ class PortfolioRenderer {
         } else {
             const playCheckboxes = csPlays.map((play, index) => {
                 // Clean up the play title - keep it as one line
-                let cleanPlayTitle = play.trim();
+                let cleanPlayTitle = play?.trim() || '';
                 
                 // Remove any newlines or extra spaces that might cause formatting issues
                 cleanPlayTitle = cleanPlayTitle.replace(/\s+/g, ' ');
                 
-                console.log('Processing play:', cleanPlayTitle); // Debug log
+                console.log('Processing play #' + (index + 1) + ':', JSON.stringify(play));
+                console.log('Clean title:', JSON.stringify(cleanPlayTitle));
                 
                 return `
                     <div class="play-checkbox-wrapper">
