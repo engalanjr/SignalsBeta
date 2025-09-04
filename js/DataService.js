@@ -87,18 +87,21 @@ class DataService {
 
     // Comprehensive Action Plan CRUD operations with action_id support
     static async createActionPlan(planData) {
-        // Get current user info
-        let user;
+        // Get current user info with comprehensive error handling
         let userName = 'Current User';
         let userId = 'user-1';
 
         try {
-            user = await domo.get(`/domo/environment/v1/`);
+            const user = await domo.get(`/domo/environment/v1/`);
             console.log("User Info:", user);
-            userId = user.userId;
-            userName = user.userName;
+            
+            // Safely extract user properties with fallbacks
+            if (user && typeof user === 'object') {
+                userId = user.userId || user.id || userId;
+                userName = user.userName || user.name || user.displayName || userName;
+            }
         } catch (error) {
-            console.warn('Could not get user info, using defaults:', error);
+            console.warn('Could not get user info from Domo API, using defaults:', error.message || error);
         }
 
         const newPlan = {
@@ -140,27 +143,36 @@ class DataService {
             console.log('Created action plan via Domo AppDB:', newPlan);
             return { success: true, plan: newPlan };
         } catch (error) {
-            console.error('Failed to create action plan in Domo AppDB:', error);
+            console.error('Failed to create action plan in Domo AppDB:', error.message || error);
 
-            // Add to local array as fallback
-            this.actionPlans.push(newPlan);
-            return { success: true, plan: newPlan, error: 'Failed to save to database, saved locally' };
+            // Add to local array as fallback - ensure this always works
+            try {
+                this.actionPlans.push(newPlan);
+                console.log('Action plan saved locally as fallback:', newPlan.id);
+                return { success: true, plan: newPlan, warning: 'Action plan created locally - could not sync with server' };
+            } catch (fallbackError) {
+                console.error('Critical error: Failed to save action plan locally:', fallbackError);
+                return { success: false, error: 'Failed to create action plan due to system error' };
+            }
         }
     }
 
     static async updateActionPlan(planId, updateData) {
-        // Get current user info
-        let user;
+        // Get current user info with comprehensive error handling
         let userName = 'Current User';
         let userId = 'user-1';
 
         try {
-            user = await domo.get(`/domo/environment/v1/`);
+            const user = await domo.get(`/domo/environment/v1/`);
             console.log("User Info:", user);
-            userId = user.userId;
-            userName = user.userName;
+            
+            // Safely extract user properties with fallbacks
+            if (user && typeof user === 'object') {
+                userId = user.userId || user.id || userId;
+                userName = user.userName || user.name || user.displayName || userName;
+            }
         } catch (error) {
-            console.warn('Could not get user info, using defaults:', error);
+            console.warn('Could not get user info from Domo API, using defaults:', error.message || error);
         }
 
         // Find the plan to update
