@@ -619,14 +619,16 @@ class PortfolioRenderer {
             const signal = window.app.dataService.signals.find(s => s.action_id === actionId);
             
             if (signal) {
-                // Extract plays from play_1, play_2, play_3 fields
-                const play1 = signal.play_1?.trim();
-                const play2 = signal.play_2?.trim();
-                const play3 = signal.play_3?.trim();
+                // Extract play names from Play 1 Name, Play 2 Name, Play 3 Name fields
+                const play1Name = signal.play_1_name?.trim();
+                const play2Name = signal.play_2_name?.trim();
+                const play3Name = signal.play_3_name?.trim();
                 
-                if (play1) csPlays.push(play1);
-                if (play2) csPlays.push(play2);
-                if (play3) csPlays.push(play3);
+                if (play1Name) csPlays.push(play1Name);
+                if (play2Name) csPlays.push(play2Name);
+                if (play3Name) csPlays.push(play3Name);
+                
+                console.log('Found signal with action_id:', actionId, 'plays:', csPlays);
             }
         }
         
