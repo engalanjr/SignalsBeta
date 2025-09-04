@@ -1536,8 +1536,10 @@ body {
     color: var(--neutral-gray-800);
     line-height: 1.4;
     font-weight: 600;
-    word-wrap: break-word;
-    hyphens: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
 }
 
 .no-plays-message {

@@ -649,19 +649,13 @@ class PortfolioRenderer {
             playsContainer.innerHTML = '<p class="no-plays-message">No recommended plays.</p>';
         } else {
             const playCheckboxes = csPlays.map((play, index) => {
-                // Clean up the play title - remove excessive text and format nicely
-                let cleanPlayTitle = play;
+                // Clean up the play title - keep it as one line
+                let cleanPlayTitle = play.trim();
                 
-                // If the play title is very long, extract just the main title part
-                if (play.includes('(') && play.length > 50) {
-                    cleanPlayTitle = play.split('(')[0].trim();
-                    if (play.includes('(') && play.includes(')')) {
-                        const parenthetical = play.match(/\(([^)]+)\)/);
-                        if (parenthetical) {
-                            cleanPlayTitle += ` (${parenthetical[1]})`;
-                        }
-                    }
-                }
+                // Remove any newlines or extra spaces that might cause formatting issues
+                cleanPlayTitle = cleanPlayTitle.replace(/\s+/g, ' ');
+                
+                console.log('Processing play:', cleanPlayTitle); // Debug log
                 
                 return `
                     <div class="play-checkbox-wrapper">
