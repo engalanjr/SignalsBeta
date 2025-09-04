@@ -1417,6 +1417,8 @@ body {
     box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
     transform: translateX(100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
 }
 
 .modal.modal-open .modal-content {
@@ -1459,12 +1461,19 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
 }
 
 .action-title-section,
-.cs-plays-section,
+.cs-plays-section {
+    margin-bottom: 20px;
+}
+
 .plan-notes-section {
     margin-bottom: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .action-title-section h3,
@@ -1517,6 +1526,7 @@ body {
 .play-checkbox span {
     font-size: 13px;
     color: var(--neutral-gray-800);
+    line-height: 1.4;
 }
 
 .no-plays-message {
@@ -1534,8 +1544,9 @@ body {
     padding: 12px;
     font-family: inherit;
     font-size: 14px;
-    resize: vertical;
-    min-height: 80px;
+    resize: none;
+    min-height: 150px;
+    flex: 1;
     box-sizing: border-box;
 }
 
@@ -1552,7 +1563,7 @@ body {
     padding: 24px;
     border-top: 1px solid var(--neutral-gray-200);
     background: var(--neutral-gray-50);
-    margin-top: auto;
+    flex-shrink: 0;
 }
 
 .btn-secondary {
