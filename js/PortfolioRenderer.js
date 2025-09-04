@@ -617,12 +617,12 @@ class PortfolioRenderer {
         // Find the signal with this action_id to get its specific plays
         let csPlays = [];
         
-        console.log('=== DEBUG: Data service available:', !!window.app?.dataService);
-        console.log('=== DEBUG: Signals available:', !!window.app?.dataService?.signals);
-        console.log('=== DEBUG: Number of signals:', window.app?.dataService?.signals?.length);
+        console.log('=== DEBUG: App available:', !!window.app);
+        console.log('=== DEBUG: App data available:', !!window.app?.data);
+        console.log('=== DEBUG: Number of signals:', window.app?.data?.length);
         
-        if (actionId && window.app && window.app.dataService && window.app.dataService.signals) {
-            const signal = window.app.dataService.signals.find(s => s.action_id === actionId);
+        if (actionId && window.app && window.app.data) {
+            const signal = window.app.data.find(s => s.action_id === actionId);
             console.log('=== DEBUG: Found signal for action_id:', actionId, signal);
             
             if (signal) {
@@ -647,7 +647,7 @@ class PortfolioRenderer {
                 console.log('=== DEBUG: Final csPlays array:', csPlays);
             } else {
                 console.log('=== DEBUG: No signal found for action_id:', actionId);
-                console.log('=== DEBUG: Available action_ids:', window.app.dataService.signals.map(s => s.action_id).slice(0, 10));
+                console.log('=== DEBUG: Available action_ids:', window.app.data.map(s => s.action_id).slice(0, 10));
             }
         }
         
