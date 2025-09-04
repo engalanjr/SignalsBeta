@@ -627,17 +627,20 @@ class PortfolioRenderer {
             const signal = window.app.data.find(s => s.action_id === actionId);
             
             if (signal) {
-                // Extract play names from CSV fields (with spaces in field names)
-                const play1Name = signal['Play 1 Name']?.trim();
-                const play2Name = signal['Play 2 Name']?.trim();
-                const play3Name = signal['Play 3 Name']?.trim();
-                
+                // Debug: Log all field names in the signal object that contain 'Play'
                 console.log('Action ID:', actionId, 'Found signal:', !!signal);
+                console.log('Available Play fields:', Object.keys(signal).filter(key => key.toLowerCase().includes('play')));
+                
+                // Try multiple field name variations
+                const play1Name = signal['Play 1 Name'] || signal['play_1_name'] || signal.play1Name || signal['Play1Name'];
+                const play2Name = signal['Play 2 Name'] || signal['play_2_name'] || signal.play2Name || signal['Play2Name'];
+                const play3Name = signal['Play 3 Name'] || signal['play_3_name'] || signal.play3Name || signal['Play3Name'];
+                
                 console.log('Play 1:', play1Name, 'Play 2:', play2Name, 'Play 3:', play3Name);
                 
-                if (play1Name) csPlays.push(play1Name);
-                if (play2Name) csPlays.push(play2Name);
-                if (play3Name) csPlays.push(play3Name);
+                if (play1Name && play1Name.trim()) csPlays.push(play1Name.trim());
+                if (play2Name && play2Name.trim()) csPlays.push(play2Name.trim());
+                if (play3Name && play3Name.trim()) csPlays.push(play3Name.trim());
             }
         }
         
