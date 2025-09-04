@@ -164,7 +164,7 @@ class PortfolioRenderer {
                                 </div>
                                 <div class="financial-metric">
                                     <span class="financial-label">% Pacing</span>
-                                    <span class="financial-value">${account.pacing_percent || '0'}%</span>
+                                    <span class="financial-value">${account.pacing_percent ? (account.pacing_percent * 100).toFixed(1) : '0.0'}%</span>
                                 </div>
                                 <div class="financial-metric">
                                     <span class="financial-label">Next Renewal Date</span>
