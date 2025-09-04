@@ -44,6 +44,11 @@ The application runs on port 5000 using a Python HTTP server that:
 - Fixed scroll jump issue: "+X more" pagination now expands in place without page movement
 - Updated financial metrics box: replaced "ARR" with "Renewal Baseline$", consolidated GPA and % Pacing into blue box, changed to "Next Renewal Date"
 - Removed second row of metrics (MAU, TENURE) for cleaner, consolidated layout
+- Fixed field mapping for bks_renewal_baseline_usd and % Pacing to display real data from CSV
+- Updated % Pacing to multiply by 100 and show one decimal place (e.g., 85.0%)
+- Changed "Financial Overview" label to "Account Overview"
+- Simplified signal detail experience: removed Recommended Actions, Event Source, Comments sections and Acknowledge/Create Plan buttons
+- Like and Not Accurate buttons now properly connected to existing interaction CRUD methods
 - Configured deployment settings for autoscale target
 
 ## Deployment

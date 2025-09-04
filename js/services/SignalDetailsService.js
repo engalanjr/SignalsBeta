@@ -5,7 +5,6 @@ class SignalDetailsService {
         const signal = app.data.find(s => s.id === signalId);
         if (!signal) return;
 
-        const eventSource = this.generateEventSource(signal);
 
         document.getElementById('signalTitle').textContent = signal.name;
         document.getElementById('signalDetails').innerHTML = `
@@ -25,28 +24,6 @@ class SignalDetailsService {
                     <h3>Rationale</h3>
                     <p>${signal.rationale}</p>
                 </div>
-                <div class="detail-section">
-                    <h3>Recommended Actions</h3>
-                    <p>${signal.action_context}</p>
-                </div>
-                <div class="detail-section">
-                    <h3>Event Source</h3>
-                    <div class="event-source-card">
-                        <div class="event-source-header">
-                            <i class="${eventSource.icon}"></i>
-                            <div class="event-source-info">
-                                <div class="event-source-type">${eventSource.type}</div>
-                                <div class="event-source-date">${eventSource.date}</div>
-                            </div>
-                        </div>
-                        <div class="event-source-title">${eventSource.title}</div>
-                        <a href="${eventSource.link}" target="_blank" class="event-source-link">
-                            <i class="fas fa-external-link-alt"></i>
-                            ${eventSource.linkText}
-                        </a>
-                    </div>
-                </div>
-                ${CommentService.renderSignalCommentsSection(signalId, app)}
             </div>
         `;
 
@@ -79,31 +56,13 @@ class SignalDetailsService {
             });
         }
 
-        // Acknowledge button
-        const acknowledgeBtn = document.getElementById('acknowledgeSignal');
-        if (acknowledgeBtn) {
-            acknowledgeBtn.addEventListener('click', () => {
-                SignalFeedbackService.acknowledgeSignal(signal.id, 'acknowledge', app);
-                this.updateDrawerButtonStates(signal);
-            });
-        }
-
-        // Create Plan button
-        const createPlanBtn = document.getElementById('takeAction');
-        if (createPlanBtn) {
-            createPlanBtn.addEventListener('click', () => {
-                this.closeSignalDrawer(); // Close signal drawer first
-                ActionPlanService.createPlan(signal.id, app);
-            });
-        }
     }
 
     static updateDrawerButtonStates(signal) {
         const likeBtn = document.getElementById('drawerLikeSignal');
         const notAccurateBtn = document.getElementById('drawerNotAccurateSignal');
-        const acknowledgeBtn = document.getElementById('acknowledgeSignal');
 
-        if (likeBtn && notAccurateBtn && acknowledgeBtn) {
+        if (likeBtn && notAccurateBtn) {
             // Reset all buttons to default state
             likeBtn.className = 'btn btn-secondary';
             likeBtn.innerHTML = '<i class="fas fa-thumbs-up"></i> Like';
@@ -121,9 +80,6 @@ class SignalDetailsService {
             } else if (signal.feedbackType === 'not-accurate') {
                 notAccurateBtn.className = 'btn btn-secondary not-accurate-btn';
                 notAccurateBtn.innerHTML = '<i class="fas fa-thumbs-down"></i> Not Accurate';
-            } else if (signal.feedbackType === 'acknowledge') {
-                acknowledgeBtn.className = 'btn btn-primary acknowledged-btn';
-                acknowledgeBtn.innerHTML = '<i class="fas fa-check"></i> Acknowledged';
             }
         }
     }
