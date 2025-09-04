@@ -525,6 +525,7 @@ class SignalsAI {
         });
 
         EventHandlers.setupEventListeners(this);
+        ActionPlanService.initializeEventListeners();
         ActionPlanService.setupEventDelegation();
     }
 

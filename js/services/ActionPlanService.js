@@ -1,5 +1,19 @@
 // Action Plan Service - Handle action plan operations
 class ActionPlanService {
+    
+    static initializeEventListeners() {
+        // Event delegation for add toolbox play buttons
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('.add-action-btn[data-onclick="addToolboxPlay"]')) {
+                const playTitle = e.target.getAttribute('data-title');
+                if (playTitle) {
+                    this.addToolboxPlay(playTitle, e.target);
+                }
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+    }
 
     static createPlan(signalId, app) {
         this.openCreatePlanDrawer(signalId, app);
@@ -634,7 +648,7 @@ class ActionPlanService {
                     <span class="play-badge ${play.priority}">${play.priority.toUpperCase()}</span>
                 </div>
                 <div class="play-description">${play.description}</div>
-                <button class="btn btn-primary add-action-btn" data-title="${play.title}" onclick="ActionPlanService.addToolboxPlay(&quot;${play.title.replace(/"/g, '&quot;')}&quot;, this)">+ Add Play</button>
+                <button class="btn btn-primary add-action-btn" data-title="${play.title}" data-onclick="addToolboxPlay">+ Add Play</button>
             </div>
         `).join('');
     }
@@ -747,7 +761,7 @@ class ActionPlanService {
                     <span class="play-badge ${play.priority}">${play.priority}</span>
                 </div>
                 <div class="play-description">${play.description}</div>
-                <button class="btn btn-primary add-action-btn" data-title="${play.title}" onclick="ActionPlanService.addToolboxPlay(&quot;${play.title.replace(/"/g, '&quot;')}&quot;, this)">+ Add Play</button>
+                <button class="btn btn-primary add-action-btn" data-title="${play.title}" data-onclick="addToolboxPlay">+ Add Play</button>
             </div>
         `).join('');
     }
@@ -1350,7 +1364,7 @@ class ActionPlanService {
                     <span class="play-badge ${play.priority}">${play.priority.toUpperCase()}</span>
                 </div>
                 <div class="play-description">${play.description}</div>
-                <button class="btn btn-primary add-action-btn" data-title="${play.title}" onclick="ActionPlanService.addToolboxPlay(&quot;${play.title.replace(/"/g, '&quot;')}&quot;, this)">+ Add Play</button>
+                <button class="btn btn-primary add-action-btn" data-title="${play.title}" data-onclick="addToolboxPlay">+ Add Play</button>
             </div>
         `).join('');
     }
