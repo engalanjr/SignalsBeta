@@ -633,13 +633,6 @@ class PortfolioRenderer {
                 const play3Name = signal.play_3_name;
                 
                 console.log('Loading CS Plays for action:', actionId);
-                console.log('Found signal:', signal);
-                console.log('Signal keys with "play":', Object.keys(signal).filter(k => k.toLowerCase().includes('play')));
-                console.log('Play 1:', play1Name);
-                console.log('Play 2:', play2Name); 
-                console.log('Play 3:', play3Name);
-                console.log('Play 1 type:', typeof play1Name, 'length:', play1Name?.length);
-                console.log('Play 2 type:', typeof play2Name, 'length:', play2Name?.length);
                 
                 if (play1Name && play1Name.trim()) csPlays.push(play1Name.trim());
                 if (play2Name && play2Name.trim()) csPlays.push(play2Name.trim());
@@ -651,12 +644,6 @@ class PortfolioRenderer {
         if (!playsContainer) {
             console.error('csPlaysContainer element not found!');
             return;
-        }
-        
-        // For debugging: temporarily add some test plays if none found
-        if (csPlays.length === 0) {
-            console.log('No plays found, adding test plays for debugging');
-            csPlays = ['Domo Everywhere Essentials', 'Data Strategy Consulting', 'Implementation Planning'];
         }
         
         console.log('Final csPlays array:', csPlays);
@@ -672,8 +659,6 @@ class PortfolioRenderer {
                 // Remove any newlines or extra spaces that might cause formatting issues
                 cleanPlayTitle = cleanPlayTitle.replace(/\s+/g, ' ');
                 
-                console.log('Processing play #' + (index + 1) + ':', JSON.stringify(play));
-                console.log('Clean title:', JSON.stringify(cleanPlayTitle));
                 
                 return `
                     <div class="play-checkbox-wrapper">
