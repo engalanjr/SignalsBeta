@@ -1249,18 +1249,18 @@ class DataService {
                 signal_confidence: parseFloat(row['signal_confidence'] || row['Signal Confidence'] || row['SIGNAL_CONFIDENCE'] || '0') || 0.7,
                 action_id: row['action_id'] || row['Action Id'] || row['ACTION_ID'] || this.generateActionId(), // GUID of the action
 
-                // Play recommendations - handle the CSV data structure correctly
+                // Play recommendations - correct CSV field mapping
                 play_1: row['play_1'] || row['Play 1'] || row['PLAY_1'] || '',
                 play_2: row['play_2'] || row['Play 2'] || row['PLAY_2'] || '',
                 play_3: row['play_3'] || row['Play 3'] || row['PLAY_3'] || '',
                 
-                // Fix: In this CSV, the actual play names are in the "description" fields
-                play_1_name: row['Play 1 Description'] || row['Play 1 Name'] || row['PLAY 1 NAME'] || '',
-                play_1_description: row['Play 2 Name'] || row['PLAY 1 DESCRIPTION'] || 'Customer Success play for improving account health',
-                play_2_name: row['Play 2 Description'] || row['Play 2 Name'] || row['PLAY 2 NAME'] || '',
-                play_2_description: row['Play 3 Name'] || row['PLAY 2 DESCRIPTION'] || 'Customer Success play for account management',
-                play_3_name: row['Play 3 Description'] || row['Play 3 Name'] || row['PLAY 3 NAME'] || '',
-                play_3_description: 'Additional Customer Success play for account optimization',
+                // Correct mapping: CSV structure has play titles in specific columns
+                play_1_name: row['Play 1 Description'] || row['Play 1 Name'] || '', // First play title is in description column
+                play_1_description: 'Customer Success enablement play',
+                play_2_name: row['Play 2 Name'] || '', // Second play title is in name column  
+                play_2_description: row['Play 2 Description'] || 'Customer Success management play',
+                play_3_name: row['Play 3 Name'] || '', // Third play title is in name column
+                play_3_description: row['Play 3 Description'] || 'Customer Success optimization play',
 
                 // Account health metrics (GPA components)
                 relationship: row['Relationship'] || row['RELATIONSHIP'] || '',
