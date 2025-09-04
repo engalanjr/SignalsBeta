@@ -154,30 +154,22 @@ class PortfolioRenderer {
                                 <span>Financial Overview</span>
                             </div>
                             <div class="financial-content">
-                                ${account.bks_renewal_baseline_usd > 0 ? `
                                 <div class="financial-metric">
                                     <span class="financial-label">Renewal Baseline$</span>
-                                    <span class="financial-value">${app.formatCurrency(account.bks_renewal_baseline_usd)}</span>
+                                    <span class="financial-value">${account.bks_renewal_baseline_usd > 0 ? app.formatCurrency(account.bks_renewal_baseline_usd) : '$0'}</span>
                                 </div>
-                                ` : ''}
-                                ${account.gpa ? `
                                 <div class="financial-metric">
                                     <span class="financial-label">GPA</span>
-                                    <span class="financial-value">${account.gpa.toFixed(1)}</span>
+                                    <span class="financial-value">${account.gpa ? account.gpa.toFixed(1) : '0.0'}</span>
                                 </div>
-                                ` : ''}
-                                ${account.pacing_percent ? `
                                 <div class="financial-metric">
                                     <span class="financial-label">% Pacing</span>
-                                    <span class="financial-value">${account.pacing_percent}%</span>
+                                    <span class="financial-value">${account.pacing_percent || '0'}%</span>
                                 </div>
-                                ` : ''}
-                                ${account.next_renewal_date ? `
                                 <div class="financial-metric">
                                     <span class="financial-label">Next Renewal Date</span>
-                                    <span class="financial-value">${account.next_renewal_date}</span>
+                                    <span class="financial-value">${account.next_renewal_date || 'TBD'}</span>
                                 </div>
-                                ` : ''}
                             </div>
                         </div>
                     </div>
