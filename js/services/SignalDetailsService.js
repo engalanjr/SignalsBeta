@@ -42,8 +42,15 @@ class SignalDetailsService {
         const likeBtn = document.getElementById('drawerLikeSignal');
         if (likeBtn) {
             likeBtn.addEventListener('click', () => {
-                SignalFeedbackService.acknowledgeSignal(signal.id, 'like', app);
-                signal.feedbackType = 'like'; // Update the signal object
+                if (signal.feedbackType === 'like') {
+                    // Toggle off - remove like
+                    SignalFeedbackService.acknowledgeSignal(signal.id, 'removed_like', app);
+                    signal.feedbackType = null; // Clear feedback
+                } else {
+                    // Apply like
+                    SignalFeedbackService.acknowledgeSignal(signal.id, 'like', app);
+                    signal.feedbackType = 'like';
+                }
                 this.updateDrawerButtonStates(signal);
             });
         }
@@ -52,8 +59,15 @@ class SignalDetailsService {
         const notAccurateBtn = document.getElementById('drawerNotAccurateSignal');
         if (notAccurateBtn) {
             notAccurateBtn.addEventListener('click', () => {
-                SignalFeedbackService.acknowledgeSignal(signal.id, 'not-accurate', app);
-                signal.feedbackType = 'not-accurate'; // Update the signal object
+                if (signal.feedbackType === 'not-accurate') {
+                    // Toggle off - remove not-accurate
+                    SignalFeedbackService.acknowledgeSignal(signal.id, 'removed_not-accurate', app);
+                    signal.feedbackType = null; // Clear feedback
+                } else {
+                    // Apply not-accurate
+                    SignalFeedbackService.acknowledgeSignal(signal.id, 'not-accurate', app);
+                    signal.feedbackType = 'not-accurate';
+                }
                 this.updateDrawerButtonStates(signal);
             });
         }
