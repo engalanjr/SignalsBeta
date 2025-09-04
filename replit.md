@@ -56,6 +56,10 @@ The application runs on port 5000 using a Python HTTP server that:
 - **Implemented "Add to Plan" functionality**: Each AI recommended action now has an "Add to Plan" button that opens a drawer modal with action title, pre-checked Customer Success plays, plan notes area, and "Create Plan" button
 - Added smart button state management: actions already in existing plans show "Added!" pill button (non-clickable)
 - Created comprehensive action plan integration with proper data-driven checks and plan creation workflow
+- **Redesigned Action Plans interface**: Transformed from card-based to modern project management table layout inspired by Asana/Monday.com with columns for checkbox, task, due date, # plays, priority, and assignee
+- **Implemented account grouping**: Action plans organized by customer account with collapsible sections and task counts
+- **Added JSON fallback system**: Action Plans now load real data from `action-plans-fallback.json` when Domo endpoints fail, preserving actual account names, tasks, and Customer Success plays
+- **Enhanced data processing**: Real action plan data is transformed and grouped by account, with proper assignee mapping and CS plays count extraction
 - Configured deployment settings for autoscale target
 
 ## Deployment

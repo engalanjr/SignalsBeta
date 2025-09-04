@@ -252,7 +252,9 @@ class SignalsAI {
                 PortfolioRenderer.renderMyPortfolio(this);
                 break;
             case 'actions':
-                ActionsRenderer.renderActions(this);
+                ActionsRenderer.renderActions(this).catch(error => {
+                    console.error('Error rendering actions:', error);
+                });
                 break;
         }
     }

@@ -1,7 +1,7 @@
 // Actions Renderer - Handle action plans tab rendering
 class ActionsRenderer {
 
-    static renderActions(app) {
+    static async renderActions(app) {
         const container = document.getElementById('actionsList');
         if (!container) return;
 
@@ -9,7 +9,7 @@ class ActionsRenderer {
         this.updateActionsOverview(app);
 
         // Get action plans and convert to display format
-        const actionPlans = this.getFormattedActionPlans(app);
+        const actionPlans = await this.getFormattedActionPlans(app);
 
         if (actionPlans.length === 0) {
             container.innerHTML = this.renderEmptyState();
@@ -56,8 +56,22 @@ class ActionsRenderer {
         }
     }
 
-    static getFormattedActionPlans(app) {
+    static async getFormattedActionPlans(app) {
         const actionPlans = [];
+
+        // If no action plans from Domo, try loading fallback JSON
+        if (app.actionPlans.size === 0) {
+            try {
+                console.log('No action plans from Domo, loading fallback data...');
+                const fallbackPlans = await this.loadFallbackActionPlans(app);
+                if (fallbackPlans.length > 0) {
+                    console.log(`Loaded ${fallbackPlans.length} action plans from fallback JSON`);
+                    return fallbackPlans;
+                }
+            } catch (error) {
+                console.error('Failed to load fallback action plans:', error);
+            }
+        }
 
         for (let [accountId, planData] of app.actionPlans) {
             const account = app.accounts.get(accountId);
@@ -263,8 +277,17 @@ class ActionsRenderer {
         if (!plan.planData.actionItems) return tasks;
 
         plan.planData.actionItems.forEach((actionItem, index) => {
-            // Get CS plays count for this action
-            const playsCount = this.getPlaysCountForAction(actionItem.actionId, app);
+            // Handle both fallback JSON structure and original structure
+            const title = actionItem.title || actionItem.action || actionItem;
+            const actionId = actionItem.actionId || `action-${index}`;
+            
+            // Get CS plays count - try from real JSON data first, then fallback
+            let playsCount = 0;
+            if (actionItem.plays && Array.isArray(actionItem.plays)) {
+                playsCount = actionItem.plays.length;
+            } else {
+                playsCount = this.getPlaysCountForAction(actionId, app);
+            }
             
             // Generate realistic due date (1-14 days from now)
             const dueDate = this.generateDueDate(index);
@@ -272,20 +295,27 @@ class ActionsRenderer {
             // Determine priority based on urgency and high priority signals
             const priority = this.determinePriority(plan, index);
             
-            // Generate assignee initials
-            const assigneeInitials = this.generateAssigneeInitials();
+            // Get assignee initials from plan data or generate
+            let assigneeInitials;
+            if (plan.planData.assignee) {
+                assigneeInitials = plan.planData.assignee === 'Current User' ? 'CU' : 
+                                 this.getInitialsFromName(plan.planData.assignee);
+            } else {
+                assigneeInitials = this.generateAssigneeInitials();
+            }
 
             tasks.push({
                 id: `${plan.accountId}-${index}`,
-                title: actionItem.action || actionItem.title || actionItem,
-                description: actionItem.rationale ? actionItem.rationale.substring(0, 100) + '...' : '',
-                actionId: actionItem.actionId || `action-${index}`,
+                title: title,
+                description: actionItem.rationale ? actionItem.rationale.substring(0, 100) + '...' : 
+                           actionItem.description ? actionItem.description.substring(0, 100) + '...' : '',
+                actionId: actionId,
                 dueDate: dueDate.formatted,
                 overdue: dueDate.overdue,
                 playsCount: playsCount,
                 priority: priority,
                 assigneeInitials: assigneeInitials,
-                completed: false,
+                completed: actionItem.completed || false,
                 accountId: plan.accountId
             });
         });
@@ -347,6 +377,19 @@ class ActionsRenderer {
         return names[Math.floor(Math.random() * names.length)];
     }
 
+    static getInitialsFromName(fullName) {
+        if (!fullName) return 'UN';
+        
+        const parts = fullName.trim().split(' ');
+        if (parts.length === 1) {
+            // Single name, use first two characters
+            return parts[0].substring(0, 2).toUpperCase();
+        } else {
+            // Multiple parts, use first letter of first and last
+            return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+        }
+    }
+
     // Interactive Methods
     static toggleAllTasks(checkbox) {
         const taskCheckboxes = document.querySelectorAll('.task-checkbox');
@@ -392,5 +435,140 @@ class ActionsRenderer {
         } else {
             console.log(`Opening plays modal for action ${actionId}: ${taskTitle}`);
         }
+    }
+
+    // Fallback Data Loading
+    static async loadFallbackActionPlans(app) {
+        try {
+            const response = await fetch('/action-plans-fallback.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const fallbackData = await response.json();
+            const formattedPlans = [];
+
+            // Process each action plan from the JSON
+            for (const record of fallbackData) {
+                const planContent = record.content;
+                if (!planContent || !planContent.actionItems || planContent.actionItems.length === 0) {
+                    continue; // Skip plans with no action items
+                }
+
+                // Get account information from signal data
+                const signal = planContent.signalId ? 
+                              app.data.find(s => s.id === planContent.signalId) : null;
+                
+                const accountName = this.getAccountNameFromPlan(planContent, signal, app);
+                const accountId = signal ? signal.account_id : `fallback-${planContent.id}`;
+
+                // Determine urgency and health based on available data
+                const urgency = this.determineFallbackUrgency(planContent, signal);
+                const accountHealth = signal ? this.getHealthFromRiskCategory(signal.at_risk_cat) : 'healthy';
+                
+                // Get signals count for this account
+                const accountSignals = signal ? 
+                                     app.data.filter(s => s.account_id === signal.account_id) : [];
+
+                formattedPlans.push({
+                    accountId: accountId,
+                    accountName: accountName,
+                    accountHealth: accountHealth,
+                    signalsCount: accountSignals.length,
+                    highPriorityCount: accountSignals.filter(s => s.priority === 'High').length,
+                    renewalBaseline: this.getFallbackRenewalValue(signal, app),
+                    status: planContent.status || 'Pending',
+                    urgency: urgency,
+                    planData: {
+                        id: planContent.id,
+                        actionItems: planContent.actionItems,
+                        status: planContent.status,
+                        assignee: planContent.assignee,
+                        createdAt: planContent.createdAt,
+                        updatedAt: planContent.updatedAt,
+                        notes: planContent.notes
+                    },
+                    lastUpdated: planContent.updatedAt || planContent.createdAt,
+                    nextAction: planContent.actionItems[0]?.title || 'No actions defined'
+                });
+            }
+
+            // Group by account and merge duplicates
+            const groupedPlans = this.groupFallbackPlansByAccount(formattedPlans);
+            
+            return groupedPlans.sort((a, b) => {
+                const urgencyOrder = { critical: 0, high: 1, normal: 2 };
+                if (urgencyOrder[a.urgency] !== urgencyOrder[b.urgency]) {
+                    return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
+                }
+                return new Date(b.lastUpdated) - new Date(a.lastUpdated);
+            });
+
+        } catch (error) {
+            console.error('Error loading fallback action plans:', error);
+            return [];
+        }
+    }
+
+    static getAccountNameFromPlan(planContent, signal, app) {
+        // Try to get account name from plan title first
+        if (planContent.planTitle && planContent.planTitle.includes(' - ')) {
+            return planContent.planTitle.split(' - ').slice(1).join(' - ').trim();
+        }
+        
+        // Try to get from signal data
+        if (signal && signal.account_name) {
+            return signal.account_name;
+        }
+        
+        // Fallback to generic name
+        return `Account ${planContent.id.slice(-8)}`;
+    }
+
+    static determineFallbackUrgency(planContent, signal) {
+        // Determine urgency based on available information
+        if (signal && signal.priority === 'High') {
+            return 'high';
+        }
+        
+        if (planContent.actionItems && planContent.actionItems.length > 2) {
+            return 'high';
+        }
+        
+        return 'normal';
+    }
+
+    static getFallbackRenewalValue(signal, app) {
+        // Try to get real renewal value from signal
+        if (signal && signal.bks_renewal_baseline_usd) {
+            return parseFloat(signal.bks_renewal_baseline_usd) || 0;
+        }
+        
+        // Generate realistic fallback value
+        return this.getRandomRenewalValue();
+    }
+
+    static groupFallbackPlansByAccount(formattedPlans) {
+        const grouped = new Map();
+        
+        for (const plan of formattedPlans) {
+            const key = plan.accountId;
+            if (grouped.has(key)) {
+                // Merge action items for the same account
+                const existing = grouped.get(key);
+                existing.planData.actionItems = [
+                    ...existing.planData.actionItems,
+                    ...plan.planData.actionItems
+                ];
+                // Update last updated time if newer
+                if (new Date(plan.lastUpdated) > new Date(existing.lastUpdated)) {
+                    existing.lastUpdated = plan.lastUpdated;
+                }
+            } else {
+                grouped.set(key, plan);
+            }
+        }
+        
+        return Array.from(grouped.values());
     }
 }
