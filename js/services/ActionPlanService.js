@@ -2,12 +2,19 @@
 class ActionPlanService {
     
     static initializeEventListeners() {
-        // Event delegation for add toolbox play buttons
+        // Event delegation for add toolbox play buttons and recommendation actions
         document.addEventListener('click', (e) => {
             if (e.target.matches('.add-action-btn[data-onclick="addToolboxPlay"]')) {
                 const playTitle = e.target.getAttribute('data-title');
                 if (playTitle) {
                     this.addToolboxPlay(playTitle, e.target);
+                }
+                e.preventDefault();
+                e.stopPropagation();
+            } else if (e.target.matches('.add-action-btn[data-onclick="addRecommendationAction"]')) {
+                const actionTitle = e.target.getAttribute('data-title');
+                if (actionTitle) {
+                    this.addRecommendationAction(actionTitle, e.target);
                 }
                 e.preventDefault();
                 e.stopPropagation();
@@ -574,7 +581,7 @@ class ActionPlanService {
             return `
                 <div class="recommendation-item">
                     ${action.trim()}
-                    <button class="add-action-btn" data-title="${action.trim()}" onclick="ActionPlanService.addRecommendationAction('${action.trim()}', this)">+ Add as Action</button>
+                    <button class="add-action-btn" data-title="${action.trim()}" data-onclick="addRecommendationAction">+ Add as Action</button>
                 </div>
             `;
         }).join('');
@@ -730,7 +737,7 @@ class ActionPlanService {
         return generalRecs.map(rec => `
             <div class="recommendation-item">
                 ${rec}
-                <button class="add-action-btn" data-title="${rec}" onclick="ActionPlanService.addRecommendationAction('${rec}', this)">+ Add as Action</button>
+                <button class="add-action-btn" data-title="${rec}" data-onclick="addRecommendationAction">+ Add as Action</button>
             </div>
         `).join('');
     }
