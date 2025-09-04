@@ -396,9 +396,6 @@ class SignalsAI {
         const account = this.accounts.get(accountId);
         if (!account) return;
 
-        // Save current scroll position
-        const currentScrollY = window.scrollY;
-
         // Increment the current page
         if (!account.signalsPagination) {
             account.signalsPagination = { currentPage: 0, pageSize: 3 };
@@ -408,7 +405,7 @@ class SignalsAI {
         // Re-render the current tab to update the signals display
         this.renderCurrentTab();
         
-        // Keep the account expanded and restore scroll position after re-render
+        // Keep the account expanded after re-render without any scrolling
         setTimeout(() => {
             const signalsContainer = document.getElementById(`signals-${accountId}`);
             const chevron = document.getElementById(`chevron-${accountId}`);
@@ -416,13 +413,6 @@ class SignalsAI {
                 signalsContainer.classList.add('expanded');
                 chevron.classList.add('rotated');
             }
-            
-            // Restore scroll position with a slight offset down to show new content
-            const offsetDown = 100; // Scroll down by 100px to show new content
-            window.scrollTo({
-                top: currentScrollY + offsetDown,
-                behavior: 'smooth'
-            });
         }, 100);
     }
 
