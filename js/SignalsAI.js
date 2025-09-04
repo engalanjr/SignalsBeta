@@ -402,18 +402,8 @@ class SignalsAI {
         }
         account.signalsPagination.currentPage++;
 
-        // Re-render the current tab to update the signals display
-        this.renderCurrentTab();
-        
-        // Keep the account expanded after re-render without any scrolling
-        setTimeout(() => {
-            const signalsContainer = document.getElementById(`signals-${accountId}`);
-            const chevron = document.getElementById(`chevron-${accountId}`);
-            if (signalsContainer && chevron) {
-                signalsContainer.classList.add('expanded');
-                chevron.classList.add('rotated');
-            }
-        }, 100);
+        // Update only this specific account instead of re-rendering the whole tab
+        PortfolioRenderer.updateSingleAccount(accountId, this);
     }
 
     // Utility methods

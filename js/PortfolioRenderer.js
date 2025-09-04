@@ -40,6 +40,49 @@ class PortfolioRenderer {
         }
     }
 
+    static updateSingleAccount(accountId, app) {
+        // Find the account
+        const account = app.accounts.get(accountId);
+        if (!account) return;
+
+        // Find the existing account card in the DOM
+        const container = document.getElementById('accountsList');
+        if (!container) return;
+
+        // Generate the updated account card HTML
+        const updatedAccountHTML = this.renderAccountCard(account, app);
+
+        // Create a temporary container to parse the HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = updatedAccountHTML;
+        const newAccountCard = tempDiv.firstElementChild;
+
+        // Find the existing account card and replace it
+        const existingCards = container.querySelectorAll('.portfolio-account-card');
+        for (let existingCard of existingCards) {
+            const accountName = existingCard.querySelector('.account-name');
+            if (accountName && accountName.textContent === account.name) {
+                // Preserve the expanded state
+                const signalsContainer = existingCard.querySelector(`#signals-${accountId}`);
+                const wasExpanded = signalsContainer && signalsContainer.classList.contains('expanded');
+                
+                // Replace the card
+                existingCard.parentNode.replaceChild(newAccountCard, existingCard);
+                
+                // Restore expanded state if it was expanded
+                if (wasExpanded) {
+                    const newSignalsContainer = newAccountCard.querySelector(`#signals-${accountId}`);
+                    const newChevron = newAccountCard.querySelector(`#chevron-${accountId}`);
+                    if (newSignalsContainer && newChevron) {
+                        newSignalsContainer.classList.add('expanded');
+                        newChevron.classList.add('rotated');
+                    }
+                }
+                break;
+            }
+        }
+    }
+
     static renderAccountCard(account, app) {
         const highPriorityCount = account.signals.filter(s => s.priority === 'High').length;
         const totalSignals = account.signals.length;
