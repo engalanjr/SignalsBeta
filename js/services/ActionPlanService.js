@@ -941,6 +941,15 @@ class ActionPlanService {
                            signalId ? app.actionPlans.get(signalId) : null;
         const isEdit = !!existingPlan;
 
+        // Show loading state on create button
+        const createButton = document.querySelector('.create-plan-btn');
+        const originalButtonText = createButton.innerHTML;
+        createButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        createButton.disabled = true;
+
+        // Clear any existing error messages
+        this.clearPlanErrorMessage();
+
         try {
             // Get current user info
             let userId = 'user-1'; // Default fallback
@@ -964,13 +973,29 @@ class ActionPlanService {
             };
 
             let result;
-            if (isEdit) {
-                // Update existing plan
-                const planId = existingPlan.id || accountId || signalId;
-                result = await DataService.updateActionPlan(planId, planData);
-            } else {
-                // Create new plan
-                result = await DataService.createActionPlan(planData);
+            try {
+                if (isEdit) {
+                    // Update existing plan
+                    const planId = existingPlan.id || accountId || signalId;
+                    result = await DataService.updateActionPlan(planId, planData);
+                } else {
+                    // Create new plan
+                    result = await DataService.createActionPlan(planData);
+                }
+            } catch (apiError) {
+                console.error('API Error creating/updating plan:', apiError);
+                
+                // Graceful fallback - save locally
+                result = {
+                    success: true,
+                    plan: {
+                        id: `local-plan-${Date.now()}`,
+                        ...planData,
+                        createdAt: planData.createdAt || new Date(),
+                        updatedAt: new Date()
+                    },
+                    warning: 'Saved locally - could not connect to server'
+                };
             }
 
             if (result.success) {
@@ -1002,7 +1027,12 @@ class ActionPlanService {
                 
                 console.log('Stored action plan with key:', storageKey, 'Plan accountId:', result.plan.accountId);
 
-                app.showSuccessMessage(message);
+                // Show success message
+                if (result.warning) {
+                    app.showWarningMessage(`${message} (${result.warning})`);
+                } else {
+                    app.showSuccessMessage(message);
+                }
 
                 // Re-render the current tab to show updates
                 if (app.currentTab === 'signal-feed') {
@@ -1020,11 +1050,16 @@ class ActionPlanService {
                 document.getElementById('planTitle').value = ''; // Clear plan title
                 document.getElementById('actionItems').innerHTML = '';
             } else {
-                app.showErrorMessage(result.error || 'Failed to save action plan');
+                // Show error near the Create Plan button
+                this.showPlanErrorMessage(result.error || 'Failed to save action plan');
             }
         } catch (error) {
-            console.error('Error creating/updating action plan:', error);
-            app.showErrorMessage('Failed to save action plan');
+            console.error('Unexpected error creating/updating action plan:', error);
+            this.showPlanErrorMessage('An unexpected error occurred. Please try again.');
+        } finally {
+            // Restore button state
+            createButton.innerHTML = originalButtonText;
+            createButton.disabled = false;
         }
     }
 
@@ -1096,6 +1131,48 @@ class ActionPlanService {
                 backdrop.classList.remove('open');
             }
         }, 300);
+
+        // Clear any error messages when closing
+        this.clearPlanErrorMessage();
+    }
+
+    static showPlanErrorMessage(message) {
+        // Clear any existing error message first
+        this.clearPlanErrorMessage();
+        
+        // Find the create button container
+        const createButton = document.querySelector('.create-plan-btn');
+        if (createButton && createButton.parentElement) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'plan-error-message';
+            errorDiv.innerHTML = `
+                <div style="
+                    background: #fee2e2; 
+                    border: 1px solid #fecaca; 
+                    color: #dc2626; 
+                    padding: 8px 12px; 
+                    border-radius: 4px; 
+                    margin-top: 8px; 
+                    font-size: 14px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                ">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            // Insert after the button container
+            createButton.parentElement.insertAdjacentElement('afterend', errorDiv);
+        }
+    }
+
+    static clearPlanErrorMessage() {
+        const existingError = document.querySelector('.plan-error-message');
+        if (existingError) {
+            existingError.remove();
+        }
     }
 
     static createActionPlanForAccount(accountId, app) {
