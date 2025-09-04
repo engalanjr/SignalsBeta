@@ -612,23 +612,42 @@ class PortfolioRenderer {
     }
 
     static loadCSPlays(actionId) {
+        console.log('=== DEBUG: Loading CS plays for action_id:', actionId);
+        
         // Find the signal with this action_id to get its specific plays
         let csPlays = [];
         
+        console.log('=== DEBUG: Data service available:', !!window.app?.dataService);
+        console.log('=== DEBUG: Signals available:', !!window.app?.dataService?.signals);
+        console.log('=== DEBUG: Number of signals:', window.app?.dataService?.signals?.length);
+        
         if (actionId && window.app && window.app.dataService && window.app.dataService.signals) {
             const signal = window.app.dataService.signals.find(s => s.action_id === actionId);
+            console.log('=== DEBUG: Found signal for action_id:', actionId, signal);
             
             if (signal) {
+                console.log('=== DEBUG: Signal object keys:', Object.keys(signal));
+                console.log('=== DEBUG: play_1_name raw value:', signal.play_1_name);
+                console.log('=== DEBUG: play_2_name raw value:', signal.play_2_name);
+                console.log('=== DEBUG: play_3_name raw value:', signal.play_3_name);
+                
                 // Extract play names from Play 1 Name, Play 2 Name, Play 3 Name fields
                 const play1Name = signal.play_1_name?.trim();
                 const play2Name = signal.play_2_name?.trim();
                 const play3Name = signal.play_3_name?.trim();
                 
+                console.log('=== DEBUG: Trimmed play1Name:', play1Name);
+                console.log('=== DEBUG: Trimmed play2Name:', play2Name);
+                console.log('=== DEBUG: Trimmed play3Name:', play3Name);
+                
                 if (play1Name) csPlays.push(play1Name);
                 if (play2Name) csPlays.push(play2Name);
                 if (play3Name) csPlays.push(play3Name);
                 
-                console.log('Found signal with action_id:', actionId, 'plays:', csPlays);
+                console.log('=== DEBUG: Final csPlays array:', csPlays);
+            } else {
+                console.log('=== DEBUG: No signal found for action_id:', actionId);
+                console.log('=== DEBUG: Available action_ids:', window.app.dataService.signals.map(s => s.action_id).slice(0, 10));
             }
         }
         
