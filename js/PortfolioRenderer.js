@@ -479,7 +479,7 @@ class PortfolioRenderer {
         
         console.log(`Processing recommendations for account ${account.name} with ${account.signals.length} signals`);
         
-        // Create map of recommended_action to data object with rationale and date
+        // Create map of recommended_action to data object with rationale, date, and action_id
         account.signals.forEach((signal, index) => {
             console.log(`Signal ${index + 1}: recommended_action="${signal.recommended_action}", action_id="${signal.action_id}"`);
             
@@ -493,11 +493,14 @@ class PortfolioRenderer {
                 const action = signal.recommended_action.trim();
                 const rationale = signal.signal_rationale.trim();
                 const date = signal.created_date || signal.call_date;
+                const actionId = signal.action_id;
                 
                 if (!actionDataMap.has(action)) {
                     actionDataMap.set(action, {
                         rationale: rationale,
-                        date: date
+                        date: date,
+                        actionId: actionId,
+                        accountId: account.id
                     });
                     console.log(`Added unique action: "${action}" with rationale and date: ${date}`);
                 }
@@ -509,8 +512,13 @@ class PortfolioRenderer {
             return Array.from(actionDataMap.entries()).slice(0, 3).map(([action, data]) => `
                 <div class="merged-recommendation-item">
                     <div class="recommendation-action">
-                        • ${action}
-                        <span class="recommendation-date">${window.app ? window.app.formatDateSimple(data.date) : data.date}</span>
+                        <div class="action-content">
+                            • ${action}
+                            <span class="recommendation-date">${window.app ? window.app.formatDateSimple(data.date) : data.date}</span>
+                        </div>
+                        <div class="action-buttons">
+                            ${this.renderAddToPlanButton(data.actionId, action, data)}
+                        </div>
                     </div>
                     <div class="recommendation-rationale">${data.rationale}</div>
                 </div>
@@ -559,6 +567,118 @@ class PortfolioRenderer {
             'Review technical implementation',
             'Develop adoption roadmap'
         ];
+    }
+
+    static renderAddToPlanButton(actionId, actionTitle, data) {
+        // Check if this action_id already exists in any plan
+        if (this.isActionInPlan(actionId)) {
+            return `<button class="btn-added-pill" disabled>Added!</button>`;
+        }
+        
+        // Return clickable Add to Plan button
+        return `<button class="btn-add-to-plan" onclick="PortfolioRenderer.openAddToPlanModal('${actionId}', '${actionTitle.replace(/'/g, "&#39;")}')">Add to Plan</button>`;
+    }
+
+    static isActionInPlan(actionId) {
+        if (!actionId || !window.app?.dataService?.actionPlans) return false;
+        
+        // Check all existing plans for this actionId
+        return window.app.dataService.actionPlans.some(plan => 
+            plan.actionItems && plan.actionItems.some(item => item.actionId === actionId)
+        );
+    }
+
+    static openAddToPlanModal(actionId, actionTitle) {
+        // Store current action data
+        window.currentAddToPlanData = {
+            actionId: actionId,
+            actionTitle: actionTitle
+        };
+        
+        // Show the modal
+        document.getElementById('addToPlanModal').classList.add('modal-open');
+        document.getElementById('modalActionTitle').textContent = actionTitle;
+        
+        // Clear previous notes
+        document.getElementById('planNotes').value = '';
+        
+        // Pre-check all CS plays
+        this.loadCSPlays();
+    }
+
+    static closeAddToPlanModal() {
+        document.getElementById('addToPlanModal').classList.remove('modal-open');
+        window.currentAddToPlanData = null;
+    }
+
+    static loadCSPlays() {
+        // Default CS plays - could be loaded from config
+        const csPlays = [
+            'Executive Alignment',
+            'Technical Enablement', 
+            'Adoption Training',
+            'Success Metrics Review',
+            'Escalation Management',
+            'Product Roadmap Discussion'
+        ];
+        
+        const playsContainer = document.getElementById('csPlaysContainer');
+        playsContainer.innerHTML = csPlays.map(play => `
+            <label class="play-checkbox">
+                <input type="checkbox" value="${play}" checked>
+                <span>${play}</span>
+            </label>
+        `).join('');
+    }
+
+    static async createPlanFromModal() {
+        if (!window.currentAddToPlanData) return;
+        
+        const actionId = window.currentAddToPlanData.actionId;
+        const actionTitle = window.currentAddToPlanData.actionTitle;
+        const planNotes = document.getElementById('planNotes').value;
+        
+        // Get selected plays
+        const selectedPlays = Array.from(document.querySelectorAll('#csPlaysContainer input[type="checkbox"]:checked'))
+            .map(checkbox => checkbox.value);
+        
+        // Create the plan
+        const planData = {
+            planTitle: `Action Plan - ${actionTitle}`,
+            notes: planNotes,
+            actionItems: [{
+                title: actionTitle,
+                actionId: actionId,
+                completed: false,
+                plays: selectedPlays
+            }]
+        };
+        
+        try {
+            const result = await window.app.dataService.createActionPlan(planData);
+            if (result.success) {
+                console.log('Plan created successfully:', result.plan);
+                
+                // Close modal
+                this.closeAddToPlanModal();
+                
+                // Refresh the portfolio view to show updated button state
+                if (window.app && window.app.renderCurrentTab) {
+                    window.app.renderCurrentTab();
+                }
+                
+                // Show success notification
+                if (window.app.notificationService) {
+                    window.app.notificationService.showNotification('Action plan created successfully!', 'success');
+                }
+            } else {
+                console.error('Failed to create plan:', result.error);
+                alert('Failed to create action plan. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error creating plan:', error);
+            alert('Error creating action plan. Please try again.');
+        }
     }
 
     static formatTenure(years) {

@@ -228,6 +228,42 @@
         </div>
     </div>
 
+    <!-- Add to Plan Modal -->
+    <div id="addToPlanModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Action to Plan</h2>
+                <button class="modal-close" onclick="PortfolioRenderer.closeAddToPlanModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="action-title-section">
+                    <h3>Action</h3>
+                    <p id="modalActionTitle" class="action-title-text"></p>
+                </div>
+                
+                <div class="cs-plays-section">
+                    <h3>Customer Success Plays</h3>
+                    <div id="csPlaysContainer" class="plays-container">
+                        <!-- CS plays will be loaded here -->
+                    </div>
+                </div>
+                
+                <div class="plan-notes-section">
+                    <h3>Plan Notes</h3>
+                    <textarea id="planNotes" placeholder="Add any notes or context for this action plan..." rows="4"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="PortfolioRenderer.closeAddToPlanModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="PortfolioRenderer.createPlanFromModal()">Create Plan</button>
+            </div>
+        </div>
+    </div>
+
     <!-- domo.js optional utils -->
     <script src="https://unpkg.com/ryuu.js@4.6.0/dist/domo.js"
         integrity="sha384-YYsd9wQ+wDlUWhvpfGdptxmNYIqBC+52oJtWgPKJadbs3sSFTY/+ZotPbEHTTRWz"
