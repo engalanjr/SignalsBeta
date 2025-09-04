@@ -148,48 +148,36 @@ class PortfolioRenderer {
                 <div class="account-details" id="signals-${account.id}">
                     <div class="account-metrics">
                         <!-- Financial Metrics Box -->
-                        ${(account.arr > 0 || account.bks_forecast_new > 0 || account.bks_fq) ? `
                         <div class="financial-metrics-box">
                             <div class="financial-header">
                                 <i class="fas fa-dollar-sign"></i>
                                 <span>Financial Overview</span>
                             </div>
                             <div class="financial-content">
-                                ${account.arr > 0 ? `
+                                ${account.bks_renewal_baseline_usd > 0 ? `
                                 <div class="financial-metric">
-                                    <span class="financial-label">ARR</span>
-                                    <span class="financial-value">${app.formatCurrency(account.arr)}</span>
+                                    <span class="financial-label">Renewal Baseline$</span>
+                                    <span class="financial-value">${app.formatCurrency(account.bks_renewal_baseline_usd)}</span>
                                 </div>
                                 ` : ''}
-                                ${account.bks_forecast_new > 0 ? `
+                                ${account.gpa ? `
                                 <div class="financial-metric">
-                                    <span class="financial-label">Forecast</span>
-                                    <span class="financial-value">${app.formatCurrency(account.bks_forecast_new)} ${this.formatForecastWithDelta(account.bks_forecast_delta)}</span>
+                                    <span class="financial-label">GPA</span>
+                                    <span class="financial-value">${account.gpa.toFixed(1)}</span>
                                 </div>
                                 ` : ''}
-                                ${account.bks_fq ? `
+                                ${account.pacing_percent ? `
                                 <div class="financial-metric">
-                                    <span class="financial-label">Renewal Date</span>
-                                    <span class="financial-value">${account.bks_fq}</span>
+                                    <span class="financial-label">% Pacing</span>
+                                    <span class="financial-value">${account.pacing_percent}%</span>
                                 </div>
                                 ` : ''}
-                            </div>
-                        </div>
-                        ` : ''}
-                        
-                        <!-- Other Metrics -->
-                        <div class="other-metrics">
-                            <div class="metric" data-type="gpa">
-                                <span class="metric-label">GPA</span>
-                                <span class="metric-value">${account.gpa.toFixed(1)}</span>
-                            </div>
-                            <div class="metric" data-type="mau">
-                                <span class="metric-label">MAU</span>
-                                <span class="metric-value">${account.monthly_active_users.toLocaleString()}</span>
-                            </div>
-                            <div class="metric" data-type="tenure">
-                                <span class="metric-label">Tenure</span>
-                                <span class="metric-value">${this.formatTenure(account.customer_tenure_years)}</span>
+                                ${account.next_renewal_date ? `
+                                <div class="financial-metric">
+                                    <span class="financial-label">Next Renewal Date</span>
+                                    <span class="financial-value">${account.next_renewal_date}</span>
+                                </div>
+                                ` : ''}
                             </div>
                         </div>
                     </div>

@@ -41,6 +41,9 @@ The application runs on port 5000 using a Python HTTP server that:
 - Implemented priority-based signal sorting (High > Medium > Low, then by call_date DESC)
 - Added pagination system for portfolio view showing 3 signals at a time with "+X more" functionality
 - Fixed Map.get() error and renderCurrentTab() function reference issues
+- Fixed scroll jump issue: "+X more" pagination now expands in place without page movement
+- Updated financial metrics box: replaced "ARR" with "Renewal Baseline$", consolidated GPA and % Pacing into blue box, changed to "Next Renewal Date"
+- Removed second row of metrics (MAU, TENURE) for cleaner, consolidated layout
 - Configured deployment settings for autoscale target
 
 ## Deployment
