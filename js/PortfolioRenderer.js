@@ -155,7 +155,7 @@ class PortfolioRenderer {
                         <div class="signals-header">
                             <div class="signals-header-left">
                                 <i class="fas fa-bell signals-icon"></i>
-                                <h4 class="signals-title">Recent Signals (Last 7 Days) (${totalSignals})</h4>
+                                <h4 class="signals-title">Recent Signals (${totalSignals})</h4>
                             </div>
                             ${hasMoreSignals ? `<a href="#" class="more-signals-link" onclick="event.stopPropagation(); window.app.showMoreSignalsForAccount('${account.id}')">+${account.signals.length - visibleSignals.length} more</a>` : ''}
                         </div>
