@@ -633,6 +633,8 @@ class PortfolioRenderer {
                 const play3Name = signal.play_3_name;
                 
                 console.log('Loading CS Plays for action:', actionId);
+                console.log('Found signal:', signal);
+                console.log('Signal keys with "play":', Object.keys(signal).filter(k => k.toLowerCase().includes('play')));
                 console.log('Play 1:', play1Name);
                 console.log('Play 2:', play2Name); 
                 console.log('Play 3:', play3Name);
@@ -650,6 +652,14 @@ class PortfolioRenderer {
             console.error('csPlaysContainer element not found!');
             return;
         }
+        
+        // For debugging: temporarily add some test plays if none found
+        if (csPlays.length === 0) {
+            console.log('No plays found, adding test plays for debugging');
+            csPlays = ['Domo Everywhere Essentials', 'Data Strategy Consulting', 'Implementation Planning'];
+        }
+        
+        console.log('Final csPlays array:', csPlays);
         
         // Show message if no plays found, otherwise show checkboxes
         if (csPlays.length === 0) {

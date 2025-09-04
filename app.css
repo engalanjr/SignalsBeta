@@ -1536,9 +1536,8 @@ body {
     color: var(--neutral-gray-800);
     line-height: 1.4;
     font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-wrap: break-word;
     flex: 1;
 }
 
