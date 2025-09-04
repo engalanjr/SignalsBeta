@@ -903,25 +903,37 @@ class ActionPlanService {
             };
         });
 
-        const currentSignalCard = document.querySelector('.current-signal-card');
         let accountId = null;
         let signalId = null;
 
-        if (currentSignalCard) {
-            const drawerTitle = document.querySelector('#createPlanDrawer .drawer-header h2').textContent;
-            const accountName = drawerTitle.split('for ')[1];
-            if (accountName) {
-                for (let [id, account] of app.accounts) {
-                    if (account.name === accountName) {
-                        accountId = id;
-                        break;
+        // First, try to get accountId and signalId from the selected signal
+        if (app.selectedSignal) {
+            signalId = app.selectedSignal.id;
+            accountId = app.selectedSignal.account_id; // Direct access to account_id from signal
+            console.log('Got accountId from selectedSignal:', accountId, 'signalId:', signalId);
+        }
+
+        // Fallback: Try to extract from drawer title if direct access failed
+        if (!accountId) {
+            const currentSignalCard = document.querySelector('.current-signal-card');
+            if (currentSignalCard) {
+                const drawerTitle = document.querySelector('#createPlanDrawer .drawer-header h2').textContent;
+                const accountName = drawerTitle.split('for ')[1];
+                if (accountName) {
+                    for (let [id, account] of app.accounts) {
+                        if (account.name === accountName) {
+                            accountId = id;
+                            console.log('Got accountId from drawer title parsing:', accountId);
+                            break;
+                        }
                     }
                 }
             }
-            // Get signal ID from the currently selected signal in the app
-            if (app.selectedSignal) {
-                signalId = app.selectedSignal.id;
-            }
+        }
+
+        // Additional validation
+        if (!accountId && !signalId) {
+            console.error('Unable to determine accountId or signalId for action plan creation');
         }
 
         // Check if this is an edit operation
@@ -962,20 +974,33 @@ class ActionPlanService {
             }
 
             if (result.success) {
-                // Store the action plan in memory
+                // Store the action plan in memory with proper key and ensure accountId is preserved
                 let message;
+                let storageKey;
+                
+                // Ensure the plan has the correct accountId stored
                 if (accountId) {
-                    app.actionPlans.set(accountId, result.plan);
-                    message = isEdit ? 'Action plan updated successfully!' : 'Action plan created successfully!';
+                    result.plan.accountId = accountId;
+                    storageKey = accountId;
                 } else if (signalId) {
-                    app.actionPlans.set(signalId, result.plan);
-                    message = isEdit ? 'Action plan updated successfully!' : 'Action plan created successfully!';
+                    // If no accountId but we have signalId, try to get accountId from signal
+                    if (app.selectedSignal && app.selectedSignal.account_id) {
+                        result.plan.accountId = app.selectedSignal.account_id;
+                        storageKey = app.selectedSignal.account_id;
+                    } else {
+                        result.plan.signalId = signalId;
+                        storageKey = signalId;
+                    }
                 } else {
                     // Fallback if neither accountId nor signalId is available
-                    const tempId = `temp-plan-${Date.now()}`;
-                    app.actionPlans.set(tempId, result.plan);
-                    message = 'Action plan created successfully!';
+                    storageKey = `temp-plan-${Date.now()}`;
+                    console.warn('Creating action plan without accountId or signalId, using temp key:', storageKey);
                 }
+                
+                app.actionPlans.set(storageKey, result.plan);
+                message = isEdit ? 'Action plan updated successfully!' : 'Action plan created successfully!';
+                
+                console.log('Stored action plan with key:', storageKey, 'Plan accountId:', result.plan.accountId);
 
                 app.showSuccessMessage(message);
 
