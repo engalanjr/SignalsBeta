@@ -37,7 +37,7 @@ The application runs on port 5000 using a Python HTTP server that:
 - Application gracefully falls back to sample data when Domo APIs are unavailable
 
 ## Recent Changes
-- Updated master data source to use new CSV file: "View of SignalsAI _ CORE _ WIP _ v4 2_1756943576282.csv"
+- Updated master data source to use comprehensive CSV file: "SignalsAI _ CORE _ WIP 4_1757016310504.csv" containing all 9,568 signal records
 - Implemented priority-based signal sorting (High > Medium > Low, then by call_date DESC)
 - Added pagination system for portfolio view showing 3 signals at a time with "+X more" functionality
 - Fixed Map.get() error and renderCurrentTab() function reference issues
