@@ -43,6 +43,7 @@ class SignalDetailsService {
         if (likeBtn) {
             likeBtn.addEventListener('click', () => {
                 SignalFeedbackService.acknowledgeSignal(signal.id, 'like', app);
+                signal.feedbackType = 'like'; // Update the signal object
                 this.updateDrawerButtonStates(signal);
             });
         }
@@ -52,6 +53,7 @@ class SignalDetailsService {
         if (notAccurateBtn) {
             notAccurateBtn.addEventListener('click', () => {
                 SignalFeedbackService.acknowledgeSignal(signal.id, 'not-accurate', app);
+                signal.feedbackType = 'not-accurate'; // Update the signal object
                 this.updateDrawerButtonStates(signal);
             });
         }
@@ -70,16 +72,14 @@ class SignalDetailsService {
             notAccurateBtn.className = 'btn btn-secondary';
             notAccurateBtn.innerHTML = '<i class="fas fa-thumbs-down"></i> Not Accurate';
 
-            acknowledgeBtn.className = 'btn btn-secondary';
-            acknowledgeBtn.innerHTML = '<i class="fas fa-check"></i> Acknowledge';
 
             // Apply feedback-specific styling
             if (signal.feedbackType === 'like') {
-                likeBtn.className = 'btn btn-secondary liked-btn';
+                likeBtn.className = 'btn btn-primary liked-btn';
                 likeBtn.innerHTML = '<i class="fas fa-check"></i> Liked!';
             } else if (signal.feedbackType === 'not-accurate') {
-                notAccurateBtn.className = 'btn btn-secondary not-accurate-btn';
-                notAccurateBtn.innerHTML = '<i class="fas fa-thumbs-down"></i> Not Accurate';
+                notAccurateBtn.className = 'btn btn-warning not-accurate-btn';
+                notAccurateBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Marked Inaccurate';
             }
         }
     }
