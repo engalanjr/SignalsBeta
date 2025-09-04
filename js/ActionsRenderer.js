@@ -175,7 +175,7 @@ class ActionsRenderer {
                     <span class="due-date ${task.overdue ? 'overdue' : ''}">${task.dueDate}</span>
                 </div>
                 <div class="pm-cell plays-col">
-                    <button class="plays-button" onclick="ActionsRenderer.openPlaysModal('${task.actionId}', '${task.title}')">
+                    <button class="plays-button" data-task-id="${task.actionId}" data-task-title="${task.title}" data-onclick="openPlaysModal">
                         <span class="plays-count">${task.playsCount}</span>
                         <span class="plays-label">plays</span>
                     </button>

@@ -138,7 +138,7 @@ class CommentService {
                 <textarea id="edit-comment-${commentId}" class="edit-comment-input">${currentText}</textarea>
                 <div class="edit-comment-actions">
                     <button class="btn btn-sm btn-primary" onclick="app.saveCommentEdit('${commentId}', '${signalId}')">Save</button>
-                    <button class="btn btn-sm btn-secondary" onclick="app.cancelCommentEdit('${commentId}', '${signalId}', '${currentText.replace(/'/g, "&#39;")}')">Cancel</button>
+                    <button class="btn btn-sm btn-secondary" data-comment-id="${commentId}" data-signal-id="${signalId}" data-comment-text="${currentText}" data-onclick="cancelCommentEdit">Cancel</button>
                 </div>
             </div>
         `;

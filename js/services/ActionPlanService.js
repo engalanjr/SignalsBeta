@@ -2,7 +2,7 @@
 class ActionPlanService {
     
     static initializeEventListeners() {
-        // Event delegation for add toolbox play buttons and recommendation actions
+        // Event delegation for all problematic onclick handlers
         document.addEventListener('click', (e) => {
             if (e.target.matches('.add-action-btn[data-onclick="addToolboxPlay"]')) {
                 const playTitle = e.target.getAttribute('data-title');
@@ -15,6 +15,32 @@ class ActionPlanService {
                 const actionTitle = e.target.getAttribute('data-title');
                 if (actionTitle) {
                     this.addRecommendationAction(actionTitle, e.target);
+                }
+                e.preventDefault();
+                e.stopPropagation();
+            } else if (e.target.matches('.btn-add-to-plan[data-onclick="openAddToPlanModal"]')) {
+                const actionId = e.target.getAttribute('data-action-id');
+                const actionTitle = e.target.getAttribute('data-action-title');
+                if (actionId && actionTitle) {
+                    PortfolioRenderer.openAddToPlanModal(actionId, actionTitle);
+                }
+                e.preventDefault();
+                e.stopPropagation();
+            } else if (e.target.matches('.plays-button[data-onclick="openPlaysModal"]') || e.target.closest('.plays-button[data-onclick="openPlaysModal"]')) {
+                const button = e.target.matches('.plays-button[data-onclick="openPlaysModal"]') ? e.target : e.target.closest('.plays-button[data-onclick="openPlaysModal"]');
+                const taskId = button.getAttribute('data-task-id');
+                const taskTitle = button.getAttribute('data-task-title');
+                if (taskId && taskTitle) {
+                    ActionsRenderer.openPlaysModal(taskId, taskTitle);
+                }
+                e.preventDefault();
+                e.stopPropagation();
+            } else if (e.target.matches('[data-onclick="cancelCommentEdit"]')) {
+                const commentId = e.target.getAttribute('data-comment-id');
+                const signalId = e.target.getAttribute('data-signal-id');
+                const commentText = e.target.getAttribute('data-comment-text');
+                if (commentId && signalId && commentText !== null) {
+                    window.app.cancelCommentEdit(commentId, signalId, commentText);
                 }
                 e.preventDefault();
                 e.stopPropagation();

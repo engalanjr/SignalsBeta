@@ -576,7 +576,7 @@ class PortfolioRenderer {
         }
         
         // Return clickable Add to Plan button
-        return `<button class="btn-add-to-plan" onclick="PortfolioRenderer.openAddToPlanModal('${actionId}', '${actionTitle.replace(/'/g, "&#39;")}')">Add to Plan</button>`;
+        return `<button class="btn-add-to-plan" data-action-id="${actionId}" data-action-title="${actionTitle}" data-onclick="openAddToPlanModal">Add to Plan</button>`;
     }
 
     static isActionInPlan(actionId) {
