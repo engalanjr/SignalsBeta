@@ -612,6 +612,8 @@ class PortfolioRenderer {
     }
 
     static loadCSPlays() {
+        console.log('Loading CS plays...');
+        
         // Default CS plays - could be loaded from config
         const csPlays = [
             'Executive Alignment',
@@ -623,12 +625,23 @@ class PortfolioRenderer {
         ];
         
         const playsContainer = document.getElementById('csPlaysContainer');
-        playsContainer.innerHTML = csPlays.map(play => `
+        console.log('CS Plays container found:', playsContainer);
+        
+        if (!playsContainer) {
+            console.error('csPlaysContainer element not found!');
+            return;
+        }
+        
+        const playCheckboxes = csPlays.map(play => `
             <label class="play-checkbox">
                 <input type="checkbox" value="${play}" checked>
                 <span>${play}</span>
             </label>
         `).join('');
+        
+        console.log('Generated play checkboxes HTML:', playCheckboxes);
+        playsContainer.innerHTML = playCheckboxes;
+        console.log('CS plays loaded successfully');
     }
 
     static async createPlanFromModal() {
