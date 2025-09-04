@@ -30,10 +30,11 @@ class DataService {
             }
         } catch (error) {
             console.error('Failed to load signals from Domo API:', error.message || error);
-            console.warn('Attempted to call domo.get() but failed - leveraging sample data instead');
+            console.warn('Attempting to call domo.get() but failed - falling back to master CSV data');
 
             // Fallback to master CSV data when API call fails
             this.signals = await MasterDataLoader.loadMasterCSV();
+            console.log(`Successfully loaded ${this.signals.length} signals from master CSV fallback`);
             return [...this.signals]; // Return copy of array
         }
     }
