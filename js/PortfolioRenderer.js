@@ -627,10 +627,13 @@ class PortfolioRenderer {
             const signal = window.app.data.find(s => s.action_id === actionId);
             
             if (signal) {
-                // Extract play names from Play 1 Name, Play 2 Name, Play 3 Name fields
-                const play1Name = signal.play_1_name?.trim();
-                const play2Name = signal.play_2_name?.trim();
-                const play3Name = signal.play_3_name?.trim();
+                // Extract play names from CSV fields (with spaces in field names)
+                const play1Name = signal['Play 1 Name']?.trim();
+                const play2Name = signal['Play 2 Name']?.trim();
+                const play3Name = signal['Play 3 Name']?.trim();
+                
+                console.log('Action ID:', actionId, 'Found signal:', !!signal);
+                console.log('Play 1:', play1Name, 'Play 2:', play2Name, 'Play 3:', play3Name);
                 
                 if (play1Name) csPlays.push(play1Name);
                 if (play2Name) csPlays.push(play2Name);
