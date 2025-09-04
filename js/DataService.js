@@ -1288,11 +1288,11 @@ class DataService {
                 data_source: row['Data Source'] || row['DATA SOURCE'] || '',
 
                 // Business and forecasting data
-                bks_renewal_baseline_usd: parseFloat(row['BKS Renewal Baseline (USD)'] || row['BKS RENEWAL BASELINE (USD)'] || '0') || 0,
+                bks_renewal_baseline_usd: parseFloat(row['bks_renewal_baseline_usd'] || row['BKS Renewal Baseline (USD)'] || row['Total Lifetime Billings'] || '0') || 0,
                 bks_forecast_new: parseFloat(row['BKS Forecast New'] || row['BKS FORECAST NEW'] || row['bks_forecast_new'] || '0') || 0,
                 bks_forecast_delta: parseFloat(row['BKS Forecast Delta'] || row['BKS FORECAST DELTA'] || row['bks_forecast_delta'] || '0') || 0,
                 bks_status_grouping: row['BKS Status Grouping'] || row['BKS STATUS GROUPING'] || row['bks_status_grouping'] || '',
-                pacing_percent: parseFloat(row['Pacing Percent'] || row['PACING PERCENT'] || row['pacing_percent'] || '0') || 0,
+                pacing_percent: parseFloat(row['% Pacing'] || row['Pacing Percent'] || row['PACING PERCENT'] || row['pacing_percent'] || '0') || 0,
                 bks_fq: row['BKS FQ'] || row['BKS_FQ'] || row['bks_fq'] || '',
                 rank: parseInt(row['rank'] || row['RANK'] || '0') || 0,
 
