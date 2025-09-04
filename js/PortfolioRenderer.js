@@ -648,12 +648,30 @@ class PortfolioRenderer {
         if (csPlays.length === 0) {
             playsContainer.innerHTML = '<p class="no-plays-message">No recommended plays.</p>';
         } else {
-            const playCheckboxes = csPlays.map(play => `
-                <label class="play-checkbox">
-                    <input type="checkbox" value="${play}" checked>
-                    <span>${play}</span>
-                </label>
-            `).join('');
+            const playCheckboxes = csPlays.map((play, index) => {
+                // Clean up the play title - remove excessive text and format nicely
+                let cleanPlayTitle = play;
+                
+                // If the play title is very long, extract just the main title part
+                if (play.includes('(') && play.length > 50) {
+                    cleanPlayTitle = play.split('(')[0].trim();
+                    if (play.includes('(') && play.includes(')')) {
+                        const parenthetical = play.match(/\(([^)]+)\)/);
+                        if (parenthetical) {
+                            cleanPlayTitle += ` (${parenthetical[1]})`;
+                        }
+                    }
+                }
+                
+                return `
+                    <div class="play-checkbox-wrapper">
+                        <label class="play-checkbox">
+                            <input type="checkbox" value="${play}" checked>
+                            <span class="play-title">${cleanPlayTitle}</span>
+                        </label>
+                    </div>
+                `;
+            }).join('');
             
             playsContainer.innerHTML = playCheckboxes;
         }
