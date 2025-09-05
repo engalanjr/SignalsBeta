@@ -664,70 +664,84 @@ class ActionsRenderer {
         this.removeDeleteModal();
 
         try {
-            // Group tasks by action plan to efficiently delete them
-            const tasksByActionPlan = {};
+            // Group tasks by account/plan for efficient processing
+            const tasksByPlan = {};
             
             for (const taskId of selectedTaskIds) {
-                const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
-                if (taskRow) {
-                    const actionId = taskRow.getAttribute('data-action-id');
-                    
-                    if (!tasksByActionPlan[actionId]) {
-                        tasksByActionPlan[actionId] = [];
-                    }
-                    tasksByActionPlan[actionId].push(taskId);
+                // Parse the task ID to get account and task index (e.g., "0013000000DXZ1fAAH-1")
+                const [accountId, taskIndex] = taskId.split('-');
+                
+                if (!tasksByPlan[accountId]) {
+                    tasksByPlan[accountId] = [];
                 }
+                tasksByPlan[accountId].push({
+                    taskId: taskId,
+                    taskIndex: parseInt(taskIndex)
+                });
             }
 
             let deletedCount = 0;
             
             // Process each action plan
-            for (const [actionId, taskIds] of Object.entries(tasksByActionPlan)) {
+            for (const [accountId, tasksToDelete] of Object.entries(tasksByPlan)) {
                 try {
-                    // Find the action plan containing this actionId
-                    const actionPlan = await this.findActionPlanContainingTask(actionId, window.app);
+                    // Get the action plan for this account
+                    const planData = window.app.actionPlans.get(accountId);
                     
-                    if (!actionPlan) {
-                        console.warn(`Could not find action plan for actionId: ${actionId}`);
+                    if (!planData || !planData.actionItems) {
+                        console.warn(`Could not find action plan for account: ${accountId}`);
                         continue;
                     }
 
-                    // Remove tasks from the action plan
-                    const updatedActionItems = actionPlan.planData.actionItems.filter(item => 
-                        !taskIds.includes(item.id)
-                    );
+                    // Sort tasks by index in descending order to avoid index shifting during deletion
+                    const sortedTasks = tasksToDelete.sort((a, b) => b.taskIndex - a.taskIndex);
+                    
+                    // Create a copy of action items and remove the selected ones by index
+                    const updatedActionItems = [...planData.actionItems];
+                    
+                    for (const task of sortedTasks) {
+                        if (task.taskIndex >= 0 && task.taskIndex < updatedActionItems.length) {
+                            updatedActionItems.splice(task.taskIndex, 1);
+                            deletedCount++;
+                        }
+                    }
 
-                    // Update the action plan with reduced tasks
+                    // Update the action plan with reduced tasks using CRUD methods
                     const updatedPlanData = {
-                        ...actionPlan.planData,
+                        ...planData,
                         actionItems: updatedActionItems,
                         updatedAt: new Date()
                     };
 
-                    // Use ActionPlanService to update the plan
-                    const result = await ActionPlanService.updateActionPlan(actionPlan.planData.id, updatedPlanData, window.app);
+                    // Use ActionPlanService CRUD to update the plan
+                    const result = await ActionPlanService.updateActionPlan(planData.id, updatedPlanData, window.app);
                     
                     if (result.success) {
-                        deletedCount += taskIds.length;
-                        console.log(`Successfully deleted ${taskIds.length} tasks from action plan ${actionPlan.planData.id}`);
+                        console.log(`Successfully deleted ${sortedTasks.length} tasks from action plan ${planData.id}`);
+                        
+                        // Update the local data immediately for UI consistency
+                        window.app.actionPlans.set(accountId, updatedPlanData);
                     } else {
-                        console.error(`Failed to update action plan ${actionPlan.planData.id}:`, result.error);
+                        console.error(`Failed to update action plan ${planData.id}:`, result.error);
+                        // Revert the deleted count for failed operations
+                        deletedCount -= sortedTasks.length;
                     }
                     
                 } catch (error) {
-                    console.error(`Error deleting tasks from actionId ${actionId}:`, error);
+                    console.error(`Error deleting tasks from account ${accountId}:`, error);
                 }
             }
 
-            // Clear selection and refresh the view
+            // Clear selection
             this.clearTaskSelection();
             
-            // Show success notification
+            // Show appropriate notification and refresh
             if (deletedCount > 0) {
                 const taskText = deletedCount === 1 ? 'task' : 'tasks';
                 window.app.showSuccessMessage(`Successfully deleted ${deletedCount} ${taskText}`);
                 
-                // Refresh the Action Plans view
+                // Refresh the Action Plans view to show updated data
+                console.log('Refreshing Action Plans view after task deletion');
                 window.app.renderCurrentTab();
             } else {
                 window.app.showErrorMessage('Failed to delete tasks. Please try again.');
