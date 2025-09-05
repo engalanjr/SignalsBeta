@@ -33,13 +33,20 @@ class SignalsAI {
                 }
             }
 
-            console.log('Creating mock action plans...');
-            // DO NOT generate mock action plans - only use real CSV data
-            const mockPlans = [];
-            // Keep actionPlans as a Map and populate it properly
-            mockPlans.forEach(plan => {
-                this.actionPlans.set(plan.accountId, plan);
-            });
+            // Load action plans from Domo API
+            console.log('Loading action plans from Domo...');
+            const actionPlansResult = await DataService.getActionPlans();
+            if (actionPlansResult.success && actionPlansResult.plans && actionPlansResult.plans.length > 0) {
+                console.log(`Loaded ${actionPlansResult.plans.length} action plans from Domo API`);
+                // Populate action plans by account
+                actionPlansResult.plans.forEach(plan => {
+                    if (plan.accountId) {
+                        this.actionPlans.set(plan.accountId, plan);
+                    }
+                });
+            } else {
+                console.log('No action plans found in Domo API, fallback will be used when needed');
+            }
             console.log('Setting up event listeners...');
             this.setupEventListeners();
             console.log('Rendering current tab...');
