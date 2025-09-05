@@ -861,7 +861,31 @@ class ActionsRenderer {
     }
     
     static async findTaskData(taskId, actionId, app) {
-        // First try to find in live action plans
+        // First, try to find in the current rendered action plans (includes AI recommendations)
+        const currentActionPlans = await this.getFormattedActionPlans(app);
+        
+        for (const plan of currentActionPlans) {
+            if (plan.planData && plan.planData.actionItems) {
+                const actionItem = plan.planData.actionItems.find(item => {
+                    // Check if this is the task we're looking for
+                    const itemActionId = item.actionId || this.generateActionIdForAIRecommendation(plan.accountId, item.title || item, plan.planData.actionItems.indexOf(item));
+                    return itemActionId === actionId;
+                });
+                
+                if (actionItem) {
+                    console.log('Found task in current action plans:', actionItem);
+                    return {
+                        taskId,
+                        actionId,
+                        actionItem,
+                        planData: plan.planData,
+                        accountId: plan.accountId
+                    };
+                }
+            }
+        }
+        
+        // Second try: find in live action plans  
         for (let [accountId, planData] of app.actionPlans) {
             if (planData.actionItems) {
                 const actionItem = planData.actionItems.find(item => 
@@ -880,7 +904,7 @@ class ActionsRenderer {
             }
         }
         
-        // If not found in live data, search fallback data
+        // Third try: search fallback data
         const fallbackResult = await this.findTaskInFallbackData(taskId, actionId, app);
         if (fallbackResult) {
             return fallbackResult;
