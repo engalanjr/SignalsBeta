@@ -664,7 +664,7 @@ class PortfolioRenderer {
                 
                 return `
                     <div class="drawer-play-item">
-                        <input type="checkbox" id="drawerPlay${index}" value="${cleanPlayTitle}">
+                        <input type="checkbox" id="drawerPlay${index}" value="${cleanPlayTitle}" checked>
                         <label for="drawerPlay${index}" class="drawer-play-title">${cleanPlayTitle}</label>
                     </div>
                 `;
