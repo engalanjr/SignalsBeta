@@ -126,7 +126,7 @@ class ActionsRenderer {
                     </div>
                     <div class="pm-header-cell task-col">Task</div>
                     <div class="pm-header-cell due-date-col">Due Date</div>
-                    <div class="pm-header-cell plays-col"># Plays</div>
+                    <div class="pm-header-cell status-col">Task Status</div>
                     <div class="pm-header-cell priority-col">Priority</div>
                     <div class="pm-header-cell assignee-col">Assignee</div>
                 </div>
@@ -174,11 +174,8 @@ class ActionsRenderer {
                 <div class="pm-cell due-date-col">
                     <span class="due-date ${task.overdue ? 'overdue' : ''}">${task.dueDate}</span>
                 </div>
-                <div class="pm-cell plays-col">
-                    <div class="plays-display">
-                        <span class="plays-count">${task.playsCount}</span>
-                        <span class="plays-label">plays</span>
-                    </div>
+                <div class="pm-cell status-col">
+                    <span class="status-badge status-${task.status ? task.status.toLowerCase().replace(' ', '-') : 'pending'}">${task.status || 'Pending'}</span>
                 </div>
                 <div class="pm-cell priority-col">
                     <span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>
@@ -324,6 +321,7 @@ class ActionsRenderer {
                 dueDate: dueDate.formatted,
                 overdue: dueDate.overdue,
                 playsCount: playsCount,
+                status: actionItem.status || 'Pending',
                 priority: priority,
                 assigneeInitials: assigneeInitials,
                 completed: actionItem.completed || false,
@@ -333,7 +331,28 @@ class ActionsRenderer {
             });
         });
 
-        return tasks;
+        // Sort tasks by Priority (High > Medium > Low) then Due Date ASC
+        return tasks.sort((a, b) => {
+            // Priority order: High = 0, Medium = 1, Low = 2
+            const priorityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
+            const priorityA = priorityOrder[a.priority] !== undefined ? priorityOrder[a.priority] : 1;
+            const priorityB = priorityOrder[b.priority] !== undefined ? priorityOrder[b.priority] : 1;
+            
+            if (priorityA !== priorityB) {
+                return priorityA - priorityB;
+            }
+            
+            // If priority is the same, sort by due date ASC
+            // Handle both date objects and string dates
+            const dateA = new Date(a.dueDate);
+            const dateB = new Date(b.dueDate);
+            
+            // If dates are invalid, treat as far future
+            const timeA = isNaN(dateA.getTime()) ? new Date('2099-12-31').getTime() : dateA.getTime();
+            const timeB = isNaN(dateB.getTime()) ? new Date('2099-12-31').getTime() : dateB.getTime();
+            
+            return timeA - timeB;
+        });
     }
     
     static generateActionIdForAIRecommendation(accountId, title, index) {

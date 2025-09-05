@@ -69,6 +69,9 @@ The application runs on port 5000 using a Python HTTP server that:
 - **Added success/error notifications**: Implemented toast-style notifications for play update operations with proper styling and auto-dismiss functionality
 - **Implemented comprehensive task details modal**: Fixed task modal content to show actual action names instead of "No Title", renamed "Associated CS Plays" to "Sub Tasks", and resolved data structure issues for proper display
 - **Connected task details Save Changes to CRUD methods**: Task property updates (due date, priority, assignee, status) now use ActionPlanService.updateActionPlan() for proper data persistence, with complete error handling and UI refresh functionality
+- **Replaced "# Plays" column with "Task Status"**: Action Plans table now displays task status badges instead of plays count, sourcing data from live action plan objects using CRUD methods
+- **Implemented task sorting by priority and due date**: Tasks within each account are now sorted by Priority (High > Medium > Low) then Due Date (ascending), providing logical task organization
+- **Added comprehensive status badge styling**: Professional color-coded status badges for Pending, In Progress, Complete, Cancelled, and On Hold states
 - Configured deployment settings for autoscale target
 
 ## Deployment
