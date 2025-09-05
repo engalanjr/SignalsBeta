@@ -160,8 +160,8 @@ class ActionsRenderer {
 
     static renderTaskRow(task, app) {
         return `
-            <div class="pm-table-row task-row" data-task-id="${task.id}">
-                <div class="pm-cell checkbox-col">
+            <div class="pm-table-row task-row clickable-task" data-task-id="${task.id}" onclick="ActionsRenderer.openTaskDetailsDrawer('${task.id}', '${task.actionId}')">
+                <div class="pm-cell checkbox-col" onclick="event.stopPropagation()">
                     <input type="checkbox" class="task-checkbox" 
                            onchange="ActionsRenderer.toggleTaskComplete('${task.id}', this.checked)">
                 </div>
@@ -175,10 +175,10 @@ class ActionsRenderer {
                     <span class="due-date ${task.overdue ? 'overdue' : ''}">${task.dueDate}</span>
                 </div>
                 <div class="pm-cell plays-col">
-                    <button class="plays-button" data-task-id="${task.actionId}" data-task-title="${task.title}" data-onclick="openPlaysModal">
+                    <div class="plays-display">
                         <span class="plays-count">${task.playsCount}</span>
                         <span class="plays-label">plays</span>
-                    </button>
+                    </div>
                 </div>
                 <div class="pm-cell priority-col">
                     <span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>
@@ -745,6 +745,408 @@ class ActionsRenderer {
         message.innerHTML = `
             <i class="fas fa-exclamation-circle"></i>
             Error updating plays: ${errorMessage}
+        `;
+        document.body.appendChild(message);
+        
+        setTimeout(() => {
+            message.classList.add('show');
+            setTimeout(() => {
+                message.classList.remove('show');
+                setTimeout(() => message.remove(), 300);
+            }, 5000);
+        }, 100);
+    }
+    
+    // Task Details Drawer Methods
+    static openTaskDetailsDrawer(taskId, actionId) {
+        console.log(`Opening task details drawer for taskId: ${taskId}, actionId: ${actionId}`);
+        
+        // Find the task data
+        const taskData = this.findTaskData(taskId, actionId, window.app);
+        if (!taskData) {
+            console.error('Could not find task data for:', { taskId, actionId });
+            return;
+        }
+        
+        // Create or get drawer elements
+        let drawer = document.getElementById('taskDetailsDrawer');
+        let backdrop = document.getElementById('taskDetailsDrawerBackdrop');
+        
+        if (!drawer) {
+            this.createTaskDetailsDrawerHTML();
+            drawer = document.getElementById('taskDetailsDrawer');
+            backdrop = document.getElementById('taskDetailsDrawerBackdrop');
+        }
+        
+        // Populate drawer content
+        this.populateTaskDetailsDrawer(taskData);
+        
+        // Show drawer
+        if (drawer && backdrop) {
+            backdrop.classList.add('open');
+            setTimeout(() => {
+                drawer.classList.add('open');
+            }, 10);
+        }
+    }
+    
+    static createTaskDetailsDrawerHTML() {
+        const drawerHTML = `
+            <!-- Task Details Drawer Backdrop -->
+            <div id="taskDetailsDrawerBackdrop" class="drawer-backdrop" onclick="ActionsRenderer.closeTaskDetailsDrawer()"></div>
+            
+            <!-- Task Details Drawer -->
+            <div id="taskDetailsDrawer" class="drawer task-details-drawer">
+                <div class="drawer-header">
+                    <h2><i class="fas fa-tasks"></i> Task Details</h2>
+                    <button class="drawer-close-btn" onclick="ActionsRenderer.closeTaskDetailsDrawer()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="drawer-body">
+                    <div id="taskDetailsContent">
+                        <!-- Content will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="drawer-footer">
+                    <button class="btn btn-secondary" onclick="ActionsRenderer.closeTaskDetailsDrawer()">Cancel</button>
+                    <button class="btn btn-primary" onclick="ActionsRenderer.saveTaskDetails()">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add to body if not exists
+        if (!document.getElementById('taskDetailsDrawer')) {
+            document.body.insertAdjacentHTML('beforeend', drawerHTML);
+        }
+    }
+    
+    static findTaskData(taskId, actionId, app) {
+        // Search through action plans to find the task
+        for (let [accountId, planData] of app.actionPlans) {
+            if (planData.actionItems) {
+                const actionItem = planData.actionItems.find(item => item.actionId === actionId);
+                if (actionItem) {
+                    return {
+                        taskId,
+                        actionId,
+                        actionItem,
+                        planData,
+                        accountId
+                    };
+                }
+            }
+        }
+        
+        // If not found in live data, search fallback data
+        return this.findTaskInFallbackData(taskId, actionId, app);
+    }
+    
+    static async findTaskInFallbackData(taskId, actionId, app) {
+        try {
+            const response = await fetch('/action-plans-fallback.json');
+            const fallbackData = await response.json();
+            
+            for (const record of fallbackData) {
+                const planContent = record.content;
+                if (planContent && planContent.actionItems) {
+                    const actionItem = planContent.actionItems.find(item => item.actionId === actionId);
+                    if (actionItem) {
+                        return {
+                            taskId,
+                            actionId,
+                            actionItem,
+                            planData: planContent,
+                            accountId: planContent.accountId
+                        };
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error searching fallback data:', error);
+        }
+        return null;
+    }
+    
+    static populateTaskDetailsDrawer(taskData) {
+        const container = document.getElementById('taskDetailsContent');
+        if (!container) return;
+        
+        const { taskId, actionId, actionItem, planData } = taskData;
+        const plays = actionItem.plays || [];
+        
+        // Get current task data from rendered table for editable fields
+        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+        const currentDueDate = taskRow ? taskRow.querySelector('.due-date').textContent.trim() : 'Not Set';
+        const currentPriority = taskRow ? taskRow.querySelector('.priority-badge').textContent.trim() : 'Medium';
+        const currentAssignee = taskRow ? taskRow.querySelector('.assignee-initials').textContent.trim() : 'UN';
+        
+        let html = `
+            <div class="task-details-section">
+                <h3><i class="fas fa-lightbulb"></i> Recommended Action</h3>
+                <div class="action-display-card">
+                    <div class="action-title">${actionItem.title || 'No title'}</div>
+                    <div class="action-id">Action ID: ${actionId}</div>
+                </div>
+            </div>
+            
+            <div class="task-details-section">
+                <h3><i class="fas fa-edit"></i> Task Properties</h3>
+                <div class="task-properties-grid">
+                    <div class="property-field">
+                        <label for="taskDueDate">Due Date</label>
+                        <input type="date" id="taskDueDate" class="form-input" value="${this.convertToDateValue(currentDueDate)}">
+                    </div>
+                    
+                    <div class="property-field">
+                        <label for="taskPriority">Priority</label>
+                        <select id="taskPriority" class="form-select">
+                            <option value="High" ${currentPriority === 'High' ? 'selected' : ''}>High</option>
+                            <option value="Medium" ${currentPriority === 'Medium' ? 'selected' : ''}>Medium</option>
+                            <option value="Low" ${currentPriority === 'Low' ? 'selected' : ''}>Low</option>
+                        </select>
+                    </div>
+                    
+                    <div class="property-field">
+                        <label for="taskAssignee">Assignee</label>
+                        <select id="taskAssignee" class="form-select">
+                            <option value="CU" ${currentAssignee === 'CU' ? 'selected' : ''}>Current User</option>
+                            <option value="JS" ${currentAssignee === 'JS' ? 'selected' : ''}>John Smith</option>
+                            <option value="MK" ${currentAssignee === 'MK' ? 'selected' : ''}>Maria Kim</option>
+                            <option value="AB" ${currentAssignee === 'AB' ? 'selected' : ''}>Alex Brown</option>
+                            <option value="RT" ${currentAssignee === 'RT' ? 'selected' : ''}>Ryan Taylor</option>
+                            <option value="LW" ${currentAssignee === 'LW' ? 'selected' : ''}>Lisa Wilson</option>
+                        </select>
+                    </div>
+                    
+                    <div class="property-field">
+                        <label for="taskStatus">Task Status</label>
+                        <select id="taskStatus" class="form-select">
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Complete">Complete</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="task-details-section">
+                <h3><i class="fas fa-play"></i> Associated CS Plays (${plays.length})</h3>
+                <div class="plays-management">
+        `;
+        
+        if (plays.length === 0) {
+            html += `
+                <div class="no-plays-message">
+                    <i class="fas fa-info-circle"></i>
+                    No CS plays are associated with this task.
+                </div>
+            `;
+        } else {
+            html += '<div class="plays-list">';
+            plays.forEach((play, index) => {
+                const playTitle = play.playTitle || play.playName || `Play ${index + 1}`;
+                const playId = play.playId || `play_${index + 1}`;
+                const isCompleted = play.completed || false;
+                
+                html += `
+                    <div class="play-management-item" data-play-id="${playId}" data-play-index="${index}">
+                        <div class="play-info">
+                            <div class="play-title ${isCompleted ? 'completed' : ''}">${playTitle}</div>
+                            <div class="play-actions">
+                                <button class="btn btn-sm ${isCompleted ? 'btn-warning' : 'btn-success'}" 
+                                        onclick="ActionsRenderer.togglePlayCompletion('${actionId}', '${playId}', ${index}, ${!isCompleted})">
+                                    <i class="fas ${isCompleted ? 'fa-undo' : 'fa-check'}"></i>
+                                    ${isCompleted ? 'Mark Pending' : 'Mark Complete'}
+                                </button>
+                                <button class="btn btn-sm btn-danger" 
+                                        onclick="ActionsRenderer.deletePlay('${actionId}', '${playId}', ${index})">
+                                    <i class="fas fa-trash"></i>
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+        // Store current task data for saving
+        window.currentTaskData = taskData;
+    }
+    
+    static convertToDateValue(dateString) {
+        if (!dateString || dateString === 'Not Set') return '';
+        
+        // Try to parse the date string and convert to YYYY-MM-DD format
+        try {
+            const date = new Date(dateString + ', 2025'); // Add year for better parsing
+            if (!isNaN(date.getTime())) {
+                return date.toISOString().split('T')[0];
+            }
+        } catch (error) {
+            console.warn('Could not parse date:', dateString);
+        }
+        
+        return '';
+    }
+    
+    static closeTaskDetailsDrawer() {
+        const drawer = document.getElementById('taskDetailsDrawer');
+        const backdrop = document.getElementById('taskDetailsDrawerBackdrop');
+        
+        if (drawer) {
+            drawer.classList.remove('open');
+        }
+        
+        if (backdrop) {
+            setTimeout(() => {
+                backdrop.classList.remove('open');
+            }, 300);
+        }
+        
+        // Clear stored task data
+        window.currentTaskData = null;
+    }
+    
+    static async saveTaskDetails() {
+        if (!window.currentTaskData) {
+            console.error('No task data to save');
+            return;
+        }
+        
+        try {
+            // Get updated values from form
+            const dueDate = document.getElementById('taskDueDate').value;
+            const priority = document.getElementById('taskPriority').value;
+            const assignee = document.getElementById('taskAssignee').value;
+            const status = document.getElementById('taskStatus').value;
+            
+            console.log('Saving task details:', { dueDate, priority, assignee, status });
+            
+            // Update the task data (in real implementation, this would sync with backend)
+            const { taskId } = window.currentTaskData;
+            
+            // Update the table row visually
+            this.updateTaskRowDisplay(taskId, { dueDate, priority, assignee, status });
+            
+            // Close drawer and show success message
+            this.closeTaskDetailsDrawer();
+            this.showTaskUpdateSuccess();
+            
+        } catch (error) {
+            console.error('Error saving task details:', error);
+            this.showTaskUpdateError(error.message);
+        }
+    }
+    
+    static updateTaskRowDisplay(taskId, updates) {
+        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (!taskRow) return;
+        
+        // Update due date display
+        if (updates.dueDate) {
+            const dueDateElement = taskRow.querySelector('.due-date');
+            if (dueDateElement) {
+                const formattedDate = new Date(updates.dueDate).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+                dueDateElement.textContent = formattedDate;
+            }
+        }
+        
+        // Update priority badge
+        if (updates.priority) {
+            const priorityElement = taskRow.querySelector('.priority-badge');
+            if (priorityElement) {
+                priorityElement.className = `priority-badge priority-${updates.priority.toLowerCase()}`;
+                priorityElement.textContent = updates.priority;
+            }
+        }
+        
+        // Update assignee initials
+        if (updates.assignee) {
+            const assigneeElement = taskRow.querySelector('.assignee-initials');
+            if (assigneeElement) {
+                assigneeElement.textContent = updates.assignee;
+            }
+        }
+        
+        // Update task completion status
+        if (updates.status === 'Complete') {
+            taskRow.classList.add('task-completed');
+            const checkbox = taskRow.querySelector('.task-checkbox');
+            if (checkbox) checkbox.checked = true;
+        } else {
+            taskRow.classList.remove('task-completed');
+            const checkbox = taskRow.querySelector('.task-checkbox');
+            if (checkbox) checkbox.checked = false;
+        }
+    }
+    
+    static deletePlay(actionId, playId, playIndex) {
+        if (confirm('Are you sure you want to delete this CS play?')) {
+            const playItem = document.querySelector(`[data-play-id="${playId}"][data-play-index="${playIndex}"]`);
+            if (playItem) {
+                playItem.remove();
+                console.log(`Deleted play ${playId} from action ${actionId}`);
+                
+                // Update plays count in main view (simplified)
+                this.updatePlaysCountDisplay(actionId, -1);
+            }
+        }
+    }
+    
+    static updatePlaysCountDisplay(actionId, change) {
+        // Find and update the plays count in the main table
+        const playsButtons = document.querySelectorAll(`[data-task-id="${actionId}"]`);
+        playsButtons.forEach(button => {
+            const countElement = button.querySelector('.plays-count');
+            if (countElement) {
+                const currentCount = parseInt(countElement.textContent) || 0;
+                const newCount = Math.max(0, currentCount + change);
+                countElement.textContent = newCount;
+            }
+        });
+    }
+    
+    static showTaskUpdateSuccess() {
+        const message = document.createElement('div');
+        message.className = 'update-notification success';
+        message.innerHTML = `
+            <i class="fas fa-check-circle"></i>
+            Task details updated successfully!
+        `;
+        document.body.appendChild(message);
+        
+        setTimeout(() => {
+            message.classList.add('show');
+            setTimeout(() => {
+                message.classList.remove('show');
+                setTimeout(() => message.remove(), 300);
+            }, 3000);
+        }, 100);
+    }
+    
+    static showTaskUpdateError(errorMessage) {
+        const message = document.createElement('div');
+        message.className = 'update-notification error';
+        message.innerHTML = `
+            <i class="fas fa-exclamation-circle"></i>
+            Error updating task: ${errorMessage}
         `;
         document.body.appendChild(message);
         
