@@ -3961,4 +3961,220 @@ body {
     .account-name {
         font-size: 14px;
     }
+    
+    .plan-drawer {
+        width: 100vw;
+        right: -100vw;
+    }
+    
+    .action-controls {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+    }
+    
+    .btn-add-to-plan {
+        margin-left: 0;
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+}
+
+/* Add to Plan Button */
+.btn-add-to-plan {
+    background: var(--domo-blue);
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-weight: 500;
+    margin-left: 8px;
+}
+
+.btn-add-to-plan:hover {
+    background: var(--domo-blue-dark);
+}
+
+.action-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Plan Drawer Styles */
+.plan-drawer {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 400px;
+    height: 100vh;
+    background: white;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    transition: right 0.3s ease;
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+}
+
+.plan-drawer.open {
+    right: 0;
+}
+
+.plan-drawer-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.plan-drawer-backdrop.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.plan-drawer-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.plan-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--neutral-gray-200);
+    background: var(--neutral-gray-50);
+}
+
+.plan-drawer-header h2 {
+    margin: 0;
+    color: var(--neutral-gray-800);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.plan-drawer-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--neutral-gray-600);
+    padding: 5px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.plan-drawer-close:hover {
+    background: var(--neutral-gray-100);
+}
+
+.plan-drawer-body {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.recommended-action-section,
+.toolbox-plays-section,
+.plan-details-section {
+    margin-bottom: 20px;
+}
+
+.recommended-action-section h3,
+.toolbox-plays-section h3,
+.plan-details-section h3 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--neutral-gray-800);
+}
+
+.action-title-display {
+    background: var(--domo-blue-light);
+    padding: 12px;
+    border-radius: 4px;
+    margin: 0;
+    color: var(--neutral-gray-800);
+    font-size: 14px;
+    border-left: 3px solid var(--domo-blue);
+    font-weight: 500;
+}
+
+.drawer-plays-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.drawer-play-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px;
+    border: 1px solid var(--neutral-gray-200);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+}
+
+.drawer-play-item:hover {
+    background: var(--neutral-gray-50);
+    border-color: var(--domo-blue);
+}
+
+.drawer-play-item input[type="checkbox"] {
+    margin: 0 10px 0 0;
+    accent-color: var(--domo-blue);
+}
+
+.drawer-play-title {
+    font-size: 12px;
+    color: var(--neutral-gray-800);
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.no-plays-message {
+    text-align: center;
+    color: var(--neutral-gray-600);
+    font-style: italic;
+    padding: 20px;
+    margin: 0;
+}
+
+#drawerPlanDetails {
+    width: 100%;
+    border: 1px solid var(--neutral-gray-300);
+    border-radius: 4px;
+    padding: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 100px;
+    box-sizing: border-box;
+}
+
+#drawerPlanDetails:focus {
+    outline: none;
+    border-color: var(--domo-blue);
+    box-shadow: 0 0 0 2px rgba(0, 125, 186, 0.2);
+}
+
+.plan-drawer-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px;
+    border-top: 1px solid var(--neutral-gray-200);
+    background: var(--neutral-gray-50);
 }

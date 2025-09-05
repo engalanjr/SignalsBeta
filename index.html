@@ -226,6 +226,43 @@
                 <p>Loading SignalsAI data...</p>
             </div>
         </div>
+
+        <!-- Add to Plan Drawer -->
+        <div id="addToPlanDrawer" class="plan-drawer">
+            <div class="plan-drawer-content">
+                <div class="plan-drawer-header">
+                    <h2>Add Action to Plan</h2>
+                    <button class="plan-drawer-close" onclick="PortfolioRenderer.closeAddToPlanDrawer()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="plan-drawer-body">
+                    <div class="recommended-action-section">
+                        <h3>Recommended Action</h3>
+                        <div id="drawerActionTitle" class="action-title-display"></div>
+                    </div>
+                    
+                    <div class="toolbox-plays-section">
+                        <h3>Toolbox of Plays</h3>
+                        <div id="drawerPlaysContainer" class="drawer-plays-container">
+                            <!-- Plays will be loaded here -->
+                        </div>
+                    </div>
+                    
+                    <div class="plan-details-section">
+                        <h3>Plan Details</h3>
+                        <textarea id="drawerPlanDetails" placeholder="Add your comments or notes about this action plan..." rows="4"></textarea>
+                    </div>
+                </div>
+                
+                <div class="plan-drawer-footer">
+                    <button class="btn btn-secondary" onclick="PortfolioRenderer.closeAddToPlanDrawer()">Cancel</button>
+                    <button class="btn btn-primary" onclick="PortfolioRenderer.createPlanFromDrawer()">Create Plan</button>
+                </div>
+            </div>
+        </div>
+        <div id="addToPlanDrawerBackdrop" class="plan-drawer-backdrop"></div>
     </div>
 
 

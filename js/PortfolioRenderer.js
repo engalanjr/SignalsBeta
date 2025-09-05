@@ -490,7 +490,12 @@ class PortfolioRenderer {
                         <div class="action-content">
                             • ${action}
                         </div>
-                        <span class="recommendation-date">${window.app ? window.app.formatDateSimple(data.date) : data.date}</span>
+                        <div class="action-controls">
+                            <span class="recommendation-date">${window.app ? window.app.formatDateSimple(data.date) : data.date}</span>
+                            <button class="btn-add-to-plan" data-action-id="${data.actionId}" data-action-title="${action}" data-account-id="${data.accountId}" onclick="PortfolioRenderer.openAddToPlanDrawer('${data.actionId}', '${action.replace(/'/g, "\\'")}', '${data.accountId}')">
+                                Add to Plan
+                            </button>
+                        </div>
                     </div>
                     <div class="recommendation-rationale">${data.rationale}</div>
                 </div>
@@ -567,6 +572,163 @@ class PortfolioRenderer {
         const color = delta >= 0 ? 'positive' : 'negative';
         
         return `<span class="delta ${color}">${sign}${deltaFormatted}</span>`;
+    }
+
+    static openAddToPlanDrawer(actionId, actionTitle, accountId) {
+        // Store current action data
+        window.currentDrawerData = {
+            actionId: actionId,
+            actionTitle: actionTitle,
+            accountId: accountId
+        };
+        
+        // Show the drawer
+        const drawer = document.getElementById('addToPlanDrawer');
+        const backdrop = document.getElementById('addToPlanDrawerBackdrop');
+        
+        drawer.classList.add('open');
+        backdrop.classList.add('open');
+        
+        // Set the action title
+        document.getElementById('drawerActionTitle').textContent = actionTitle;
+        
+        // Clear previous plan details
+        document.getElementById('drawerPlanDetails').value = '';
+        
+        // Load CS plays specific to this action_id
+        this.loadDrawerCSPlays(actionId);
+        
+        // Add backdrop click to close
+        backdrop.addEventListener('click', () => {
+            this.closeAddToPlanDrawer();
+        });
+    }
+
+    static closeAddToPlanDrawer() {
+        const drawer = document.getElementById('addToPlanDrawer');
+        const backdrop = document.getElementById('addToPlanDrawerBackdrop');
+        
+        drawer.classList.remove('open');
+        backdrop.classList.remove('open');
+        
+        window.currentDrawerData = null;
+    }
+
+    static loadDrawerCSPlays(actionId) {
+        // Find the signal with this action_id to get its specific plays
+        let csPlays = [];
+        
+        if (actionId && window.app && window.app.data) {
+            const signal = window.app.data.find(s => s.action_id === actionId);
+            
+            if (signal) {
+                // Extract play names using the correct snake_case field names
+                const play1Name = signal.play_1_name;
+                const play2Name = signal.play_2_name;
+                const play3Name = signal.play_3_name;
+                
+                console.log('Loading CS Plays for drawer action:', actionId);
+                
+                if (play1Name && play1Name.trim()) csPlays.push(play1Name.trim());
+                if (play2Name && play2Name.trim()) csPlays.push(play2Name.trim());
+                if (play3Name && play3Name.trim()) csPlays.push(play3Name.trim());
+            }
+        }
+        
+        const playsContainer = document.getElementById('drawerPlaysContainer');
+        if (!playsContainer) {
+            console.error('drawerPlaysContainer element not found!');
+            return;
+        }
+        
+        console.log('Final drawer csPlays array:', csPlays);
+        
+        // Show message if no plays found, otherwise show checkboxes
+        if (csPlays.length === 0) {
+            playsContainer.innerHTML = '<p class="no-plays-message">No recommended plays for this action.</p>';
+        } else {
+            // Ensure we have a valid array of strings
+            const validPlays = csPlays.filter(play => play && typeof play === 'string' && play.trim().length > 0);
+            
+            if (validPlays.length === 0) {
+                playsContainer.innerHTML = '<p class="no-plays-message">No valid plays found.</p>';
+                return;
+            }
+            
+            const playCheckboxes = validPlays.map((play, index) => {
+                // Clean up the play title
+                const cleanPlayTitle = String(play).trim().replace(/\s+/g, ' ');
+                
+                return `
+                    <div class="drawer-play-item">
+                        <input type="checkbox" id="drawerPlay${index}" value="${cleanPlayTitle}">
+                        <label for="drawerPlay${index}" class="drawer-play-title">${cleanPlayTitle}</label>
+                    </div>
+                `;
+            }).join('');
+            
+            playsContainer.innerHTML = playCheckboxes;
+        }
+    }
+
+    static async createPlanFromDrawer() {
+        if (!window.currentDrawerData) return;
+        
+        const actionId = window.currentDrawerData.actionId;
+        const actionTitle = window.currentDrawerData.actionTitle;
+        const accountId = window.currentDrawerData.accountId;
+        const planDetails = document.getElementById('drawerPlanDetails').value;
+        
+        // Get selected plays
+        const selectedPlays = Array.from(document.querySelectorAll('#drawerPlaysContainer input[type="checkbox"]:checked'))
+            .map(checkbox => checkbox.value);
+        
+        // Create the plan data structure compatible with existing Action Plan CRUD
+        const planData = {
+            accountId: accountId,
+            actionId: actionId,
+            title: actionTitle,
+            description: planDetails,
+            plays: selectedPlays,
+            status: 'pending',
+            priority: 'medium',
+            dueDate: null,
+            assignee: null,
+            createdDate: new Date().toISOString()
+        };
+        
+        try {
+            // Use the existing Action Plan Service to create the plan
+            if (window.app && window.app.dataService && window.app.dataService.createActionPlan) {
+                const result = await window.app.dataService.createActionPlan(planData);
+                
+                if (result.success) {
+                    console.log('Plan created successfully from drawer:', result.plan);
+                    
+                    // Close drawer
+                    this.closeAddToPlanDrawer();
+                    
+                    // Refresh the portfolio view to show updated state
+                    if (window.app && window.app.renderCurrentTab) {
+                        window.app.renderCurrentTab();
+                    }
+                    
+                    // Show success notification
+                    if (window.app.notificationService) {
+                        window.app.notificationService.showNotification('Action plan created successfully!', 'success');
+                    }
+                } else {
+                    console.error('Failed to create plan from drawer:', result.error);
+                    alert('Failed to create action plan. Please try again.');
+                }
+            } else {
+                console.error('Action Plan service not available');
+                alert('Action Plan service is not available. Please refresh the page and try again.');
+            }
+        } catch (error) {
+            console.error('Error creating plan from drawer:', error);
+            alert('Error creating action plan. Please try again.');
+        }
     }
 
     static hasExistingPlan(accountId, app) {
