@@ -489,8 +489,8 @@ class PortfolioRenderer {
                     <div class="recommendation-action">
                         <div class="action-content">
                             • ${action}
-                            <span class="recommendation-date">${window.app ? window.app.formatDateSimple(data.date) : data.date}</span>
                         </div>
+                        <span class="recommendation-date">${window.app ? window.app.formatDateSimple(data.date) : data.date}</span>
                     </div>
                     <div class="recommendation-rationale">${data.rationale}</div>
                 </div>
