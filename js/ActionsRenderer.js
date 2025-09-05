@@ -173,7 +173,12 @@ class ActionsRenderer {
 
     static renderTaskRow(task, app) {
         return `
-            <div class="pm-table-row task-row clickable-task" data-task-id="${task.id}" onclick="ActionsRenderer.openTaskDetailsDrawer('${task.id}', '${task.actionId}')">
+            <div class="pm-table-row task-row clickable-task" 
+                 data-task-id="${task.id}" 
+                 data-action-id="${task.actionId}"
+                 onclick="ActionsRenderer.handleTaskRowClick(event, '${task.id}', '${task.actionId}')"
+                 oncontextmenu="ActionsRenderer.handleTaskRightClick(event, '${task.id}', '${task.actionId}')"
+                 data-selectable="true">
                 <div class="pm-cell checkbox-col" onclick="event.stopPropagation()">
                     <input type="checkbox" class="task-checkbox" 
                            onchange="ActionsRenderer.toggleTaskComplete('${task.id}', this.checked)">
@@ -488,6 +493,268 @@ class ActionsRenderer {
         
         // Update task completion in data (if we implement persistence)
         console.log(`Task ${taskId} marked as ${completed ? 'completed' : 'incomplete'}`);
+    }
+
+    // === MULTI-SELECT AND RIGHT-CLICK FUNCTIONALITY ===
+
+    static selectedTasks = new Set();
+
+    static handleTaskRowClick(event, taskId, actionId) {
+        // Check for Ctrl/Cmd + Click for multi-selection
+        if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            this.toggleTaskSelection(taskId);
+            return;
+        }
+
+        // Clear selection if no modifier keys
+        this.clearTaskSelection();
+        
+        // Open task details drawer (original functionality)
+        this.openTaskDetailsDrawer(taskId, actionId);
+    }
+
+    static handleTaskRightClick(event, taskId, actionId) {
+        event.preventDefault();
+        
+        // If right-clicking on a non-selected task, select only that task
+        if (!this.selectedTasks.has(taskId)) {
+            this.clearTaskSelection();
+            this.toggleTaskSelection(taskId);
+        }
+
+        this.showContextMenu(event, taskId, actionId);
+    }
+
+    static toggleTaskSelection(taskId) {
+        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (!taskRow) return;
+
+        if (this.selectedTasks.has(taskId)) {
+            this.selectedTasks.delete(taskId);
+            taskRow.classList.remove('task-selected');
+        } else {
+            this.selectedTasks.add(taskId);
+            taskRow.classList.add('task-selected');
+        }
+
+        console.log('Selected tasks:', Array.from(this.selectedTasks));
+    }
+
+    static clearTaskSelection() {
+        document.querySelectorAll('.task-row.task-selected').forEach(row => {
+            row.classList.remove('task-selected');
+        });
+        this.selectedTasks.clear();
+    }
+
+    static showContextMenu(event, taskId, actionId) {
+        // Remove existing context menu
+        this.removeContextMenu();
+
+        const menu = document.createElement('div');
+        menu.id = 'taskContextMenu';
+        menu.className = 'task-context-menu';
+        
+        const selectedCount = this.selectedTasks.size;
+        const menuText = selectedCount > 1 ? `Delete ${selectedCount} Tasks` : 'Delete Task';
+        const iconClass = selectedCount > 1 ? 'fa-trash-alt' : 'fa-trash';
+        
+        menu.innerHTML = `
+            <div class="context-menu-item" onclick="ActionsRenderer.confirmDeleteTasks()">
+                <i class="fas ${iconClass}"></i>
+                <span>${menuText}</span>
+            </div>
+        `;
+
+        // Position the menu at cursor
+        menu.style.left = event.pageX + 'px';
+        menu.style.top = event.pageY + 'px';
+
+        document.body.appendChild(menu);
+
+        // Close menu when clicking elsewhere
+        setTimeout(() => {
+            document.addEventListener('click', this.removeContextMenu, { once: true });
+        }, 10);
+    }
+
+    static removeContextMenu() {
+        const menu = document.getElementById('taskContextMenu');
+        if (menu) {
+            menu.remove();
+        }
+    }
+
+    static confirmDeleteTasks() {
+        this.removeContextMenu();
+        
+        const selectedCount = this.selectedTasks.size;
+        if (selectedCount === 0) return;
+
+        this.showDeleteConfirmationModal(selectedCount);
+    }
+
+    static showDeleteConfirmationModal(taskCount) {
+        // Remove existing modal if present
+        this.removeDeleteModal();
+
+        const modal = document.createElement('div');
+        modal.id = 'deleteConfirmationModal';
+        modal.className = 'delete-confirmation-modal';
+
+        const taskText = taskCount === 1 ? 'task' : 'tasks';
+        const deleteText = taskCount === 1 ? 'this task' : `these ${taskCount} tasks`;
+
+        modal.innerHTML = `
+            <div class="delete-modal-backdrop" onclick="ActionsRenderer.removeDeleteModal()"></div>
+            <div class="delete-modal-content">
+                <div class="delete-modal-header">
+                    <div class="delete-modal-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3 class="delete-modal-title">Delete ${taskText.charAt(0).toUpperCase() + taskText.slice(1)}</h3>
+                </div>
+                
+                <div class="delete-modal-body">
+                    <p>Are you sure you want to delete ${deleteText}? This action cannot be undone.</p>
+                    ${taskCount > 1 ? `<p class="delete-task-count">${taskCount} ${taskText} will be permanently removed.</p>` : ''}
+                </div>
+                
+                <div class="delete-modal-footer">
+                    <button class="btn btn-secondary delete-cancel-btn" onclick="ActionsRenderer.removeDeleteModal()">
+                        Cancel
+                    </button>
+                    <button class="btn btn-danger delete-confirm-btn" onclick="ActionsRenderer.executeTaskDeletion()">
+                        <i class="fas fa-trash"></i> Delete ${taskText.charAt(0).toUpperCase() + taskText.slice(1)}
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Animate in
+        setTimeout(() => {
+            modal.classList.add('show');
+        }, 10);
+    }
+
+    static removeDeleteModal() {
+        const modal = document.getElementById('deleteConfirmationModal');
+        if (modal) {
+            modal.classList.remove('show');
+            setTimeout(() => {
+                if (modal.parentNode) {
+                    modal.remove();
+                }
+            }, 200);
+        }
+    }
+
+    static async executeTaskDeletion() {
+        const selectedTaskIds = Array.from(this.selectedTasks);
+        
+        if (selectedTaskIds.length === 0) {
+            this.removeDeleteModal();
+            return;
+        }
+
+        // Close the confirmation modal
+        this.removeDeleteModal();
+
+        try {
+            // Group tasks by action plan to efficiently delete them
+            const tasksByActionPlan = {};
+            
+            for (const taskId of selectedTaskIds) {
+                const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+                if (taskRow) {
+                    const actionId = taskRow.getAttribute('data-action-id');
+                    
+                    if (!tasksByActionPlan[actionId]) {
+                        tasksByActionPlan[actionId] = [];
+                    }
+                    tasksByActionPlan[actionId].push(taskId);
+                }
+            }
+
+            let deletedCount = 0;
+            
+            // Process each action plan
+            for (const [actionId, taskIds] of Object.entries(tasksByActionPlan)) {
+                try {
+                    // Find the action plan containing this actionId
+                    const actionPlan = await this.findActionPlanContainingTask(actionId, window.app);
+                    
+                    if (!actionPlan) {
+                        console.warn(`Could not find action plan for actionId: ${actionId}`);
+                        continue;
+                    }
+
+                    // Remove tasks from the action plan
+                    const updatedActionItems = actionPlan.planData.actionItems.filter(item => 
+                        !taskIds.includes(item.id)
+                    );
+
+                    // Update the action plan with reduced tasks
+                    const updatedPlanData = {
+                        ...actionPlan.planData,
+                        actionItems: updatedActionItems,
+                        updatedAt: new Date()
+                    };
+
+                    // Use ActionPlanService to update the plan
+                    const result = await ActionPlanService.updateActionPlan(actionPlan.planData.id, updatedPlanData, window.app);
+                    
+                    if (result.success) {
+                        deletedCount += taskIds.length;
+                        console.log(`Successfully deleted ${taskIds.length} tasks from action plan ${actionPlan.planData.id}`);
+                    } else {
+                        console.error(`Failed to update action plan ${actionPlan.planData.id}:`, result.error);
+                    }
+                    
+                } catch (error) {
+                    console.error(`Error deleting tasks from actionId ${actionId}:`, error);
+                }
+            }
+
+            // Clear selection and refresh the view
+            this.clearTaskSelection();
+            
+            // Show success notification
+            if (deletedCount > 0) {
+                const taskText = deletedCount === 1 ? 'task' : 'tasks';
+                window.app.showSuccessMessage(`Successfully deleted ${deletedCount} ${taskText}`);
+                
+                // Refresh the Action Plans view
+                window.app.renderCurrentTab();
+            } else {
+                window.app.showErrorMessage('Failed to delete tasks. Please try again.');
+            }
+
+        } catch (error) {
+            console.error('Error during task deletion:', error);
+            window.app.showErrorMessage('An error occurred while deleting tasks');
+            this.clearTaskSelection();
+        }
+    }
+
+    static async findActionPlanContainingTask(actionId, app) {
+        // Search through action plans to find the one containing this actionId
+        for (let [accountId, planData] of app.actionPlans) {
+            if (planData.actionItems) {
+                const foundItem = planData.actionItems.find(item => item.id === actionId);
+                if (foundItem) {
+                    return {
+                        accountId: accountId,
+                        planData: planData,
+                        actionItem: foundItem
+                    };
+                }
+            }
+        }
+        return null;
     }
 
     static openPlaysModal(actionId, taskTitle) {
