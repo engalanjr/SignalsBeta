@@ -471,19 +471,22 @@ class PortfolioRenderer {
                 const actionId = signal.action_id;
                 
                 if (!actionDataMap.has(action)) {
-                    actionDataMap.set(action, {
+                    const actionData = {
                         rationale: rationale,
                         date: date,
                         actionId: actionId,
                         accountId: account.id
-                    });
+                    };
+                    actionDataMap.set(action, actionData);
                     console.log(`Added unique action: "${action}" with rationale and date: ${date}`);
+                    console.log('Recommended action object:', actionData);
                 }
             }
         });
         
         // If we have action-rationale pairs, display them
         if (actionDataMap.size > 0) {
+            console.log('All recommendation objects for account:', account.name, Array.from(actionDataMap.values()));
             return Array.from(actionDataMap.entries()).slice(0, 3).map(([action, data]) => `
                 <div class="merged-recommendation-item">
                     <div class="recommendation-action">
@@ -630,7 +633,7 @@ class PortfolioRenderer {
                 const play2Name = signal.play_2_name;
                 const play3Name = signal.play_3_name;
                 
-                console.log('Loading CS Plays for drawer action:', actionId);
+                console.log('Loading CS Plays for drawer action:', actionId, 'for account:', signal.account_id);
                 
                 if (play1Name && play1Name.trim()) csPlays.push(play1Name.trim());
                 if (play2Name && play2Name.trim()) csPlays.push(play2Name.trim());
