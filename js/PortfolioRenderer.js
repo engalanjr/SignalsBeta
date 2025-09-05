@@ -222,31 +222,6 @@ class PortfolioRenderer {
 
                     ${CommentService.renderAccountCommentsSection(account.id, app)}
 
-                    <div class="action-plan-section">
-                        <div class="action-plan-header">
-                            <i class="fas fa-cogs action-plan-icon"></i>
-                            <h4 class="action-plan-title">Action Plan & CS Toolbox</h4>
-                        </div>
-
-                        <div class="action-plan-content">
-                            ${this.hasExistingPlan(account.id, app) ? `
-                                <p class="action-plan-description">Edit existing action plan</p>
-                                <div class="action-plan-buttons">
-                                    <button class="btn btn-secondary" onclick="window.app.viewAccountActionPlan('${account.id}')">
-                                        <i class="fas fa-eye"></i> View Plan
-                                    </button>
-                                    <button class="btn btn-primary" onclick="window.app.editActionPlan('${account.id}')">
-                                        <i class="fas fa-edit"></i> Edit Plan
-                                    </button>
-                                </div>
-                            ` : `
-                                <p class="action-plan-description">Create plan with AI recommendations & CS plays</p>
-                                <button class="btn btn-primary create-plan-btn" onclick="event.stopPropagation(); window.app.createActionPlanForAccount('${account.id}')">
-                                    <i class="fas fa-plus"></i> Create Plan
-                                </button>
-                            `}
-                        </div>
-                    </div>
                 </div>
             </div>
         `;
