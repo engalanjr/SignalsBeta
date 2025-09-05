@@ -1408,8 +1408,8 @@ body {
 
 .modal-content {
     position: relative;
-    width: 600px;
-    max-width: 90vw;
+    width: 1200px;
+    max-width: 95vw;
     max-height: 85vh;
     background: white;
     border-radius: 12px;
@@ -1511,14 +1511,14 @@ body {
 .play-checkbox {
     display: flex !important;
     align-items: flex-start;
-    padding: 12px;
+    padding: 15px;
     border: 1px solid var(--neutral-gray-200);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
     background: white;
-    min-height: 20px;
-    gap: 12px;
+    min-height: 24px;
+    gap: 15px;
     width: 100%;
     box-sizing: border-box;
     flex-wrap: nowrap;
@@ -1541,14 +1541,15 @@ body {
 .play-title {
     font-size: 13px;
     color: var(--neutral-gray-800);
-    line-height: 1.4;
+    line-height: 1.5;
     font-weight: 600;
     white-space: normal;
     word-wrap: break-word;
-    flex: 1;
-    min-width: 200px;
-    max-width: none;
     overflow-wrap: break-word;
+    word-break: break-word;
+    flex: 1;
+    min-width: 400px;
+    max-width: 100%;
     display: block;
 }
 
