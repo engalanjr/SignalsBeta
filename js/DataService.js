@@ -145,15 +145,10 @@ class DataService {
         } catch (error) {
             console.error('Failed to create action plan in Domo AppDB:', error.message || error);
 
-            // Add to local array as fallback - ensure this always works
-            try {
-                this.actionPlans.push(newPlan);
-                console.log('Action plan saved locally as fallback:', newPlan.id);
-                return { success: true, plan: newPlan, warning: 'Action plan created locally - could not sync with server' };
-            } catch (fallbackError) {
-                console.error('Critical error: Failed to save action plan locally:', fallbackError);
-                return { success: false, error: 'Failed to create action plan due to system error' };
-            }
+            // Add to local array as fallback (same as comments pattern)
+            this.actionPlans.push(newPlan);
+            console.log('Action plan saved locally as fallback:', newPlan.id);
+            return { success: true, plan: newPlan };
         }
     }
 
@@ -237,10 +232,14 @@ class DataService {
         try {
             user = await domo.get(`/domo/environment/v1/`);
             console.log("User Info:", user);
-            userId = user.userId;
-            userName = user.userName;
+            
+            // Safely extract user properties with fallbacks
+            if (user && typeof user === 'object') {
+                userId = user.userId || user.id || userId;
+                userName = user.userName || user.name || user.displayName || userName;
+            }
         } catch (error) {
-            console.warn('Could not get user info, using defaults:', error);
+            console.warn('Could not get user info from Domo API, using defaults:', error.message || error);
         }
 
         const planIndex = this.actionPlans.findIndex(plan => plan.id === planId);
@@ -444,10 +443,14 @@ class DataService {
         try {
             user = await domo.get(`/domo/environment/v1/`);
             console.log("User Info:", user);
-            userId = user.userId;
-            userName = user.userName;
+            
+            // Safely extract user properties with fallbacks
+            if (user && typeof user === 'object') {
+                userId = user.userId || user.id || userId;
+                userName = user.userName || user.name || user.displayName || userName;
+            }
         } catch (error) {
-            console.warn('Could not get user info, using defaults:', error);
+            console.warn('Could not get user info from Domo API, using defaults:', error.message || error);
         }
 
         const planIndex = this.actionPlans.findIndex(plan => plan.id === planId);
@@ -539,10 +542,14 @@ class DataService {
         try {
             user = await domo.get(`/domo/environment/v1/`);
             console.log("User Info:", user);
-            userId = user.userId;
-            userName = user.userName;
+            
+            // Safely extract user properties with fallbacks
+            if (user && typeof user === 'object') {
+                userId = user.userId || user.id || userId;
+                userName = user.userName || user.name || user.displayName || userName;
+            }
         } catch (error) {
-            console.warn('Could not get user info, using defaults:', error);
+            console.warn('Could not get user info from Domo API, using defaults:', error.message || error);
         }
 
         const newComment = {
@@ -649,10 +656,14 @@ class DataService {
         try {
             user = await domo.get(`/domo/environment/v1/`);
             console.log("User Info:", user);
-            userId = user.userId;
-            userName = user.userName;
+            
+            // Safely extract user properties with fallbacks
+            if (user && typeof user === 'object') {
+                userId = user.userId || user.id || userId;
+                userName = user.userName || user.name || user.displayName || userName;
+            }
         } catch (error) {
-            console.warn('Could not get user info, using defaults:', error);
+            console.warn('Could not get user info from Domo API, using defaults:', error.message || error);
         }
 
         const commentIndex = this.comments.findIndex(comment => comment.id === commentId);
@@ -917,10 +928,14 @@ class DataService {
         try {
             user = await domo.get(`/domo/environment/v1/`);
             console.log("User Info:", user);
-            userId = user.userId;
-            userName = user.userName;
+            
+            // Safely extract user properties with fallbacks
+            if (user && typeof user === 'object') {
+                userId = user.userId || user.id || userId;
+                userName = user.userName || user.name || user.displayName || userName;
+            }
         } catch (error) {
-            console.warn('Could not get user info, using defaults:', error);
+            console.warn('Could not get user info from Domo API, using defaults:', error.message || error);
         }
 
         const newComment = {
@@ -1001,10 +1016,14 @@ class DataService {
         try {
             user = await domo.get(`/domo/environment/v1/`);
             console.log("User Info:", user);
-            userId = user.userId;
-            userName = user.userName;
+            
+            // Safely extract user properties with fallbacks
+            if (user && typeof user === 'object') {
+                userId = user.userId || user.id || userId;
+                userName = user.userName || user.name || user.displayName || userName;
+            }
         } catch (error) {
-            console.warn('Could not get user info, using defaults:', error);
+            console.warn('Could not get user info from Domo API, using defaults:', error.message || error);
         }
 
         console.log('Deleting account comment:', commentId, 'by user:', userName);
@@ -1145,14 +1164,6 @@ class DataService {
         return this.comments.filter(comment => comment.signalId === signalId);
     }
 
-    static async deleteComment(commentId) {
-        const commentIndex = this.comments.findIndex(comment => comment.id === commentId);
-        if (commentIndex !== -1) {
-            const deletedComment = this.comments.splice(commentIndex, 1)[0];
-            return { success: true, deletedComment };
-        }
-        return { success: false, error: 'Comment not found' };
-    }
 
     static getSignalById(signalId) {
         return this.signals.find(signal => signal.id === signalId);
