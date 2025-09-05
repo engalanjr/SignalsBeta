@@ -981,14 +981,14 @@ class ActionsRenderer {
         
         const { taskId, actionId, actionItem, planData } = taskData;
         
-        // Safely access plays with fallback
-        const plays = (actionItem && actionItem.plays) ? actionItem.plays : [];
+        // Safely access plays with fallback - handle both string and object actionItem
+        const plays = (typeof actionItem === 'object' && actionItem.plays) ? actionItem.plays : [];
         
         console.log('Action item:', actionItem);
         console.log('Plays found:', plays);
         
-        // Use the actual action title, not reconstructed data
-        const actionTitle = actionItem.title || 'Action Details';
+        // Use the actual action title, handle both string and object cases
+        const actionTitle = typeof actionItem === 'string' ? actionItem : (actionItem.title || actionItem.name || 'Action Details');
         
         // Get current task data from rendered table for editable fields
         const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
@@ -1000,7 +1000,7 @@ class ActionsRenderer {
             <div class="task-details-section">
                 <h3><i class="fas fa-lightbulb"></i> Recommended Action</h3>
                 <div class="action-display-card">
-                    <div class="action-title">${actionItem.title || 'No title'}</div>
+                    <div class="action-title">${actionTitle}</div>
                     <div class="action-id">Action ID: ${actionId}</div>
                 </div>
             </div>
@@ -1046,7 +1046,7 @@ class ActionsRenderer {
             </div>
             
             <div class="task-details-section">
-                <h3><i class="fas fa-play"></i> Associated CS Plays (${plays.length})</h3>
+                <h3><i class="fas fa-tasks"></i> Sub Tasks (${plays.length})</h3>
                 <div class="plays-management">
         `;
         
@@ -1054,7 +1054,7 @@ class ActionsRenderer {
             html += `
                 <div class="no-plays-message">
                     <i class="fas fa-info-circle"></i>
-                    No CS plays are associated with this task.
+                    No sub tasks are associated with this task.
                 </div>
             `;
         } else {
