@@ -279,7 +279,8 @@ class ActionsRenderer {
         plan.planData.actionItems.forEach((actionItem, index) => {
             // Handle both fallback JSON structure and original structure
             const title = actionItem.title || actionItem.action || actionItem;
-            const actionId = actionItem.actionId || `action-${index}`;
+            // Use the real actionId from the data, don't fall back to generic IDs
+            const actionId = actionItem.actionId;
             
             // Get CS plays count - try from real JSON data first, then fallback
             let playsCount = 0;
@@ -289,8 +290,8 @@ class ActionsRenderer {
                 playsCount = this.getPlaysCountForAction(actionId, app);
             }
             
-            // Debug log to see what's happening with plays
-            console.log(`Action "${title}" has plays:`, actionItem.plays, 'count:', playsCount);
+            // Debug log to see what's happening with action and plays data
+            console.log(`Action "${title}" (ID: ${actionId}) has plays:`, actionItem.plays, 'count:', playsCount);
             
             // Generate realistic due date (1-14 days from now)
             const dueDate = this.generateDueDate(index);
@@ -307,20 +308,24 @@ class ActionsRenderer {
                 assigneeInitials = this.generateAssigneeInitials();
             }
 
-            tasks.push({
-                id: `${plan.accountId}-${index}`,
-                title: title,
-                description: actionItem.rationale ? actionItem.rationale.substring(0, 100) + '...' : 
-                           actionItem.description ? actionItem.description.substring(0, 100) + '...' : '',
-                actionId: actionId,
-                dueDate: dueDate.formatted,
-                overdue: dueDate.overdue,
-                playsCount: playsCount,
-                priority: priority,
-                assigneeInitials: assigneeInitials,
-                completed: actionItem.completed || false,
-                accountId: plan.accountId
-            });
+            // Only add tasks that have valid actionIds (from real data)
+            if (actionId) {
+                tasks.push({
+                    id: `${plan.accountId}-${index}`,
+                    title: title,
+                    description: actionItem.rationale ? actionItem.rationale.substring(0, 100) + '...' : 
+                               actionItem.description ? actionItem.description.substring(0, 100) + '...' : '',
+                    actionId: actionId,
+                    dueDate: dueDate.formatted,
+                    overdue: dueDate.overdue,
+                    playsCount: playsCount,
+                    priority: priority,
+                    assigneeInitials: assigneeInitials,
+                    completed: actionItem.completed || false,
+                    accountId: plan.accountId,
+                    rawActionItem: actionItem  // Store reference to original data
+                });
+            }
         });
 
         return tasks;
@@ -935,6 +940,9 @@ class ActionsRenderer {
         
         console.log('Action item:', actionItem);
         console.log('Plays found:', plays);
+        
+        // Use the actual action title, not reconstructed data
+        const actionTitle = actionItem.title || 'Action Details';
         
         // Get current task data from rendered table for editable fields
         const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
