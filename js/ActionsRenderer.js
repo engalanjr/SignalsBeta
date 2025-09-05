@@ -716,13 +716,13 @@ class ActionsRenderer {
                     // Use ActionPlanService CRUD to update the plan
                     const result = await ActionPlanService.updateActionPlan(planData.id, updatedPlanData, window.app);
                     
-                    if (result.success) {
+                    if (result && result.success) {
                         console.log(`Successfully deleted ${sortedTasks.length} tasks from action plan ${planData.id}`);
                         
                         // Update the local data immediately for UI consistency
-                        window.app.actionPlans.set(accountId, updatedPlanData);
+                        window.app.actionPlans.set(accountId, result.plan || updatedPlanData);
                     } else {
-                        console.error(`Failed to update action plan ${planData.id}:`, result.error);
+                        console.error(`Failed to update action plan ${planData.id}:`, result ? result.error : 'No response');
                         // Revert the deleted count for failed operations
                         deletedCount -= sortedTasks.length;
                     }

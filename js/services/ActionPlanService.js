@@ -1163,14 +1163,22 @@ class ActionPlanService {
                     }
                 }
 
-                app.showSuccessMessage('Action plan updated successfully!');
-                return result.plan;
+                // Show success message, but also handle warnings (like local-only saves)
+                if (result.warning) {
+                    app.showWarningMessage(result.warning);
+                } else {
+                    app.showSuccessMessage('Action plan updated successfully!');
+                }
+                
+                return { success: true, plan: result.plan };
             } else {
-                app.showErrorMessage('Failed to update action plan');
+                app.showErrorMessage(result.error || 'Failed to update action plan');
+                return { success: false, error: result.error || 'Update failed' };
             }
         } catch (error) {
             console.error('Error updating action plan:', error);
             app.showErrorMessage('Failed to update action plan');
+            return { success: false, error: error.message || 'Unexpected error occurred' };
         }
     }
 
