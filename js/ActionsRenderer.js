@@ -66,6 +66,19 @@ class ActionsRenderer {
                 const fallbackPlans = await this.loadFallbackActionPlans(app);
                 if (fallbackPlans.length > 0) {
                     console.log(`Loaded ${fallbackPlans.length} action plans from fallback JSON`);
+                    
+                    // Validate and fix loaded action plans
+                    console.log('Validating loaded action plans...');
+                    const validationResults = ActionPlanService.validateActionPlanAssociations(app);
+                    
+                    if (validationResults.fixed > 0) {
+                        console.log(`Auto-fixed ${validationResults.fixed} action plans with missing associations`);
+                    }
+                    
+                    if (validationResults.invalid > 0) {
+                        console.warn(`Found ${validationResults.invalid} action plans with validation issues`);
+                    }
+                    
                     return fallbackPlans;
                 }
             } catch (error) {

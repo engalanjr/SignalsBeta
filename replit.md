@@ -72,6 +72,9 @@ The application runs on port 5000 using a Python HTTP server that:
 - **Replaced "# Plays" column with "Task Status"**: Action Plans table now displays task status badges instead of plays count, sourcing data from live action plan objects using CRUD methods
 - **Implemented task sorting by priority and due date**: Tasks within each account are now sorted by Priority (High > Medium > Low) then Due Date (ascending), providing logical task organization
 - **Added comprehensive status badge styling**: Professional color-coded status badges for Pending, In Progress, Complete, Cancelled, and On Hold states
+- **Fixed critical action plan data integrity issue**: Resolved missing account associations that prevented proper account grouping by creating Python script to map 8,544 signal-to-account relationships from CSV data, fixing 10 of 16 broken action plans
+- **Enhanced ActionPlanService with 4-method account resolution system**: Added robust account ID resolution using selectedSignal lookup, signal-to-account mapping, drawer title parsing, and account name matching for graceful fallbacks
+- **Implemented comprehensive data validation system**: Added automatic validation during action plan creation and loading with auto-fix capabilities, pre-save validation, and clear error messaging to prevent future association issues
 - Configured deployment settings for autoscale target
 
 ## Deployment

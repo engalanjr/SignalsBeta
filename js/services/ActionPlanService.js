@@ -945,24 +945,32 @@ class ActionPlanService {
         let accountId = null;
         let signalId = null;
 
-        // First, try to get accountId and signalId from the selected signal
+        // Method 1: Get from selectedSignal object
         if (app.selectedSignal) {
             signalId = app.selectedSignal.id;
-            accountId = app.selectedSignal.account_id; // Direct access to account_id from signal
-            console.log('Got accountId from selectedSignal:', accountId, 'signalId:', signalId);
+            accountId = app.selectedSignal.account_id;
+            console.log('Method 1 - selectedSignal:', { accountId, signalId });
         }
 
-        // Fallback: Try to extract from drawer title if direct access failed
+        // Method 2: If no accountId but we have signalId, look up signal in data to get account
+        if (!accountId && signalId && app.data) {
+            const signalData = app.data.find(signal => signal.id === signalId);
+            if (signalData && signalData.account_id) {
+                accountId = signalData.account_id;
+                console.log('Method 2 - found accountId via signal lookup:', accountId);
+            }
+        }
+
+        // Method 3: Try to extract from drawer title (existing fallback)
         if (!accountId) {
-            const currentSignalCard = document.querySelector('.current-signal-card');
-            if (currentSignalCard) {
-                const drawerTitle = document.querySelector('#createPlanDrawer .drawer-header h2').textContent;
-                const accountName = drawerTitle.split('for ')[1];
-                if (accountName) {
+            const drawerTitle = document.querySelector('#createPlanDrawer .drawer-header h2')?.textContent;
+            if (drawerTitle && drawerTitle.includes('for ')) {
+                const accountName = drawerTitle.split('for ')[1]?.trim();
+                if (accountName && app.accounts) {
                     for (let [id, account] of app.accounts) {
                         if (account.name === accountName) {
                             accountId = id;
-                            console.log('Got accountId from drawer title parsing:', accountId);
+                            console.log('Method 3 - got accountId from drawer title:', accountId);
                             break;
                         }
                     }
@@ -970,9 +978,34 @@ class ActionPlanService {
             }
         }
 
-        // Additional validation
+        // Method 4: If we have a signalId but still no accountId, search all signals
+        if (!accountId && signalId && app.data) {
+            for (const signal of app.data) {
+                if (signal.id === signalId || signal.signal_id === signalId) {
+                    accountId = signal.account_id;
+                    console.log('Method 4 - found accountId via comprehensive signal search:', accountId);
+                    break;
+                }
+            }
+        }
+
+        // Enhanced validation with informative error messages
         if (!accountId && !signalId) {
-            console.error('Unable to determine accountId or signalId for action plan creation');
+            const error = 'Critical Error: Unable to determine accountId or signalId for action plan creation. No signal context available.';
+            console.error(error);
+            this.showPlanErrorMessage(error);
+            throw new Error(error);
+        }
+        
+        if (!accountId) {
+            const warning = `Warning: Could not determine accountId for signalId: ${signalId}. Plan will be created without account association.`;
+            console.warn(warning);
+        }
+
+        // Validate that the account exists in our system
+        if (accountId && app.accounts && !app.accounts.has(accountId)) {
+            const warning = `Warning: Account ${accountId} not found in loaded accounts. Plan may not display correctly.`;
+            console.warn(warning);
         }
 
         // Check if this is an edit operation
@@ -1010,6 +1043,21 @@ class ActionPlanService {
                 status: isEdit ? existingPlan.status : 'Pending',
                 userId: userId // Add userId of the current user
             };
+
+            // Validate the plan data before saving
+            const validation = this.validateActionPlanForSave(planData, app);
+            
+            if (!validation.canSave) {
+                const errorMessage = `Cannot save action plan: ${validation.errors.join(', ')}`;
+                console.error(errorMessage);
+                this.showPlanErrorMessage(errorMessage);
+                return;
+            }
+            
+            // Show warnings if any, but allow save to continue
+            if (validation.warnings.length > 0) {
+                console.warn('Action plan validation warnings:', validation.warnings);
+            }
 
             let result;
             try {
@@ -1212,6 +1260,170 @@ class ActionPlanService {
         if (existingError) {
             existingError.remove();
         }
+    }
+
+    // === DATA VALIDATION METHODS ===
+    
+    /**
+     * Validate all loaded action plans for proper account associations
+     */
+    static validateActionPlanAssociations(app) {
+        if (!app.actionPlans || app.actionPlans.size === 0) {
+            console.log('No action plans to validate');
+            return { valid: 0, invalid: 0, fixed: 0 };
+        }
+
+        let validPlans = 0;
+        let invalidPlans = 0;
+        let fixedPlans = 0;
+
+        console.log('=== Action Plan Association Validation ===');
+
+        for (let [key, plan] of app.actionPlans) {
+            const validation = this.validateSingleActionPlan(plan, app);
+            
+            if (validation.isValid) {
+                validPlans++;
+            } else {
+                invalidPlans++;
+                console.warn(`Invalid plan found: ${plan.id || key}`, validation.issues);
+                
+                // Attempt to fix the plan
+                const fixAttempt = this.attemptToFixActionPlan(plan, app);
+                if (fixAttempt.fixed) {
+                    fixedPlans++;
+                    console.log(`Successfully fixed plan: ${plan.id || key}`);
+                }
+            }
+        }
+
+        const results = { valid: validPlans, invalid: invalidPlans, fixed: fixedPlans };
+        console.log('Validation Results:', results);
+        return results;
+    }
+
+    /**
+     * Validate a single action plan
+     */
+    static validateSingleActionPlan(plan, app) {
+        const issues = [];
+        let isValid = true;
+
+        // Check for required fields
+        if (!plan.id) {
+            issues.push('Missing plan ID');
+            isValid = false;
+        }
+
+        // Check account association
+        if (!plan.accountId) {
+            issues.push('Missing accountId');
+            isValid = false;
+        } else {
+            // Verify account exists in system
+            if (app.accounts && !app.accounts.has(plan.accountId)) {
+                issues.push(`Account ${plan.accountId} not found in system`);
+                isValid = false;
+            }
+        }
+
+        // Check signal association if present
+        if (plan.signalId) {
+            if (app.data) {
+                const signalExists = app.data.some(signal => 
+                    signal.id === plan.signalId || signal.signal_id === plan.signalId
+                );
+                if (!signalExists) {
+                    issues.push(`Signal ${plan.signalId} not found in system`);
+                    isValid = false;
+                }
+            }
+        }
+
+        // Check action items
+        if (!plan.actionItems || !Array.isArray(plan.actionItems)) {
+            issues.push('Missing or invalid actionItems array');
+            isValid = false;
+        }
+
+        return { isValid, issues };
+    }
+
+    /**
+     * Attempt to automatically fix a broken action plan
+     */
+    static attemptToFixActionPlan(plan, app) {
+        let fixed = false;
+        const fixes = [];
+
+        // Try to fix missing accountId using signalId
+        if (!plan.accountId && plan.signalId && app.data) {
+            const signalData = app.data.find(signal => 
+                signal.id === plan.signalId || signal.signal_id === plan.signalId
+            );
+            
+            if (signalData && signalData.account_id) {
+                plan.accountId = signalData.account_id;
+                fixes.push(`Set accountId from signal: ${signalData.account_id}`);
+                fixed = true;
+            }
+        }
+
+        // Try to fix missing signalId if we have plan title with account context
+        if (!plan.signalId && plan.planTitle && app.data) {
+            // Look for signals from the same account that match plan context
+            if (plan.accountId) {
+                const accountSignals = app.data.filter(signal => signal.account_id === plan.accountId);
+                if (accountSignals.length === 1) {
+                    plan.signalId = accountSignals[0].id;
+                    fixes.push(`Set signalId from account context: ${accountSignals[0].id}`);
+                    fixed = true;
+                }
+            }
+        }
+
+        if (fixed) {
+            console.log(`Applied fixes to plan ${plan.id}:`, fixes);
+        }
+
+        return { fixed, fixes };
+    }
+
+    /**
+     * Validate action plan before creation/update
+     */
+    static validateActionPlanForSave(planData, app) {
+        const errors = [];
+        const warnings = [];
+
+        // Critical validations - these will prevent save
+        if (!planData.accountId && !planData.signalId) {
+            errors.push('Action plan must have either an accountId or signalId');
+        }
+
+        if (!planData.actionItems || planData.actionItems.length === 0) {
+            errors.push('Action plan must have at least one action item');
+        }
+
+        // Warning validations - these allow save but show warnings
+        if (!planData.accountId) {
+            warnings.push('Action plan missing accountId - may not display in account groupings');
+        }
+
+        if (planData.accountId && app.accounts && !app.accounts.has(planData.accountId)) {
+            warnings.push(`Account ${planData.accountId} not found in system - plan may not display correctly`);
+        }
+
+        if (!planData.notes || planData.notes.trim().length === 0) {
+            warnings.push('Consider adding notes to provide context for this action plan');
+        }
+
+        return {
+            isValid: errors.length === 0,
+            errors,
+            warnings,
+            canSave: errors.length === 0
+        };
     }
 
     static createActionPlanForAccount(accountId, app) {
