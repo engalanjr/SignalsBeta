@@ -1060,32 +1060,16 @@ class ActionPlanService {
             }
 
             let result;
-            try {
-                if (isEdit) {
-                    // Update existing plan
-                    const planId = existingPlan.id || accountId || signalId;
-                    result = await DataService.updateActionPlan(planId, planData);
-                } else {
-                    // Create new plan
-                    result = await DataService.createActionPlan(planData);
-                }
-            } catch (apiError) {
-                console.error('API Error creating/updating plan:', apiError);
-                
-                // Graceful fallback - save locally
-                result = {
-                    success: true,
-                    plan: {
-                        id: `local-plan-${Date.now()}`,
-                        ...planData,
-                        createdAt: planData.createdAt || new Date(),
-                        updatedAt: new Date()
-                    },
-                    warning: 'Saved locally - could not connect to server'
-                };
+            if (isEdit) {
+                // Update existing plan
+                const planId = existingPlan.id || accountId || signalId;
+                result = await DataService.updateActionPlan(planId, planData);
+            } else {
+                // Create new plan
+                result = await DataService.createActionPlan(planData);
             }
 
-            if (result.success) {
+            if (result && result.success) {
                 // Store the action plan in memory with proper key and ensure accountId is preserved
                 let message;
                 let storageKey;
@@ -1137,12 +1121,13 @@ class ActionPlanService {
                 document.getElementById('planTitle').value = ''; // Clear plan title
                 document.getElementById('actionItems').innerHTML = '';
             } else {
-                // Show error near the Create Plan button
-                this.showPlanErrorMessage(result.error || 'Failed to save action plan');
+                // Show error near the Create Plan button (matching comments pattern)
+                console.error('Failed to create/update action plan:', result ? result.error : 'No response');
+                this.showPlanErrorMessage(result ? result.error || 'Failed to save action plan' : 'No response from server');
             }
         } catch (error) {
-            console.error('Unexpected error creating/updating action plan:', error);
-            this.showPlanErrorMessage('An unexpected error occurred. Please try again.');
+            console.error('Error creating/updating action plan:', error);
+            this.showPlanErrorMessage('Failed to save action plan');
         } finally {
             // Restore button state
             createButton.innerHTML = originalButtonText;
