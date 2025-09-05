@@ -18,14 +18,6 @@ class ActionPlanService {
                 }
                 e.preventDefault();
                 e.stopPropagation();
-            } else if (e.target.matches('.btn-add-to-plan[data-onclick="openAddToPlanModal"]')) {
-                const actionId = e.target.getAttribute('data-action-id');
-                const actionTitle = e.target.getAttribute('data-action-title');
-                if (actionId && actionTitle) {
-                    PortfolioRenderer.openAddToPlanModal(actionId, actionTitle);
-                }
-                e.preventDefault();
-                e.stopPropagation();
             } else if (e.target.matches('.plays-button[data-onclick="openPlaysModal"]') || e.target.closest('.plays-button[data-onclick="openPlaysModal"]')) {
                 const button = e.target.matches('.plays-button[data-onclick="openPlaysModal"]') ? e.target : e.target.closest('.plays-button[data-onclick="openPlaysModal"]');
                 const taskId = button.getAttribute('data-task-id');

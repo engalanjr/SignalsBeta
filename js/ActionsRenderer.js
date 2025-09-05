@@ -429,12 +429,8 @@ class ActionsRenderer {
     }
 
     static openPlaysModal(actionId, taskTitle) {
-        // Reuse the existing modal functionality from PortfolioRenderer
-        if (window.PortfolioRenderer && window.PortfolioRenderer.openAddToPlanModal) {
-            window.PortfolioRenderer.openAddToPlanModal(actionId, taskTitle);
-        } else {
-            console.log(`Opening plays modal for action ${actionId}: ${taskTitle}`);
-        }
+        console.log(`Opening plays modal for action ${actionId}: ${taskTitle}`);
+        // Modal functionality removed - to be reimplemented
     }
 
     // Fallback Data Loading
