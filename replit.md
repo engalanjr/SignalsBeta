@@ -56,7 +56,7 @@ The application runs on port 5000 using a Python HTTP server that:
 - **Implemented "Add to Plan" functionality**: Each AI recommended action now has an "Add to Plan" button that opens a modal with action title, pre-checked Customer Success plays, plan notes area, and "Create Plan" button
 - **Fixed Customer Success Plays display**: Resolved CSV field mapping issues (play_1_name, play_2_name, play_3_name) to properly show actual play data from CSV
 - **Converted to centered modal**: Changed from side drawer to modern centered modal with fade+scale animation and improved user experience
-- **Enhanced modal layout**: Increased width to 600px, fixed text wrapping so Customer Success Plays display on single lines instead of multiple lines
+- **Enhanced modal layout**: Increased width to 600px, fixed Customer Success Plays to use proper Play Name fields, enabled text wrapping for better readability, and centered checkboxes properly
 - Added smart button state management: actions already in existing plans show "Added!" pill button (non-clickable)
 - Created comprehensive action plan integration with proper data-driven checks and plan creation workflow
 - **Redesigned Action Plans interface**: Transformed from card-based to modern project management table layout inspired by Asana/Monday.com with columns for checkbox, task, due date, # plays, priority, and assignee

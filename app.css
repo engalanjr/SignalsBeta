@@ -1510,7 +1510,7 @@ body {
 
 .play-checkbox {
     display: flex !important;
-    align-items: center;
+    align-items: flex-start;
     padding: 12px;
     border: 1px solid var(--neutral-gray-200);
     border-radius: 8px;
@@ -1529,10 +1529,12 @@ body {
 }
 
 .play-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
     margin: 0;
-    flex-shrink: 0;
-    margin-top: 2px;
+    margin-top: 1px;
     accent-color: var(--domo-blue);
+    flex-shrink: 0;
 }
 
 .play-title {
@@ -1540,7 +1542,8 @@ body {
     color: var(--neutral-gray-800);
     line-height: 1.4;
     font-weight: 600;
-    white-space: nowrap;
+    white-space: normal;
+    word-wrap: break-word;
     flex: 1;
     min-width: 0;
 }

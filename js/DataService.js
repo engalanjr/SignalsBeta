@@ -1254,12 +1254,12 @@ class DataService {
                 play_2: row['play_2'] || row['Play 2'] || row['PLAY_2'] || '',
                 play_3: row['play_3'] || row['Play 3'] || row['PLAY_3'] || '',
                 
-                // Correct mapping: CSV structure has play titles in specific columns
-                play_1_name: row['Play 1 Description'] || row['Play 1 Name'] || '', // First play title is in description column
-                play_1_description: 'Customer Success enablement play',
-                play_2_name: row['Play 2 Name'] || '', // Second play title is in name column  
+                // Correct mapping: Use Play Name fields for shorter titles, not descriptions
+                play_1_name: row['Play 1 Name'] || row['play_1'] || '', // Use the actual name field
+                play_1_description: row['Play 1 Description'] || 'Customer Success enablement play',
+                play_2_name: row['Play 2 Name'] || row['play_2'] || '', // Use the actual name field  
                 play_2_description: row['Play 2 Description'] || 'Customer Success management play',
-                play_3_name: row['Play 3 Name'] || '', // Third play title is in name column
+                play_3_name: row['Play 3 Name'] || row['play_3'] || '', // Use the actual name field
                 play_3_description: row['Play 3 Description'] || 'Customer Success optimization play',
 
                 // Account health metrics (GPA components)
