@@ -620,6 +620,18 @@ class PortfolioRenderer {
         
         window.currentDrawerData = null;
     }
+    
+    static isAccountExpanded(accountId) {
+        const signalsContainer = document.querySelector(`[data-account-id="${accountId}"] .account-details`);
+        return signalsContainer && signalsContainer.classList.contains('expanded');
+    }
+    
+    static expandAccount(accountId) {
+        const signalsContainer = document.querySelector(`[data-account-id="${accountId}"] .account-details`);
+        if (signalsContainer) {
+            signalsContainer.classList.add('expanded');
+        }
+    }
 
     static loadDrawerCSPlays(actionId) {
         // Find the signal with this action_id to get its specific plays
@@ -693,6 +705,24 @@ class PortfolioRenderer {
         const selectedPlays = Array.from(document.querySelectorAll('#drawerPlaysContainer input[type="checkbox"]:checked'))
             .map(checkbox => checkbox.value);
         
+        // Get current user info for assignee
+        let userName = 'Current User';
+        let userId = 'user-1';
+        
+        try {
+            const user = await domo.get(`/domo/environment/v1/`);
+            if (user && typeof user === 'object') {
+                userId = user.userId || user.id || userId;
+                userName = user.userName || user.name || user.displayName || userName;
+            }
+        } catch (error) {
+            console.warn('Could not get user info, using defaults:', error);
+        }
+        
+        // Set due date to TODAY + 7 days
+        const today = new Date();
+        const dueDate = new Date(today.getTime() + (7 * 24 * 60 * 60 * 1000));
+        
         // Create the plan data structure compatible with existing Action Plan CRUD
         const planData = {
             accountId: accountId,
@@ -702,8 +732,8 @@ class PortfolioRenderer {
             plays: selectedPlays,
             status: 'pending',
             priority: 'medium',
-            dueDate: null,
-            assignee: null,
+            dueDate: dueDate.toISOString(),
+            assignee: userId,
             createdDate: new Date().toISOString()
         };
         
@@ -714,8 +744,18 @@ class PortfolioRenderer {
             if (result && result.success) {
                 console.log('Plan created successfully from drawer:', result.plan);
                 
+                // Store expanded account state before closing drawer
+                const wasAccountExpanded = this.isAccountExpanded(accountId);
+                
                 // Close drawer
                 this.closeAddToPlanDrawer();
+                
+                // Restore expanded account state after refresh
+                if (wasAccountExpanded) {
+                    setTimeout(() => {
+                        this.expandAccount(accountId);
+                    }, 100);
+                }
                 
                 // Refresh the portfolio view to show updated state
                 if (window.app && window.app.renderCurrentTab) {
