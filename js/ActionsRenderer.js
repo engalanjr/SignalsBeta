@@ -758,35 +758,43 @@ class ActionsRenderer {
     }
     
     // Task Details Drawer Methods
-    static openTaskDetailsDrawer(taskId, actionId) {
+    static async openTaskDetailsDrawer(taskId, actionId) {
         console.log(`Opening task details drawer for taskId: ${taskId}, actionId: ${actionId}`);
         
-        // Find the task data
-        const taskData = this.findTaskData(taskId, actionId, window.app);
-        if (!taskData) {
-            console.error('Could not find task data for:', { taskId, actionId });
-            return;
-        }
-        
-        // Create or get drawer elements
-        let drawer = document.getElementById('taskDetailsDrawer');
-        let backdrop = document.getElementById('taskDetailsDrawerBackdrop');
-        
-        if (!drawer) {
-            this.createTaskDetailsDrawerHTML();
-            drawer = document.getElementById('taskDetailsDrawer');
-            backdrop = document.getElementById('taskDetailsDrawerBackdrop');
-        }
-        
-        // Populate drawer content
-        this.populateTaskDetailsDrawer(taskData);
-        
-        // Show drawer
-        if (drawer && backdrop) {
-            backdrop.classList.add('open');
-            setTimeout(() => {
-                drawer.classList.add('open');
-            }, 10);
+        try {
+            // Find the task data (now async)
+            const taskData = await this.findTaskData(taskId, actionId, window.app);
+            if (!taskData) {
+                console.error('Could not find task data for:', { taskId, actionId });
+                this.showTaskUpdateError('Task data not found');
+                return;
+            }
+            
+            console.log('Found task data:', taskData);
+            
+            // Create or get drawer elements
+            let drawer = document.getElementById('taskDetailsDrawer');
+            let backdrop = document.getElementById('taskDetailsDrawerBackdrop');
+            
+            if (!drawer) {
+                this.createTaskDetailsDrawerHTML();
+                drawer = document.getElementById('taskDetailsDrawer');
+                backdrop = document.getElementById('taskDetailsDrawerBackdrop');
+            }
+            
+            // Populate drawer content
+            this.populateTaskDetailsDrawer(taskData);
+            
+            // Show drawer
+            if (drawer && backdrop) {
+                backdrop.classList.add('open');
+                setTimeout(() => {
+                    drawer.classList.add('open');
+                }, 10);
+            }
+        } catch (error) {
+            console.error('Error opening task details drawer:', error);
+            this.showTaskUpdateError('Failed to open task details');
         }
     }
     
@@ -825,11 +833,14 @@ class ActionsRenderer {
         }
     }
     
-    static findTaskData(taskId, actionId, app) {
-        // Search through action plans to find the task
+    static async findTaskData(taskId, actionId, app) {
+        // First try to find in live action plans
         for (let [accountId, planData] of app.actionPlans) {
             if (planData.actionItems) {
-                const actionItem = planData.actionItems.find(item => item.actionId === actionId);
+                const actionItem = planData.actionItems.find(item => 
+                    item.actionId === actionId || 
+                    (typeof item === 'object' && item.actionId === actionId)
+                );
                 if (actionItem) {
                     return {
                         taskId,
@@ -843,7 +854,13 @@ class ActionsRenderer {
         }
         
         // If not found in live data, search fallback data
-        return this.findTaskInFallbackData(taskId, actionId, app);
+        const fallbackResult = await this.findTaskInFallbackData(taskId, actionId, app);
+        if (fallbackResult) {
+            return fallbackResult;
+        }
+        
+        // Last resort: try to reconstruct task data from the task ID
+        return this.reconstructTaskData(taskId, actionId, app);
     }
     
     static async findTaskInFallbackData(taskId, actionId, app) {
@@ -872,12 +889,52 @@ class ActionsRenderer {
         return null;
     }
     
+    static reconstructTaskData(taskId, actionId, app) {
+        console.log('Reconstructing task data for:', { taskId, actionId });
+        
+        // Try to extract account ID from task ID (format: accountId-index)
+        const accountId = taskId.split('-')[0];
+        const taskIndex = parseInt(taskId.split('-')[1]) || 0;
+        
+        // Create a basic action item structure
+        const actionItem = {
+            title: `Generated Action ${taskIndex + 1}`,
+            actionId: actionId,
+            plays: [], // Empty plays array to prevent undefined error
+            completed: false
+        };
+        
+        // Create basic plan data
+        const planData = {
+            id: `reconstructed-${taskId}`,
+            actionItems: [actionItem],
+            status: 'Pending',
+            assignee: 'Current User',
+            createdAt: new Date().toISOString()
+        };
+        
+        return {
+            taskId,
+            actionId,
+            actionItem,
+            planData,
+            accountId
+        };
+    }
+    
     static populateTaskDetailsDrawer(taskData) {
         const container = document.getElementById('taskDetailsContent');
         if (!container) return;
         
+        console.log('Populating task details drawer with data:', taskData);
+        
         const { taskId, actionId, actionItem, planData } = taskData;
-        const plays = actionItem.plays || [];
+        
+        // Safely access plays with fallback
+        const plays = (actionItem && actionItem.plays) ? actionItem.plays : [];
+        
+        console.log('Action item:', actionItem);
+        console.log('Plays found:', plays);
         
         // Get current task data from rendered table for editable fields
         const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
