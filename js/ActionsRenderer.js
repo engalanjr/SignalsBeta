@@ -959,17 +959,25 @@ class ActionsRenderer {
         
         // Update the visual state immediately
         const playItem = document.querySelector(`[data-action-id="${actionId}"][data-play-index="${playIndex}"]`);
-        const playTitle = playItem.querySelector('.play-title');
-        const statusBadge = playItem.querySelector('.status-badge');
         
-        if (isCompleted) {
-            playTitle.classList.add('completed');
-            statusBadge.textContent = 'Completed';
-            statusBadge.className = 'status-badge completed';
+        if (!playItem) {
+            console.warn(`Could not find play item with actionId=${actionId} and playIndex=${playIndex}`);
+            // Continue with data update even if visual update fails
         } else {
-            playTitle.classList.remove('completed');
-            statusBadge.textContent = 'Pending';
-            statusBadge.className = 'status-badge pending';
+            const playTitle = playItem.querySelector('.play-title');
+            const statusBadge = playItem.querySelector('.status-badge');
+            
+            if (playTitle && statusBadge) {
+                if (isCompleted) {
+                    playTitle.classList.add('completed');
+                    statusBadge.textContent = 'Completed';
+                    statusBadge.className = 'status-badge completed';
+                } else {
+                    playTitle.classList.remove('completed');
+                    statusBadge.textContent = 'Pending';
+                    statusBadge.className = 'status-badge pending';
+                }
+            }
         }
         
         // Store the update for later saving
