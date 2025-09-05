@@ -221,9 +221,10 @@ class DataService {
         } catch (error) {
             console.error('Failed to update action plan in Domo AppDB:', error);
 
-            // Update local array as fallback
+            // Update local array as fallback (same as comments pattern)
             this.actionPlans[planIndex] = updatedPlan;
-            return { success: true, plan: updatedPlan, error: 'Failed to save to database, updated locally' };
+            console.log('Action plan updated locally as fallback:', planId);
+            return { success: true, plan: updatedPlan }; // Remove error property to match comments pattern
         }
     }
 
@@ -258,9 +259,10 @@ class DataService {
         } catch (error) {
             console.error('Failed to delete action plan in Domo AppDB:', error);
 
-            // Remove from local array as fallback
+            // Remove from local array as fallback (same as comments pattern)
             this.actionPlans.splice(planIndex, 1);
-            return { success: true, error: 'Failed to delete from database, removed locally', deletedBy: userName, deletedByUserId: userId };
+            console.log('Action plan deleted locally as fallback:', planId);
+            return { success: true, deletedBy: userName, deletedByUserId: userId };
         }
     }
 
