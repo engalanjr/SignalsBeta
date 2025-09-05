@@ -461,6 +461,8 @@ class PortfolioRenderer {
             if (signal.recommended_action && 
                 signal.recommended_action.trim() && 
                 signal.recommended_action !== 'No actions specified' &&
+                signal.action_id &&
+                signal.action_id.trim() &&
                 signal.signal_rationale &&
                 signal.signal_rationale.trim() &&
                 signal.signal_rationale !== 'No rationale specified') {
@@ -524,11 +526,13 @@ class PortfolioRenderer {
     static getUniqueRecommendedActions(account) {
         const uniqueActions = new Set();
         
-        // Extract recommended_action from all signals for this account
+        // Extract recommended_action from all signals for this account - ONLY if they have action_id
         account.signals.forEach(signal => {
             if (signal.recommended_action && 
                 signal.recommended_action.trim() && 
-                signal.recommended_action !== 'No actions specified') {
+                signal.recommended_action !== 'No actions specified' &&
+                signal.action_id &&
+                signal.action_id.trim()) {
                 uniqueActions.add(signal.recommended_action.trim());
             }
         });
@@ -536,17 +540,8 @@ class PortfolioRenderer {
         // Convert Set to Array
         const actionsArray = Array.from(uniqueActions);
         
-        // If we have specific recommended actions, use them
-        if (actionsArray.length > 0) {
-            return actionsArray;
-        }
-        
-        // Fall back to the existing aiRecommendation.actions if no recommended_action found
-        return account.aiRecommendation?.actions || [
-            'Schedule executive alignment call',
-            'Review technical implementation',
-            'Develop adoption roadmap'
-        ];
+        // Only return specific recommended actions that have action_ids - no fallback
+        return actionsArray;
     }
 
 
