@@ -1766,7 +1766,7 @@ class ActionsRenderer {
     }
 
     static getAccountNameFromPlan(planContent, signal, app) {
-        // Try to get account name from plan title first
+        // Try to get account name from plan title first (format: "Action Plan - Account Name")
         if (planContent.planTitle && planContent.planTitle.includes(' - ')) {
             return planContent.planTitle.split(' - ').slice(1).join(' - ').trim();
         }
@@ -1774,6 +1774,14 @@ class ActionsRenderer {
         // Try to get from signal data
         if (signal && signal.account_name) {
             return signal.account_name;
+        }
+        
+        // Try to get from accountId if it exists and we can find the account
+        if (planContent.accountId && app.accounts && app.accounts.has(planContent.accountId)) {
+            const account = app.accounts.get(planContent.accountId);
+            if (account && account.name) {
+                return account.name;
+            }
         }
         
         // Fallback to generic name
