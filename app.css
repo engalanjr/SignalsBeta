@@ -4192,3 +4192,240 @@ body {
     font-size: 14px;
     line-height: 1.4;
 }
+
+/* Plays Drawer Styles */
+.plays-drawer {
+    width: 500px;
+    right: -500px;
+}
+
+.plays-drawer-section {
+    margin-bottom: 2rem;
+}
+
+.plays-drawer-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--neutral-gray-800);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.plays-drawer-section h3 i {
+    color: var(--domo-blue);
+}
+
+.action-task-card {
+    background: var(--domo-blue-light);
+    border: 1px solid var(--domo-blue);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.action-task-title {
+    font-weight: 600;
+    color: var(--domo-blue-dark);
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.action-task-meta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.action-id-badge {
+    background: var(--neutral-gray-200);
+    color: var(--neutral-gray-700);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    font-family: monospace;
+}
+
+.plays-description {
+    color: var(--neutral-gray-600);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.plays-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.play-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--neutral-white);
+    border: 1px solid var(--neutral-gray-200);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.play-item:hover {
+    border-color: var(--domo-blue);
+    box-shadow: 0 2px 8px rgba(0, 125, 186, 0.1);
+}
+
+.play-checkbox-container {
+    flex-shrink: 0;
+    position: relative;
+}
+
+.play-completion-checkbox {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--neutral-gray-300);
+    border-radius: 4px;
+    background: var(--neutral-white);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin: 0;
+}
+
+.play-completion-checkbox:checked {
+    background: var(--healthy-green);
+    border-color: var(--healthy-green);
+}
+
+.play-completion-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.play-completion-label i {
+    color: var(--neutral-white);
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.play-completion-checkbox:checked + .play-completion-label i {
+    opacity: 1;
+}
+
+.play-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.play-title {
+    font-weight: 600;
+    color: var(--neutral-gray-800);
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+    transition: all 0.2s ease;
+}
+
+.play-title.completed {
+    text-decoration: line-through;
+    color: var(--neutral-gray-500);
+}
+
+.play-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.status-badge.pending {
+    background: var(--warning-orange);
+    color: var(--neutral-white);
+}
+
+.status-badge.completed {
+    background: var(--healthy-green);
+    color: var(--neutral-white);
+}
+
+.no-plays-message {
+    text-align: center;
+    padding: 2rem;
+    color: var(--neutral-gray-500);
+    background: var(--neutral-gray-50);
+    border-radius: 8px;
+    border: 1px dashed var(--neutral-gray-300);
+}
+
+.no-plays-message i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    display: block;
+    opacity: 0.5;
+}
+
+/* Drawer close button update for plays drawer */
+.plays-drawer .drawer-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--neutral-gray-600);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.plays-drawer .drawer-close-btn:hover {
+    background: var(--neutral-gray-200);
+    color: var(--neutral-gray-800);
+}
+
+/* Update notification styles for play updates */
+.update-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 2001;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 400px;
+}
+
+.update-notification.success {
+    background: var(--healthy-green);
+    color: var(--neutral-white);
+}
+
+.update-notification.error {
+    background: var(--critical-red);
+    color: var(--neutral-white);
+}
+
+.update-notification.show {
+    transform: translateX(0);
+}

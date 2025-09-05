@@ -289,6 +289,9 @@ class ActionsRenderer {
                 playsCount = this.getPlaysCountForAction(actionId, app);
             }
             
+            // Debug log to see what's happening with plays
+            console.log(`Action "${title}" has plays:`, actionItem.plays, 'count:', playsCount);
+            
             // Generate realistic due date (1-14 days from now)
             const dueDate = this.generateDueDate(index);
             
@@ -430,7 +433,328 @@ class ActionsRenderer {
 
     static openPlaysModal(actionId, taskTitle) {
         console.log(`Opening plays modal for action ${actionId}: ${taskTitle}`);
-        // Modal functionality removed - to be reimplemented
+        
+        // Find the action item with this actionId to get its plays
+        const actionPlan = this.findActionPlanWithActionId(actionId, window.app);
+        if (!actionPlan) {
+            console.error('Could not find action plan for actionId:', actionId);
+            return;
+        }
+        
+        this.openPlaysDrawer(actionId, taskTitle, actionPlan.actionItem, actionPlan.planData);
+    }
+    
+    static findActionPlanWithActionId(actionId, app) {
+        // Search through action plans to find the action item with this actionId
+        for (let [accountId, planData] of app.actionPlans) {
+            if (planData.actionItems) {
+                const actionItem = planData.actionItems.find(item => {
+                    return item.actionId === actionId || (typeof item === 'object' && item.actionId === actionId);
+                });
+                if (actionItem) {
+                    return { actionItem, planData, accountId };
+                }
+            }
+        }
+        
+        // If not found in live data, search fallback data
+        return this.findInFallbackData(actionId, app);
+    }
+    
+    static async findInFallbackData(actionId, app) {
+        try {
+            const response = await fetch('/action-plans-fallback.json');
+            const fallbackData = await response.json();
+            
+            for (const record of fallbackData) {
+                const planContent = record.content;
+                if (planContent && planContent.actionItems) {
+                    const actionItem = planContent.actionItems.find(item => item.actionId === actionId);
+                    if (actionItem) {
+                        return { actionItem, planData: planContent, accountId: planContent.accountId };
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error searching fallback data:', error);
+        }
+        return null;
+    }
+    
+    static openPlaysDrawer(actionId, taskTitle, actionItem, planData) {
+        console.log('Opening plays drawer for:', { actionId, taskTitle, actionItem });
+        
+        // Get or create drawer elements
+        let drawer = document.getElementById('playsDrawer');
+        let backdrop = document.getElementById('playsDrawerBackdrop');
+        
+        if (!drawer) {
+            this.createPlaysDrawerHTML();
+            drawer = document.getElementById('playsDrawer');
+            backdrop = document.getElementById('playsDrawerBackdrop');
+        }
+        
+        // Populate drawer content
+        this.populatePlaysDrawer(actionId, taskTitle, actionItem, planData);
+        
+        // Show drawer
+        if (drawer && backdrop) {
+            backdrop.classList.add('open');
+            setTimeout(() => {
+                drawer.classList.add('open');
+            }, 10);
+        }
+    }
+    
+    static createPlaysDrawerHTML() {
+        const drawerHTML = `
+            <!-- Plays Drawer Backdrop -->
+            <div id="playsDrawerBackdrop" class="drawer-backdrop" onclick="ActionsRenderer.closePlaysDrawer()"></div>
+            
+            <!-- Plays Drawer -->
+            <div id="playsDrawer" class="drawer plays-drawer">
+                <div class="drawer-header">
+                    <h2><i class="fas fa-play-circle"></i> Manage CS Plays</h2>
+                    <button class="drawer-close-btn" onclick="ActionsRenderer.closePlaysDrawer()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="drawer-body">
+                    <div id="playsDrawerContent">
+                        <!-- Content will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="drawer-footer">
+                    <button class="btn btn-secondary" onclick="ActionsRenderer.closePlaysDrawer()">Close</button>
+                    <button class="btn btn-primary" onclick="ActionsRenderer.savePlayUpdates()">
+                        <i class="fas fa-save"></i> Save Updates
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add to body if not exists
+        if (!document.getElementById('playsDrawer')) {
+            document.body.insertAdjacentHTML('beforeend', drawerHTML);
+        }
+    }
+    
+    static populatePlaysDrawer(actionId, taskTitle, actionItem, planData) {
+        const container = document.getElementById('playsDrawerContent');
+        if (!container) return;
+        
+        const plays = actionItem.plays || [];
+        console.log('Populating drawer with plays:', plays);
+        
+        let html = `
+            <div class="plays-drawer-section">
+                <h3><i class="fas fa-lightbulb"></i> Action Plan Task</h3>
+                <div class="action-task-card">
+                    <div class="action-task-title">${taskTitle}</div>
+                    <div class="action-task-meta">
+                        <span class="action-id-badge">ID: ${actionId}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="plays-drawer-section">
+                <h3><i class="fas fa-play"></i> Associated CS Plays (${plays.length})</h3>
+                <div class="plays-description">
+                    Mark plays as complete to track progress on this action plan task.
+                </div>
+                
+                <div class="plays-list">
+        `;
+        
+        if (plays.length === 0) {
+            html += `
+                <div class="no-plays-message">
+                    <i class="fas fa-info-circle"></i>
+                    No CS plays are associated with this action plan task.
+                </div>
+            `;
+        } else {
+            plays.forEach((play, index) => {
+                const playTitle = play.playTitle || play.playName || `Play ${index + 1}`;
+                const playId = play.playId || `play_${index + 1}`;
+                const isCompleted = play.completed || false;
+                
+                html += `
+                    <div class="play-item" data-action-id="${actionId}" data-play-id="${playId}" data-play-index="${index}">
+                        <div class="play-checkbox-container">
+                            <input type="checkbox" 
+                                   id="playCheck-${index}" 
+                                   class="play-completion-checkbox"
+                                   ${isCompleted ? 'checked' : ''}
+                                   onchange="ActionsRenderer.togglePlayCompletion('${actionId}', '${playId}', ${index}, this.checked)">
+                            <label for="playCheck-${index}" class="play-completion-label">
+                                <i class="fas fa-check"></i>
+                            </label>
+                        </div>
+                        <div class="play-content">
+                            <div class="play-title ${isCompleted ? 'completed' : ''}">${playTitle}</div>
+                            <div class="play-status">
+                                <span class="status-badge ${isCompleted ? 'completed' : 'pending'}">
+                                    ${isCompleted ? 'Completed' : 'Pending'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+    
+    static closePlaysDrawer() {
+        const drawer = document.getElementById('playsDrawer');
+        const backdrop = document.getElementById('playsDrawerBackdrop');
+        
+        if (drawer) {
+            drawer.classList.remove('open');
+        }
+        
+        if (backdrop) {
+            setTimeout(() => {
+                backdrop.classList.remove('open');
+            }, 300);
+        }
+    }
+    
+    static togglePlayCompletion(actionId, playId, playIndex, isCompleted) {
+        console.log(`Toggle play completion: actionId=${actionId}, playId=${playId}, index=${playIndex}, completed=${isCompleted}`);
+        
+        // Update the visual state immediately
+        const playItem = document.querySelector(`[data-action-id="${actionId}"][data-play-index="${playIndex}"]`);
+        const playTitle = playItem.querySelector('.play-title');
+        const statusBadge = playItem.querySelector('.status-badge');
+        
+        if (isCompleted) {
+            playTitle.classList.add('completed');
+            statusBadge.textContent = 'Completed';
+            statusBadge.className = 'status-badge completed';
+        } else {
+            playTitle.classList.remove('completed');
+            statusBadge.textContent = 'Pending';
+            statusBadge.className = 'status-badge pending';
+        }
+        
+        // Store the update for later saving
+        if (!window.playUpdates) {
+            window.playUpdates = new Map();
+        }
+        
+        if (!window.playUpdates.has(actionId)) {
+            window.playUpdates.set(actionId, new Map());
+        }
+        
+        window.playUpdates.get(actionId).set(playId, {
+            playIndex: playIndex,
+            completed: isCompleted,
+            timestamp: new Date().toISOString()
+        });
+        
+        console.log('Stored play update:', window.playUpdates.get(actionId).get(playId));
+    }
+    
+    static async savePlayUpdates() {
+        if (!window.playUpdates || window.playUpdates.size === 0) {
+            this.closePlaysDrawer();
+            return;
+        }
+        
+        console.log('Saving play updates:', window.playUpdates);
+        
+        try {
+            // Update action plans data with play completion status
+            for (let [actionId, playUpdates] of window.playUpdates) {
+                await this.updateActionPlanPlayStatus(actionId, playUpdates);
+            }
+            
+            // Clear updates and refresh the Action Plans view
+            window.playUpdates.clear();
+            this.closePlaysDrawer();
+            
+            // Refresh the Action Plans view to show updated play counts
+            if (window.app && typeof window.app.renderActions === 'function') {
+                window.app.renderActions();
+            }
+            
+            // Show success message
+            this.showPlayUpdateSuccess();
+            
+        } catch (error) {
+            console.error('Error saving play updates:', error);
+            this.showPlayUpdateError(error.message);
+        }
+    }
+    
+    static async updateActionPlanPlayStatus(actionId, playUpdates) {
+        // Find and update the action plan data
+        const app = window.app;
+        
+        // Update in live action plans
+        for (let [accountId, planData] of app.actionPlans) {
+            if (planData.actionItems) {
+                const actionItem = planData.actionItems.find(item => item.actionId === actionId);
+                if (actionItem && actionItem.plays) {
+                    for (let [playId, updateData] of playUpdates) {
+                        const playIndex = updateData.playIndex;
+                        if (actionItem.plays[playIndex]) {
+                            actionItem.plays[playIndex].completed = updateData.completed;
+                            actionItem.plays[playIndex].lastUpdated = updateData.timestamp;
+                        }
+                    }
+                    return; // Found and updated
+                }
+            }
+        }
+        
+        console.log(`Action plan for actionId ${actionId} updated with play completion status`);
+    }
+    
+    static showPlayUpdateSuccess() {
+        const message = document.createElement('div');
+        message.className = 'update-notification success';
+        message.innerHTML = `
+            <i class="fas fa-check-circle"></i>
+            Play completion status updated successfully!
+        `;
+        document.body.appendChild(message);
+        
+        setTimeout(() => {
+            message.classList.add('show');
+            setTimeout(() => {
+                message.classList.remove('show');
+                setTimeout(() => message.remove(), 300);
+            }, 3000);
+        }, 100);
+    }
+    
+    static showPlayUpdateError(errorMessage) {
+        const message = document.createElement('div');
+        message.className = 'update-notification error';
+        message.innerHTML = `
+            <i class="fas fa-exclamation-circle"></i>
+            Error updating plays: ${errorMessage}
+        `;
+        document.body.appendChild(message);
+        
+        setTimeout(() => {
+            message.classList.add('show');
+            setTimeout(() => {
+                message.classList.remove('show');
+                setTimeout(() => message.remove(), 300);
+            }, 5000);
+        }, 100);
     }
 
     // Fallback Data Loading
