@@ -106,7 +106,25 @@ class ActionsRenderer {
                 console.log('Storing loaded action plans in app state...');
                 fallbackPlans.forEach(plan => {
                     if (plan.accountId && app.actionPlans) {
-                        app.actionPlans.set(plan.accountId, plan);
+                        // Store the actual plan data with necessary account info, not the wrapper
+                        const actualPlanData = {
+                            ...plan.planData,
+                            accountId: plan.accountId,
+                            accountName: plan.accountName,
+                            title: plan.planData.originalPlanContent.title,
+                            description: plan.planData.originalPlanContent.description,
+                            plays: plan.planData.originalPlanContent.plays || [],
+                            actionId: plan.planData.originalPlanContent.actionId,
+                            priority: plan.planData.originalPlanContent.priority || 'medium',
+                            dueDate: plan.planData.originalPlanContent.dueDate,
+                            createdDate: plan.planData.originalPlanContent.createdDate,
+                            signalId: plan.planData.originalPlanContent.signalId,
+                            planTitle: plan.planData.originalPlanContent.planTitle,
+                            createdBy: plan.planData.originalPlanContent.createdBy,
+                            createdByUserId: plan.planData.originalPlanContent.createdByUserId
+                        };
+                        
+                        app.actionPlans.set(plan.accountId, actualPlanData);
                         console.log(`Stored action plan for account: ${plan.accountName} (${plan.accountId})`);
                     }
                 });
