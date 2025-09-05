@@ -59,7 +59,6 @@ class SignalRenderer {
         const feedbackStyle = this.getFeedbackStyle(signal);
         const likeButtonHtml = this.getLikeButtonHtml(signal);
         const notAccurateButtonHtml = this.getNotAccurateButtonHtml(signal);
-        const actionButtonHtml = this.getActionButtonHtml(signal, app);
         const priority = signal.priority || 'Low';
         const cardClass = isNew ? 'signal-new' : 'signal-viewed';
         const priorityClass = priority.toLowerCase();
@@ -98,7 +97,6 @@ class SignalRenderer {
                     <div class="signal-actions">
                         ${likeButtonHtml}
                         ${notAccurateButtonHtml}
-                        ${actionButtonHtml}
                     </div>
                 </div>
                 ${this.renderInlineCommentsSection(signal.id, app)}
