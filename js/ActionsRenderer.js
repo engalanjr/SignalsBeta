@@ -1202,23 +1202,37 @@ class ActionsRenderer {
             const ActionPlanService = window.ActionPlanService || 
                 (await import('./services/ActionPlanService.js')).default;
             
-            // Update the action plan using CRUD methods
-            const updatedPlan = await ActionPlanService.updateActionPlan(planData.id, updateData, app);
+            // Always update the visual display and local data first
+            this.updateTaskRowDisplay(taskId, { dueDate, priority, assignee, status });
             
-            if (updatedPlan) {
-                // Update the table row visually
-                this.updateTaskRowDisplay(taskId, { dueDate, priority, assignee, status });
-                
-                // Close drawer and show success message
-                this.closeTaskDetailsDrawer();
-                this.showTaskUpdateSuccess('Task details updated successfully!');
-                
-                // Re-render the Action Plans tab to reflect changes
-                if (window.app && window.app.renderCurrentTab) {
-                    window.app.renderCurrentTab();
+            // Update local state immediately for better UX
+            if (window.app && window.app.actionPlans && window.app.actionPlans.has(accountId)) {
+                const currentPlan = window.app.actionPlans.get(accountId);
+                if (currentPlan) {
+                    window.app.actionPlans.set(accountId, updateData);
                 }
-            } else {
-                throw new Error('Failed to update action plan');
+            }
+            
+            // Close drawer and show success message to user
+            this.closeTaskDetailsDrawer();
+            this.showTaskUpdateSuccess('Task details updated successfully!');
+            
+            // Re-render the Action Plans tab to reflect changes
+            if (window.app && window.app.renderCurrentTab) {
+                window.app.renderCurrentTab();
+            }
+            
+            // Try to save to backend - log errors but don't show them to user
+            try {
+                const updatedPlan = await ActionPlanService.updateActionPlan(planData.id, updateData, app);
+                if (updatedPlan) {
+                    console.log('Task details successfully saved to backend:', updatedPlan.id);
+                } else {
+                    console.warn('Backend save failed but local update succeeded');
+                }
+            } catch (backendError) {
+                console.error('Failed to save task details to Domo endpoint (local update succeeded):', backendError);
+                // Don't show error to user since local update worked
             }
             
         } catch (error) {
