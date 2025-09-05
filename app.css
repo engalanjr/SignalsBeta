@@ -1408,8 +1408,8 @@ body {
 
 .modal-content {
     position: relative;
-    width: 1200px;
-    max-width: 95vw;
+    width: 1600px;
+    max-width: 98vw;
     max-height: 85vh;
     background: white;
     border-radius: 12px;
@@ -1548,7 +1548,7 @@ body {
     overflow-wrap: break-word;
     word-break: break-word;
     flex: 1;
-    min-width: 400px;
+    min-width: 600px;
     max-width: 100%;
     display: block;
 }
