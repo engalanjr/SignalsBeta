@@ -102,6 +102,15 @@ class ActionsRenderer {
             if (fallbackPlans.length > 0) {
                 console.log(`Loaded ${fallbackPlans.length} action plans from fallback JSON`);
                 
+                // Store the fallback plans in the app's action plans map
+                console.log('Storing loaded action plans in app state...');
+                fallbackPlans.forEach(plan => {
+                    if (plan.accountId && app.actionPlans) {
+                        app.actionPlans.set(plan.accountId, plan);
+                        console.log(`Stored action plan for account: ${plan.accountName} (${plan.accountId})`);
+                    }
+                });
+                
                 // Validate and fix loaded action plans
                 console.log('Validating loaded action plans...');
                 const validationResults = ActionPlanService.validateActionPlanAssociations(app);
@@ -1683,8 +1692,30 @@ class ActionsRenderer {
                 const signal = planContent.signalId ? 
                               app.data.find(s => s.id === planContent.signalId) : null;
                 
-                const accountName = this.getAccountNameFromPlan(planContent, signal, app);
-                const accountId = signal ? signal.account_id : `fallback-${planContent.id}`;
+                // Try to map to a real account from the app
+                let accountId = signal ? signal.account_id : planContent.accountId;
+                let accountName = this.getAccountNameFromPlan(planContent, signal, app);
+                
+                // If we still don't have an account ID, try to match by account name from the existing accounts
+                if (!accountId && app.accounts && app.accounts.size > 0) {
+                    for (let [existingAccountId, account] of app.accounts) {
+                        // Try to match account names (case insensitive partial match)
+                        if (account.name && accountName && 
+                            (account.name.toLowerCase().includes(accountName.toLowerCase()) ||
+                             accountName.toLowerCase().includes(account.name.toLowerCase()))) {
+                            accountId = existingAccountId;
+                            accountName = account.name; // Use the exact account name from the app
+                            console.log(`Mapped action plan to existing account: ${accountName} (${accountId})`);
+                            break;
+                        }
+                    }
+                }
+                
+                // If still no match, create a fallback ID but keep the extracted account name
+                if (!accountId) {
+                    accountId = `fallback-${planContent.id}`;
+                    console.log(`Using fallback account ID for: ${accountName}`);
+                }
 
                 // Determine urgency and health based on available data
                 const urgency = this.determineFallbackUrgency(planContent, signal);
