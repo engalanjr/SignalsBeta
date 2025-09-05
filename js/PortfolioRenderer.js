@@ -704,14 +704,8 @@ class PortfolioRenderer {
         };
         
         try {
-            // Check if Action Plan Service is available
-            if (!window.app || !window.app.dataService || !window.app.dataService.createActionPlan) {
-                this.showDrawerError('Action Plan service is not available. Please refresh the page and try again.');
-                return;
-            }
-            
-            // Use the existing Action Plan Service to create the plan
-            const result = await window.app.dataService.createActionPlan(planData);
+            // Call DataService directly (matching comments pattern)
+            const result = await DataService.createActionPlan(planData);
             
             if (result && result.success) {
                 console.log('Plan created successfully from drawer:', result.plan);
