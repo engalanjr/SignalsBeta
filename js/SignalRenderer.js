@@ -18,8 +18,8 @@ class SignalRenderer {
                 return priorityB - priorityA;
             }
 
-            const dateA = new Date(a.created_date);
-            const dateB = new Date(b.created_date);
+            const dateA = new Date(a.call_date);
+            const dateB = new Date(b.call_date);
             return dateB - dateA;
         });
 
