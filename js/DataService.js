@@ -1257,10 +1257,10 @@ class DataService {
                 code: row['code'] || row['Code'] || row['CODE'] || '',
 
                 // Enhanced signal fields from new data model
-                recommended_action: row['recommended_action'] || row['Recommended Action'] || row['RECOMMENDED_ACTION'] || this.generateFallbackAction(category, priority),
-                signal_rationale: row['signal_rationale'] || row['Signal Rationale'] || row['SIGNAL_RATIONALE'] || this.generateFallbackRationale(summary),
+                recommended_action: row['recommended_action'] || row['Recommended Action'] || row['RECOMMENDED_ACTION'] || '',
+                signal_rationale: row['signal_rationale'] || row['Signal Rationale'] || row['SIGNAL_RATIONALE'] || '',
                 signal_confidence: parseFloat(row['signal_confidence'] || row['Signal Confidence'] || row['SIGNAL_CONFIDENCE'] || '0') || 0.7,
-                action_id: row['action_id'] || row['Action Id'] || row['ACTION_ID'] || this.generateActionId(), // GUID of the action
+                action_id: row['action_id'] || row['Action Id'] || row['ACTION_ID'] || '', // GUID of the action
 
                 // Play recommendations - correct CSV field mapping
                 play_1: row['play_1'] || row['Play 1'] || row['PLAY_1'] || '',
