@@ -1062,72 +1062,14 @@ class DataService {
         }
     }
 
-    // Generate mock action plans for demonstration
+    // DO NOT GENERATE FAKE ACTION PLANS - only use real data from CSV
     static generateMockActionPlans(accountsMap) {
-        // accountsMap is a Map, convert to array
-        const accountsArray = Array.from(accountsMap.values());
-        const mockPlans = [];
-
-        // Get first 3 accounts to create action plans for
-        const accountsWithPlans = accountsArray.slice(0, 3);
-
-        accountsWithPlans.forEach((account, index) => {
-            const highPrioritySignals = account.signals.filter(s => s.priority === 'High');
-            const actionItems = this.generateActionItemsForAccount(account, highPrioritySignals);
-
-            const plan = {
-                id: `plan-${account.id}-${Date.now()}`,
-                accountId: account.id,
-                accountName: account.name,
-                notes: `Comprehensive action plan for ${account.name} to address ${highPrioritySignals.length} high-priority signals and improve overall account health.`,
-                actionItems: actionItems,
-                createdAt: new Date(Date.now() - (index + 1) * 24 * 60 * 60 * 1000), // Created 1-3 days ago
-                updatedAt: new Date(Date.now() - (index * 12 * 60 * 60 * 1000)), // Updated 0-24 hours ago
-                status: ['In Progress', 'Pending', 'In Progress'][index],
-                assignee: 'Current User'
-            };
-
-            mockPlans.push(plan);
-        });
-
-        this.actionPlans = mockPlans;
-        return mockPlans;
+        console.log('Mock action plan generation disabled - only real CSV data will be used');
+        this.actionPlans = [];
+        return [];
     }
 
-    static generateActionItemsForAccount(account, highPrioritySignals) {
-        const baseActions = [
-            'Schedule executive alignment call within 48 hours',
-            'Conduct technical architecture review',
-            'Analyze usage patterns and adoption metrics'
-        ];
-
-        const signalSpecificActions = [];
-
-        highPrioritySignals.forEach(signal => {
-            switch (signal.category) {
-                case 'Architecture':
-                    signalSpecificActions.push('Review data connector configurations and performance');
-                    signalSpecificActions.push('Optimize ETL processes for better reliability');
-                    break;
-                case 'Relationship':
-                    signalSpecificActions.push('Map all stakeholders and decision makers');
-                    signalSpecificActions.push('Schedule relationship building sessions');
-                    break;
-                case 'Use Case':
-                    signalSpecificActions.push('Deep dive into business use case requirements');
-                    signalSpecificActions.push('Calculate and present ROI metrics');
-                    break;
-                case 'User Engagement':
-                    signalSpecificActions.push('Conduct user training sessions');
-                    signalSpecificActions.push('Create adoption enablement materials');
-                    break;
-            }
-        });
-
-        // Combine and deduplicate
-        const allActions = [...baseActions, ...signalSpecificActions];
-        return [...new Set(allActions)];
-    }
+    // REMOVED - Do not generate fake action items
 
     static updateSignalFeedback(signalId, feedbackType) {
         // TODO: Replace with actual API call

@@ -297,10 +297,10 @@ class ActionsRenderer {
             
             // Use real actionId from data, but provide fallback for AI recommendations
             let actionId = actionItem.actionId;
+            // Only use real action IDs from CSV data - no artificial generation
             if (!actionId) {
-                // Generate a consistent actionId for AI recommendations based on account and title
-                actionId = this.generateActionIdForAIRecommendation(plan.accountId, title, index);
-                console.log(`Generated actionId for AI recommendation: ${actionId}`);
+                console.warn(`Skipping action item without actionId: ${title}`);
+                return; // Skip items without real action IDs
             }
             
             // Get CS plays count - try from real JSON data first, then fallback
@@ -373,22 +373,7 @@ class ActionsRenderer {
         });
     }
     
-    static generateActionIdForAIRecommendation(accountId, title, index) {
-        // Create a hash-like ID based on account and title for consistency
-        const baseString = `${accountId}-${title}-${index}`;
-        const hash = this.simpleHash(baseString);
-        return `ai-rec-${hash}`;
-    }
-    
-    static simpleHash(str) {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32bit integer
-        }
-        return Math.abs(hash).toString(36);
-    }
+    // REMOVED - Do not generate fake action IDs
 
     static getPlaysCountForAction(actionId, app) {
         if (!actionId || !app.data) return 0;
@@ -1181,7 +1166,7 @@ class ActionsRenderer {
             if (plan.planData && plan.planData.actionItems) {
                 const actionItem = plan.planData.actionItems.find(item => {
                     // Check if this is the task we're looking for
-                    const itemActionId = item.actionId || this.generateActionIdForAIRecommendation(plan.accountId, item.title || item, plan.planData.actionItems.indexOf(item));
+                    const itemActionId = item.actionId; // Only use real action IDs from CSV data
                     return itemActionId === actionId;
                 });
                 
@@ -1467,7 +1452,7 @@ class ActionsRenderer {
                 // Handle both string and object action items
                 const itemActionId = typeof item === 'object' && item.actionId ? 
                     item.actionId : 
-                    this.generateActionIdForAIRecommendation(accountId, typeof item === 'string' ? item : item.title, index);
+                    null; // Only use real action IDs from CSV data
                 
                 if (itemActionId === actionId) {
                     // Update this action item with the new task properties

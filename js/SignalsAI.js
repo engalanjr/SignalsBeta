@@ -34,7 +34,8 @@ class SignalsAI {
             }
 
             console.log('Creating mock action plans...');
-            const mockPlans = DataService.generateMockActionPlans(this.accounts);
+            // DO NOT generate mock action plans - only use real CSV data
+            const mockPlans = [];
             // Keep actionPlans as a Map and populate it properly
             mockPlans.forEach(plan => {
                 this.actionPlans.set(plan.accountId, plan);
