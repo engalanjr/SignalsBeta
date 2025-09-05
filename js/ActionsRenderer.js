@@ -1684,16 +1684,25 @@ class ActionsRenderer {
             // Process each action plan from the JSON
             for (const record of fallbackData) {
                 const planContent = record.content;
-                if (!planContent || !planContent.actionItems || planContent.actionItems.length === 0) {
-                    continue; // Skip plans with no action items
+                if (!planContent) {
+                    continue; // Skip plans with no content
                 }
-
-                // Get account information from signal data
-                const signal = planContent.signalId ? 
-                              app.data.find(s => s.id === planContent.signalId) : null;
                 
-                // Try to map to a real account from the app
-                let accountId = signal ? signal.account_id : planContent.accountId;
+                // Handle new single-action-per-plan data model
+                // Each record represents one action plan with one action
+
+                // Get account information - try accountId first, then signal lookup
+                let accountId = planContent.accountId;
+                let signal = null;
+                
+                if (planContent.signalId) {
+                    signal = app.data.find(s => s.id === planContent.signalId);
+                    if (signal && !accountId) {
+                        accountId = signal.account_id;
+                    }
+                }
+                
+                // Get account name
                 let accountName = this.getAccountNameFromPlan(planContent, signal, app);
                 
                 // If we still don't have an account ID, try to match by account name from the existing accounts
@@ -1711,10 +1720,10 @@ class ActionsRenderer {
                     }
                 }
                 
-                // If still no match, create a fallback ID but keep the extracted account name
+                // If still no match, use the accountId from planContent or create fallback
                 if (!accountId) {
-                    accountId = `fallback-${planContent.id}`;
-                    console.log(`Using fallback account ID for: ${accountName}`);
+                    accountId = planContent.accountId || `fallback-${planContent.id}`;
+                    console.log(`Using account ID: ${accountId} for plan: ${planContent.title}`);
                 }
 
                 // Determine urgency and health based on available data
@@ -1722,8 +1731,24 @@ class ActionsRenderer {
                 const accountHealth = signal ? this.getHealthFromRiskCategory(signal.at_risk_cat) : 'healthy';
                 
                 // Get signals count for this account
-                const accountSignals = signal ? 
-                                     app.data.filter(s => s.account_id === signal.account_id) : [];
+                const accountSignals = accountId && signal ? 
+                                     app.data.filter(s => s.account_id === accountId) : [];
+
+                // Create single action item from the plan content
+                const singleActionItem = {
+                    title: planContent.title || 'Untitled Action',
+                    actionId: planContent.actionId,
+                    completed: false,
+                    plays: planContent.plays ? planContent.plays.map(play => ({
+                        playId: `play_${Math.random().toString(36).substr(2, 9)}`,
+                        playName: play,
+                        playTitle: play
+                    })) : [],
+                    description: planContent.description || '',
+                    priority: planContent.priority || 'medium',
+                    dueDate: planContent.dueDate,
+                    status: planContent.status || 'pending'
+                };
 
                 formattedPlans.push({
                     accountId: accountId,
@@ -1732,19 +1757,21 @@ class ActionsRenderer {
                     signalsCount: accountSignals.length,
                     highPriorityCount: accountSignals.filter(s => s.priority === 'High').length,
                     renewalBaseline: this.getFallbackRenewalValue(signal, app),
-                    status: planContent.status || 'Pending',
+                    status: planContent.status || 'pending',
                     urgency: urgency,
                     planData: {
                         id: planContent.id,
-                        actionItems: planContent.actionItems,
+                        actionItems: [singleActionItem], // Convert single action to array format for compatibility
                         status: planContent.status,
                         assignee: planContent.assignee,
                         createdAt: planContent.createdAt,
                         updatedAt: planContent.updatedAt,
-                        notes: planContent.notes
+                        notes: planContent.description || '',
+                        // Store original plan content for CRUD operations
+                        originalPlanContent: planContent
                     },
                     lastUpdated: planContent.updatedAt || planContent.createdAt,
-                    nextAction: planContent.actionItems[0]?.title || 'No actions defined'
+                    nextAction: planContent.title || 'No actions defined'
                 });
             }
 
@@ -1794,7 +1821,12 @@ class ActionsRenderer {
             return 'high';
         }
         
-        if (planContent.actionItems && planContent.actionItems.length > 2) {
+        if (planContent.priority === 'high') {
+            return 'high';
+        }
+        
+        // For single action plans, check if there are multiple plays indicating complexity
+        if (planContent.plays && planContent.plays.length > 2) {
             return 'high';
         }
         

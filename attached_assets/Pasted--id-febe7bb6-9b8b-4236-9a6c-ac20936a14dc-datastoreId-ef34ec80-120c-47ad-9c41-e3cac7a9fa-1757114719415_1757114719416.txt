@@ -1,0 +1,100 @@
+{
+	"id": "febe7bb6-9b8b-4236-9a6c-ac20936a14dc",
+	"datastoreId": "ef34ec80-120c-47ad-9c41-e3cac7a9fa4c",
+	"collectionId": "dedc126b-3a2e-4eae-8fa1-e76ccde748c2",
+	"syncRequired": true,
+	"owner": "621623466",
+	"createdBy": "621623466",
+	"createdOn": "2025-09-05T23:15:06.987Z",
+	"updatedOn": "2025-09-05T23:15:06.987Z",
+	"updatedBy": "621623466",
+	"content": {
+		"id": "plan-1757114106794",
+		"createdAt": "2025-09-05T23:15:06.794Z",
+		"updatedAt": "2025-09-05T23:15:06.794Z",
+		"status": "pending",
+		"assignee": null,
+		"createdBy": "Ed Engalan",
+		"createdByUserId": 621623466,
+		"planTitle": "Action Plan - 9/5/2025",
+		"accountId": "001Vq000005wsrZIAQ",
+		"actionId": "aa8f1569-04b3-46cd-9642-0073a4e5cc62",
+		"title": "Implement Architecture Assessment and Optimization for Multiple System Integration",
+		"description": "These work great",
+		"plays": [
+			"Domo Architecture Assessments",
+			"Domo instance Optimization",
+			"Domo Pipeline Optimization"
+		],
+		"priority": "medium",
+		"dueDate": null,
+		"createdDate": "2025-09-05T23:15:06.595Z",
+		"actionItems": []
+	}
+}
+
+{
+	"id": "1c727ee8-661f-4ae1-b000-ba43315bcdd5",
+	"datastoreId": "ef34ec80-120c-47ad-9c41-e3cac7a9fa4c",
+	"collectionId": "dedc126b-3a2e-4eae-8fa1-e76ccde748c2",
+	"syncRequired": true,
+	"owner": "621623466",
+	"createdBy": "621623466",
+	"createdOn": "2025-09-05T23:16:12.713Z",
+	"updatedOn": "2025-09-05T23:16:12.713Z",
+	"updatedBy": "621623466",
+	"content": {
+		"id": "plan-1757114172524",
+		"createdAt": "2025-09-05T23:16:12.524Z",
+		"updatedAt": "2025-09-05T23:16:12.524Z",
+		"status": "pending",
+		"assignee": null,
+		"createdBy": "Ed Engalan",
+		"createdByUserId": 621623466,
+		"planTitle": "Action Plan - 9/5/2025",
+		"accountId": "001Vq000005wsrZIAQ",
+		"actionId": "7c385648-79dc-4df7-a534-7b4931e99211",
+		"title": "Provide App Studio Training and Enablement for Portal Development",
+		"description": "let's get with Zack on this",
+		"plays": [
+			"Instructor Led Training: Private"
+		],
+		"priority": "medium",
+		"dueDate": null,
+		"createdDate": "2025-09-05T23:16:12.299Z",
+		"actionItems": []
+	}
+}
+
+{
+	"id": "ae3fd5a8-6059-4fde-afa5-f2a907767566",
+	"datastoreId": "ef34ec80-120c-47ad-9c41-e3cac7a9fa4c",
+	"collectionId": "dedc126b-3a2e-4eae-8fa1-e76ccde748c2",
+	"syncRequired": true,
+	"owner": "621623466",
+	"createdBy": "621623466",
+	"createdOn": "2025-09-05T23:16:35.397Z",
+	"updatedOn": "2025-09-05T23:16:35.397Z",
+	"updatedBy": "621623466",
+	"content": {
+		"id": "plan-1757114195201",
+		"createdAt": "2025-09-05T23:16:35.201Z",
+		"updatedAt": "2025-09-05T23:16:35.201Z",
+		"status": "pending",
+		"assignee": null,
+		"createdBy": "Ed Engalan",
+		"createdByUserId": 621623466,
+		"planTitle": "Action Plan - 9/5/2025",
+		"accountId": "0013800001GBkclAAD",
+		"actionId": "047928a2-b442-4fa1-bfbd-d602522c0967",
+		"title": "Implement Advanced Marketing Data Product to enhance their marketing analytics capabilities",
+		"description": "let's reach out to Sharon Allard on this",
+		"plays": [
+			"Advanced Marketing Data Product Start with campaign performance and upgrade to campaign planning."
+		],
+		"priority": "medium",
+		"dueDate": null,
+		"createdDate": "2025-09-05T23:16:34.998Z",
+		"actionItems": []
+	}
+}

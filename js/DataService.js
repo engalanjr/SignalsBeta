@@ -104,28 +104,26 @@ class DataService {
             console.warn('Could not get user info from Domo API, using defaults:', error.message || error);
         }
 
+        // Handle new single-action-per-plan data model
         const newPlan = {
-            id: `plan-${Date.now()}`,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            status: 'Pending',
-            assignee: userName,
-            createdBy: userName,
-            createdByUserId: userId,
+            id: planData.id || `plan-${Date.now()}`,
+            createdAt: planData.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            status: planData.status || 'pending',
+            assignee: planData.assignee || null,
+            createdBy: planData.createdBy || userName,
+            createdByUserId: planData.createdByUserId || userId,
             planTitle: planData.planTitle || `Action Plan - ${new Date().toLocaleDateString()}`,
-            ...planData,
-            // Ensure actionItems are properly structured with action_ids
-            actionItems: planData.actionItems ? planData.actionItems.map(item => {
-                if (typeof item === 'string') {
-                    return { title: item, actionId: null, completed: false, plays: [] };
-                }
-                return {
-                    title: item.title || item,
-                    actionId: item.actionId || null,
-                    completed: item.completed || false,
-                    plays: item.plays || []
-                };
-            }) : []
+            accountId: planData.accountId,
+            signalId: planData.signalId,
+            actionId: planData.actionId,
+            title: planData.title,
+            description: planData.description || '',
+            plays: planData.plays || [],
+            priority: planData.priority || 'medium',
+            dueDate: planData.dueDate || null,
+            createdDate: planData.createdDate || new Date().toISOString(),
+            actionItems: planData.actionItems || [] // Usually empty for new single-action model
         };
 
         try {

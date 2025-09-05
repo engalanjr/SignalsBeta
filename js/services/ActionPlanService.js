@@ -1032,16 +1032,78 @@ class ActionPlanService {
                 console.warn('Could not get user info, using default:', error);
             }
 
+            // Handle new single-action-per-plan data model
+            // In the new model, each plan represents ONE action, not multiple actionItems
+            if (planActionItems.length === 0) {
+                this.showPlanErrorMessage('Please add at least one action to the plan');
+                return;
+            }
+            
+            if (planActionItems.length > 1) {
+                // For the new single-action model, create multiple separate plans
+                // instead of one plan with multiple actionItems
+                for (let i = 0; i < planActionItems.length; i++) {
+                    const singleAction = planActionItems[i];
+                    const singlePlanData = {
+                        id: `plan-${Date.now()}-${i}`,
+                        createdAt: isEdit ? existingPlan.createdAt : new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        status: isEdit ? existingPlan.status : 'pending',
+                        assignee: null,
+                        createdBy: 'Ed Engalan', // This should come from user context
+                        createdByUserId: userId,
+                        planTitle: planTitle || `Action Plan - ${new Date().toLocaleDateString()}`,
+                        accountId: accountId,
+                        actionId: singleAction.actionId,
+                        title: singleAction.title,
+                        description: notes,
+                        plays: singleAction.plays ? singleAction.plays.map(play => play.playName || play.playTitle || play) : [],
+                        priority: 'medium',
+                        dueDate: null,
+                        createdDate: new Date().toISOString(),
+                        actionItems: [] // Empty for new model
+                    };
+                    
+                    const singleResult = await DataService.createActionPlan(singlePlanData);
+                    if (!singleResult || !singleResult.success) {
+                        console.error('Failed to create action plan for action:', singleAction.title);
+                    }
+                }
+                
+                // Show success for multiple plans
+                app.showSuccessMessage(`${planActionItems.length} action plans created successfully!`);
+                this.closePlanDrawer();
+                
+                // Re-render the current tab
+                if (app.currentTab === 'actions') {
+                    ActionsRenderer.renderActions(app);
+                } else if (app.currentTab === 'my-portfolio') {
+                    PortfolioRenderer.renderMyPortfolio(app);
+                }
+                return;
+            }
+            
+            // Single action - create one plan with new data model structure
+            const singleAction = planActionItems[0];
             const planData = {
+                id: `plan-${Date.now()}`,
+                createdAt: isEdit ? existingPlan.createdAt : new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                status: isEdit ? existingPlan.status : 'pending',
+                assignee: null,
+                createdBy: 'Ed Engalan', // This should come from user context
+                createdByUserId: userId,
+                planTitle: planTitle || `Action Plan - ${new Date().toLocaleDateString()}`,
                 accountId: accountId,
                 signalId: signalId,
-                planTitle: planTitle, // Add plan title
-                notes: notes,
-                actionItems: planActionItems,
-                createdAt: isEdit ? existingPlan.createdAt : new Date(),
-                updatedAt: new Date(),
-                status: isEdit ? existingPlan.status : 'Pending',
-                userId: userId // Add userId of the current user
+                actionId: singleAction.actionId,
+                title: singleAction.title,
+                description: notes,
+                plays: singleAction.plays ? singleAction.plays.map(play => play.playName || play.playTitle || play) : [],
+                priority: 'medium',
+                dueDate: null,
+                createdDate: new Date().toISOString(),
+                actionItems: [] // Empty for new model
             };
 
             // Validate the plan data before saving
