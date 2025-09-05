@@ -452,11 +452,17 @@ class PortfolioRenderer {
     static getMergedRecommendationsAndRationale(account) {
         const actionDataMap = new Map();
         
-        console.log(`Processing recommendations for account ${account.name} with ${account.signals.length} signals`);
+        console.log(`DEBUG: Processing recommendations for account ${account.name} (ID: ${account.id}) with ${account.signals.length} signals`);
         
         // Create map of recommended_action to data object with rationale, date, and action_id
         account.signals.forEach((signal, index) => {
-            console.log(`Signal ${index + 1}: recommended_action="${signal.recommended_action}", action_id="${signal.action_id}"`);
+            console.log(`DEBUG Signal ${index + 1}: account_id="${signal.account_id}", recommended_action="${signal.recommended_action}", action_id="${signal.action_id}"`);
+            
+            // Extra validation to ensure signal belongs to this account
+            if (signal.account_id !== account.id) {
+                console.error(`ERROR: Signal ${signal.id} has account_id ${signal.account_id} but is in account ${account.id} signals array!`);
+                return; // Skip this signal as it doesn't belong to this account
+            }
             
             if (signal.recommended_action && 
                 signal.recommended_action.trim() && 
@@ -480,15 +486,19 @@ class PortfolioRenderer {
                         accountId: account.id
                     };
                     actionDataMap.set(action, actionData);
-                    console.log(`Added unique action: "${action}" with rationale and date: ${date}`);
-                    console.log('Recommended action object:', actionData);
+                    console.log(`DEBUG: Added unique action: "${action}" with rationale and date: ${date}`);
+                    console.log('DEBUG: Recommended action object:', actionData);
                 }
+            } else {
+                console.log(`DEBUG: Signal ${index + 1} filtered out - missing required fields`);
             }
         });
         
+        console.log(`DEBUG: Found ${actionDataMap.size} valid action-rationale pairs for account ${account.name}`);
+        
         // If we have action-rationale pairs, display them
         if (actionDataMap.size > 0) {
-            console.log('All recommendation objects for account:', account.name, Array.from(actionDataMap.values()));
+            console.log('DEBUG: All recommendation objects for account:', account.name, Array.from(actionDataMap.values()));
             return Array.from(actionDataMap.entries()).slice(0, 3).map(([action, data]) => `
                 <div class="merged-recommendation-item">
                     <div class="recommendation-action">
@@ -507,18 +517,14 @@ class PortfolioRenderer {
             `).join('');
         }
         
-        // Fallback to separate sections if no paired data
-        const uniqueActions = this.getUniqueRecommendedActions(account);
-        const generalRationale = this.getAccountActionContextRationale(account);
+        console.error(`ERROR: No valid action-rationale pairs found for account ${account.name} (${account.id}). This should not happen if signals are properly filtered.`);
         
+        // DO NOT USE FALLBACK - return empty instead to avoid cross-contamination
         return `
             <div class="merged-recommendation-item">
-                <div class="recommendation-actions-list">
-                    ${uniqueActions.slice(0, 3).map(action => `
-                        <div class="recommendation-action">• ${action}</div>
-                    `).join('')}
+                <div class="no-recommendations-message">
+                    No AI recommendations available for this account.
                 </div>
-                <div class="recommendation-rationale">${generalRationale}</div>
             </div>
         `;
     }
