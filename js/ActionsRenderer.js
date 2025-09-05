@@ -279,8 +279,14 @@ class ActionsRenderer {
         plan.planData.actionItems.forEach((actionItem, index) => {
             // Handle both fallback JSON structure and original structure
             const title = actionItem.title || actionItem.action || actionItem;
-            // Use the real actionId from the data, don't fall back to generic IDs
-            const actionId = actionItem.actionId;
+            
+            // Use real actionId from data, but provide fallback for AI recommendations
+            let actionId = actionItem.actionId;
+            if (!actionId) {
+                // Generate a consistent actionId for AI recommendations based on account and title
+                actionId = this.generateActionIdForAIRecommendation(plan.accountId, title, index);
+                console.log(`Generated actionId for AI recommendation: ${actionId}`);
+            }
             
             // Get CS plays count - try from real JSON data first, then fallback
             let playsCount = 0;
@@ -308,27 +314,43 @@ class ActionsRenderer {
                 assigneeInitials = this.generateAssigneeInitials();
             }
 
-            // Only add tasks that have valid actionIds (from real data)
-            if (actionId) {
-                tasks.push({
-                    id: `${plan.accountId}-${index}`,
-                    title: title,
-                    description: actionItem.rationale ? actionItem.rationale.substring(0, 100) + '...' : 
-                               actionItem.description ? actionItem.description.substring(0, 100) + '...' : '',
-                    actionId: actionId,
-                    dueDate: dueDate.formatted,
-                    overdue: dueDate.overdue,
-                    playsCount: playsCount,
-                    priority: priority,
-                    assigneeInitials: assigneeInitials,
-                    completed: actionItem.completed || false,
-                    accountId: plan.accountId,
-                    rawActionItem: actionItem  // Store reference to original data
-                });
-            }
+            // Add all tasks (real data and AI recommendations now have actionIds)
+            tasks.push({
+                id: `${plan.accountId}-${index}`,
+                title: title,
+                description: actionItem.rationale ? actionItem.rationale.substring(0, 100) + '...' : 
+                           actionItem.description ? actionItem.description.substring(0, 100) + '...' : '',
+                actionId: actionId,
+                dueDate: dueDate.formatted,
+                overdue: dueDate.overdue,
+                playsCount: playsCount,
+                priority: priority,
+                assigneeInitials: assigneeInitials,
+                completed: actionItem.completed || false,
+                accountId: plan.accountId,
+                rawActionItem: actionItem,  // Store reference to original data
+                isAIGenerated: !actionItem.actionId // Flag to identify AI recommendations
+            });
         });
 
         return tasks;
+    }
+    
+    static generateActionIdForAIRecommendation(accountId, title, index) {
+        // Create a hash-like ID based on account and title for consistency
+        const baseString = `${accountId}-${title}-${index}`;
+        const hash = this.simpleHash(baseString);
+        return `ai-rec-${hash}`;
+    }
+    
+    static simpleHash(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return Math.abs(hash).toString(36);
     }
 
     static getPlaysCountForAction(actionId, app) {
