@@ -647,8 +647,6 @@ class PortfolioRenderer {
         }
         
         console.log('Final csPlays array:', csPlays);
-        console.log('csPlays array type check:', Array.isArray(csPlays));
-        console.log('csPlays length:', csPlays.length);
         
         // Show message if no plays found, otherwise show checkboxes
         if (csPlays.length === 0) {
@@ -656,7 +654,6 @@ class PortfolioRenderer {
         } else {
             // Ensure we have a valid array of strings
             const validPlays = csPlays.filter(play => play && typeof play === 'string' && play.trim().length > 0);
-            console.log('Valid plays after filtering:', validPlays);
             
             if (validPlays.length === 0) {
                 playsContainer.innerHTML = '<p class="no-plays-message">No valid plays found.</p>';
@@ -666,7 +663,6 @@ class PortfolioRenderer {
             const playCheckboxes = validPlays.map((play, index) => {
                 // Clean up the play title
                 const cleanPlayTitle = String(play).trim().replace(/\s+/g, ' ');
-                console.log(`Rendering play ${index + 1}:`, cleanPlayTitle);
                 
                 return `
                     <div class="play-checkbox-wrapper">
@@ -678,7 +674,6 @@ class PortfolioRenderer {
                 `;
             }).join('');
             
-            console.log('Generated HTML length:', playCheckboxes.length);
             playsContainer.innerHTML = playCheckboxes;
         }
     }

@@ -1521,6 +1521,7 @@ body {
     gap: 12px;
     width: 100%;
     box-sizing: border-box;
+    flex-wrap: nowrap;
 }
 
 .play-checkbox:hover {
@@ -1545,7 +1546,10 @@ body {
     white-space: normal;
     word-wrap: break-word;
     flex: 1;
-    min-width: 0;
+    min-width: 200px;
+    max-width: none;
+    overflow-wrap: break-word;
+    display: block;
 }
 
 .no-plays-message {
