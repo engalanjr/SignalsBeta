@@ -611,6 +611,9 @@ class PortfolioRenderer {
         drawer.classList.remove('open');
         backdrop.classList.remove('open');
         
+        // Clear any errors when closing
+        this.clearDrawerError();
+        
         window.currentDrawerData = null;
     }
 
@@ -674,6 +677,9 @@ class PortfolioRenderer {
     static async createPlanFromDrawer() {
         if (!window.currentDrawerData) return;
         
+        // Clear any previous errors
+        this.clearDrawerError();
+        
         const actionId = window.currentDrawerData.actionId;
         const actionTitle = window.currentDrawerData.actionTitle;
         const accountId = window.currentDrawerData.accountId;
@@ -698,36 +704,61 @@ class PortfolioRenderer {
         };
         
         try {
+            // Check if Action Plan Service is available
+            if (!window.app || !window.app.dataService || !window.app.dataService.createActionPlan) {
+                this.showDrawerError('Action Plan service is not available. Please refresh the page and try again.');
+                return;
+            }
+            
             // Use the existing Action Plan Service to create the plan
-            if (window.app && window.app.dataService && window.app.dataService.createActionPlan) {
-                const result = await window.app.dataService.createActionPlan(planData);
+            const result = await window.app.dataService.createActionPlan(planData);
+            
+            if (result && result.success) {
+                console.log('Plan created successfully from drawer:', result.plan);
                 
-                if (result.success) {
-                    console.log('Plan created successfully from drawer:', result.plan);
-                    
-                    // Close drawer
-                    this.closeAddToPlanDrawer();
-                    
-                    // Refresh the portfolio view to show updated state
-                    if (window.app && window.app.renderCurrentTab) {
-                        window.app.renderCurrentTab();
-                    }
-                    
-                    // Show success notification
-                    if (window.app.notificationService) {
-                        window.app.notificationService.showNotification('Action plan created successfully!', 'success');
-                    }
-                } else {
-                    console.error('Failed to create plan from drawer:', result.error);
-                    alert('Failed to create action plan. Please try again.');
+                // Close drawer
+                this.closeAddToPlanDrawer();
+                
+                // Refresh the portfolio view to show updated state
+                if (window.app && window.app.renderCurrentTab) {
+                    window.app.renderCurrentTab();
+                }
+                
+                // Show success notification
+                if (window.app.notificationService) {
+                    window.app.notificationService.showNotification('Action plan created successfully!', 'success');
                 }
             } else {
-                console.error('Action Plan service not available');
-                alert('Action Plan service is not available. Please refresh the page and try again.');
+                console.error('Failed to create plan from drawer:', result ? result.error : 'Unknown error');
+                this.showDrawerError('Failed to create action plan. Please check your connection and try again.');
             }
         } catch (error) {
             console.error('Error creating plan from drawer:', error);
-            alert('Error creating action plan. Please try again.');
+            
+            // Handle specific error types for better user experience
+            if (error.message && error.message.includes('Failed to fetch')) {
+                this.showDrawerError('Unable to connect to the server. Please check your internet connection and try again.');
+            } else if (error.message && error.message.includes('404')) {
+                this.showDrawerError('Action Plan service endpoint not found. Please contact your administrator.');
+            } else {
+                this.showDrawerError('An unexpected error occurred while creating the action plan. Please try again.');
+            }
+        }
+    }
+
+    static showDrawerError(message) {
+        const errorElement = document.getElementById('planDrawerError');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+    }
+
+    static clearDrawerError() {
+        const errorElement = document.getElementById('planDrawerError');
+        if (errorElement) {
+            errorElement.style.display = 'none';
+            errorElement.textContent = '';
         }
     }
 

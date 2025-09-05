@@ -257,8 +257,11 @@
                 </div>
                 
                 <div class="plan-drawer-footer">
-                    <button class="btn btn-secondary" onclick="PortfolioRenderer.closeAddToPlanDrawer()">Cancel</button>
-                    <button class="btn btn-primary" onclick="PortfolioRenderer.createPlanFromDrawer()">Create Plan</button>
+                    <div id="planDrawerError" class="plan-drawer-error" style="display: none;"></div>
+                    <div class="plan-drawer-buttons">
+                        <button class="btn btn-secondary" onclick="PortfolioRenderer.closeAddToPlanDrawer()">Cancel</button>
+                        <button class="btn btn-primary" onclick="PortfolioRenderer.createPlanFromDrawer()">Create Plan</button>
+                    </div>
                 </div>
             </div>
         </div>

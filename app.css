@@ -4171,10 +4171,24 @@ body {
 }
 
 .plan-drawer-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
     padding: 20px;
     border-top: 1px solid var(--neutral-gray-200);
     background: var(--neutral-gray-50);
+}
+
+.plan-drawer-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.plan-drawer-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    line-height: 1.4;
 }
