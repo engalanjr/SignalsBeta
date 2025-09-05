@@ -67,6 +67,8 @@ The application runs on port 5000 using a Python HTTP server that:
 - **Added play completion functionality**: Users can now mark individual CS plays as "complete" or "pending" with visual feedback including checkboxes, status badges, and strike-through text for completed plays
 - **Enhanced play status persistence**: Play completion status is saved to action plan data and persists across sessions, with real-time updates to the Action Plans view
 - **Added success/error notifications**: Implemented toast-style notifications for play update operations with proper styling and auto-dismiss functionality
+- **Implemented comprehensive task details modal**: Fixed task modal content to show actual action names instead of "No Title", renamed "Associated CS Plays" to "Sub Tasks", and resolved data structure issues for proper display
+- **Connected task details Save Changes to CRUD methods**: Task property updates (due date, priority, assignee, status) now use ActionPlanService.updateActionPlan() for proper data persistence, with complete error handling and UI refresh functionality
 - Configured deployment settings for autoscale target
 
 ## Deployment

@@ -1147,19 +1147,83 @@ class ActionsRenderer {
             
             console.log('Saving task details:', { dueDate, priority, assignee, status });
             
-            // Update the task data (in real implementation, this would sync with backend)
-            const { taskId } = window.currentTaskData;
+            const { taskId, actionId, actionItem, planData, accountId } = window.currentTaskData;
             
-            // Update the table row visually
-            this.updateTaskRowDisplay(taskId, { dueDate, priority, assignee, status });
+            // Find the action item within the plan and update it
+            const updatedActionItems = planData.actionItems.map((item, index) => {
+                // Handle both string and object action items
+                const itemActionId = typeof item === 'object' && item.actionId ? 
+                    item.actionId : 
+                    this.generateActionIdForAIRecommendation(accountId, typeof item === 'string' ? item : item.title, index);
+                
+                if (itemActionId === actionId) {
+                    // Update this action item with the new task properties
+                    const updatedItem = typeof item === 'string' ? 
+                        { 
+                            title: item, 
+                            actionId: actionId,
+                            dueDate: dueDate,
+                            priority: priority,
+                            assignee: assignee,
+                            status: status,
+                            plays: []
+                        } : 
+                        { 
+                            ...item, 
+                            dueDate: dueDate,
+                            priority: priority,
+                            assignee: assignee,
+                            status: status
+                        };
+                    
+                    console.log('Updated action item:', updatedItem);
+                    return updatedItem;
+                }
+                return item;
+            });
             
-            // Close drawer and show success message
-            this.closeTaskDetailsDrawer();
-            this.showTaskUpdateSuccess();
+            // Prepare the update data for the action plan
+            const updateData = {
+                ...planData,
+                actionItems: updatedActionItems,
+                updatedAt: new Date().toISOString()
+            };
+            
+            console.log('Updating action plan with CRUD method:', planData.id, updateData);
+            
+            // Use ActionPlanService to update the action plan
+            const app = window.app || { 
+                actionPlans: new Map(),
+                showSuccessMessage: (msg) => this.showTaskUpdateSuccess(msg),
+                showErrorMessage: (msg) => this.showTaskUpdateError(msg)
+            };
+            
+            // Import ActionPlanService dynamically if not already available
+            const ActionPlanService = window.ActionPlanService || 
+                (await import('./services/ActionPlanService.js')).default;
+            
+            // Update the action plan using CRUD methods
+            const updatedPlan = await ActionPlanService.updateActionPlan(planData.id, updateData, app);
+            
+            if (updatedPlan) {
+                // Update the table row visually
+                this.updateTaskRowDisplay(taskId, { dueDate, priority, assignee, status });
+                
+                // Close drawer and show success message
+                this.closeTaskDetailsDrawer();
+                this.showTaskUpdateSuccess('Task details updated successfully!');
+                
+                // Re-render the Action Plans tab to reflect changes
+                if (window.app && window.app.renderCurrentTab) {
+                    window.app.renderCurrentTab();
+                }
+            } else {
+                throw new Error('Failed to update action plan');
+            }
             
         } catch (error) {
             console.error('Error saving task details:', error);
-            this.showTaskUpdateError(error.message);
+            this.showTaskUpdateError(error.message || 'Failed to save task details');
         }
     }
     
