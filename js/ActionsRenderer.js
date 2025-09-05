@@ -323,88 +323,82 @@ class ActionsRenderer {
     // Project Management Helper Methods
     static getTasksFromPlan(plan, app) {
         const tasks = [];
-        if (!plan.planData.actionItems) return tasks;
-
-        plan.planData.actionItems.forEach((actionItem, index) => {
-            // Handle both fallback JSON structure and original structure
-            const title = actionItem.title || actionItem.action || actionItem;
-            
-            // Use real actionId from data, but provide fallback for AI recommendations
-            let actionId = actionItem.actionId;
-            // Only use real action IDs from CSV data - no artificial generation
-            if (!actionId) {
-                console.warn(`Skipping action item without actionId: ${title}`);
-                return; // Skip items without real action IDs
-            }
-            
-            // Get CS plays count - try from real JSON data first, then fallback
-            let playsCount = 0;
-            if (actionItem.plays && Array.isArray(actionItem.plays)) {
-                playsCount = actionItem.plays.length;
-            } else {
-                playsCount = this.getPlaysCountForAction(actionId, app);
-            }
-            
-            // Debug log to see what's happening with action and plays data
-            console.log(`Action "${title}" (ID: ${actionId}) has plays:`, actionItem.plays, 'count:', playsCount);
-            
-            // Generate realistic due date (1-14 days from now)
-            const dueDate = this.generateDueDate(index);
-            
-            // Determine priority based on urgency and high priority signals
-            const priority = this.determinePriority(plan, index);
-            
-            // Get assignee initials from plan data or generate
-            let assigneeInitials;
-            if (plan.planData.assignee) {
-                assigneeInitials = plan.planData.assignee === 'Current User' ? 'CU' : 
-                                 this.getInitialsFromName(plan.planData.assignee);
-            } else {
-                assigneeInitials = this.generateAssigneeInitials();
-            }
-
-            // Add all tasks (real data and AI recommendations now have actionIds)
-            tasks.push({
-                id: `${plan.accountId}-${index}`,
+        
+        // Handle new single-action-per-plan data model
+        // Each plan now represents one action, not multiple actionItems
+        if (!plan.planData) return tasks;
+        
+        // In the new model, action data is directly in the plan, not in actionItems array
+        const title = plan.title || plan.planData.title || 'Untitled Action';
+        const actionId = plan.actionId || plan.planData.actionId;
+        
+        // Only include actions with real action IDs from CSV data
+        if (!actionId) {
+            console.warn(`Skipping action without actionId: ${title}`);
+            return tasks;
+        }
+        
+        // Get CS plays count from the plan's plays array
+        let playsCount = 0;
+        const plays = plan.plays || plan.planData.plays || [];
+        if (Array.isArray(plays)) {
+            playsCount = plays.length;
+        } else {
+            playsCount = this.getPlaysCountForAction(actionId, app);
+        }
+        
+        // Debug log to see what's happening with action and plays data
+        console.log(`Action "${title}" (ID: ${actionId}) has plays:`, plays, 'count:', playsCount);
+        
+        // Generate realistic due date
+        const dueDate = this.generateDueDate(0);
+        
+        // Determine priority from plan data
+        const priority = plan.priority || plan.planData.priority || 'Medium';
+        
+        // Get assignee initials from plan data or generate
+        let assigneeInitials;
+        const assignee = plan.assignee || plan.planData.assignee || plan.createdBy || plan.planData.createdBy;
+        if (assignee) {
+            assigneeInitials = assignee === 'Current User' ? 'CU' : this.getInitialsFromName(assignee);
+        } else {
+            assigneeInitials = this.generateAssigneeInitials();
+        }
+        
+        // Create single task from the plan (new single-action-per-plan model)
+        const description = plan.description || plan.planData.description || '';
+        const status = plan.status || plan.planData.status || 'pending';
+        
+        tasks.push({
+            id: plan.id || plan.planData.id || `${plan.accountId}-0`,
+            title: title,
+            description: description.length > 100 ? description.substring(0, 100) + '...' : description,
+            actionId: actionId,
+            dueDate: dueDate.formatted,
+            overdue: dueDate.overdue,
+            playsCount: playsCount,
+            status: this.capitalizeFirstLetter(status),
+            priority: this.capitalizeFirstLetter(priority),
+            assigneeInitials: assigneeInitials,
+            completed: false,
+            accountId: plan.accountId,
+            rawActionItem: {
                 title: title,
-                description: actionItem.rationale ? actionItem.rationale.substring(0, 100) + '...' : 
-                           actionItem.description ? actionItem.description.substring(0, 100) + '...' : '',
                 actionId: actionId,
-                dueDate: dueDate.formatted,
-                overdue: dueDate.overdue,
-                playsCount: playsCount,
-                status: actionItem.status || 'Pending',
-                priority: priority,
-                assigneeInitials: assigneeInitials,
-                completed: actionItem.completed || false,
-                accountId: plan.accountId,
-                rawActionItem: actionItem,  // Store reference to original data
-                isAIGenerated: !actionItem.actionId // Flag to identify AI recommendations
-            });
+                plays: plays,
+                description: description,
+                status: status,
+                priority: priority
+            },
+            isAIGenerated: false // All data is now real from CSV/JSON
         });
-
-        // Sort tasks by Priority (High > Medium > Low) then Due Date ASC
-        return tasks.sort((a, b) => {
-            // Priority order: High = 0, Medium = 1, Low = 2
-            const priorityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
-            const priorityA = priorityOrder[a.priority] !== undefined ? priorityOrder[a.priority] : 1;
-            const priorityB = priorityOrder[b.priority] !== undefined ? priorityOrder[b.priority] : 1;
-            
-            if (priorityA !== priorityB) {
-                return priorityA - priorityB;
-            }
-            
-            // If priority is the same, sort by due date ASC
-            // Handle both date objects and string dates
-            const dateA = new Date(a.dueDate);
-            const dateB = new Date(b.dueDate);
-            
-            // If dates are invalid, treat as far future
-            const timeA = isNaN(dateA.getTime()) ? new Date('2099-12-31').getTime() : dateA.getTime();
-            const timeB = isNaN(dateB.getTime()) ? new Date('2099-12-31').getTime() : dateB.getTime();
-            
-            return timeA - timeB;
-        });
+        
+        return tasks;
+    }
+    
+    static capitalizeFirstLetter(string) {
+        if (!string) return '';
+        return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
     }
     
     // REMOVED - Do not generate fake action IDs
