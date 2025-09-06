@@ -180,6 +180,18 @@ class ActionsRenderer {
     }
 
     static renderProjectManagementTable(actionPlans, app) {
+        // Group plans by account for proper rendering
+        const plansByAccount = new Map();
+        actionPlans.forEach(plan => {
+            const accountId = plan.accountId;
+            if (!plansByAccount.has(accountId)) {
+                plansByAccount.set(accountId, []);
+            }
+            plansByAccount.get(accountId).push(plan);
+        });
+        
+        console.log(`Rendering ${plansByAccount.size} account groups with ${actionPlans.length} total plans`);
+        
         return `
             <div class="project-management-container">
                 <div class="pm-table-header">
@@ -193,28 +205,45 @@ class ActionsRenderer {
                     <div class="pm-header-cell assignee-col">Assignee</div>
                 </div>
                 
-                ${actionPlans.map(plan => this.renderAccountGroup(plan, app)).join('')}
+                ${Array.from(plansByAccount.values()).map(accountPlans => 
+                    this.renderAccountGroup(accountPlans, app)
+                ).join('')}
             </div>
         `;
     }
 
-    static renderAccountGroup(plan, app) {
-        const tasks = this.getTasksFromPlan(plan, app);
+    static renderAccountGroup(accountPlans, app) {
+        // accountPlans is now an array of plans for the same account
+        if (!Array.isArray(accountPlans) || accountPlans.length === 0) {
+            return '';
+        }
+        
+        // Use the first plan for account-level information
+        const firstPlan = accountPlans[0];
+        
+        // Get all tasks from all plans for this account
+        const allTasks = [];
+        accountPlans.forEach(plan => {
+            const tasks = this.getTasksFromPlan(plan, app);
+            allTasks.push(...tasks);
+        });
+        
+        console.log(`Account ${firstPlan.accountName}: Generated ${allTasks.length} tasks from ${accountPlans.length} plans`);
         
         return `
             <div class="account-group">
                 <div class="account-group-header">
                     <div class="account-group-title">
                         <i class="fas fa-chevron-down group-toggle" onclick="ActionsRenderer.toggleGroup(this)"></i>
-                        <span class="account-name">${plan.accountName}</span>
-                        <span class="task-count">${tasks.length} tasks</span>
-                        <span class="account-health health-${plan.accountHealth}">${plan.accountHealth}</span>
-                        <span class="renewal-value">$${app.formatNumber(plan.renewalBaseline)}</span>
+                        <span class="account-name">${firstPlan.accountName}</span>
+                        <span class="task-count">${allTasks.length} tasks</span>
+                        <span class="account-health health-${firstPlan.accountHealth}">${firstPlan.accountHealth}</span>
+                        <span class="renewal-value">$${app.formatNumber(firstPlan.renewalBaseline)}</span>
                     </div>
                 </div>
                 
                 <div class="account-tasks">
-                    ${tasks.map(task => this.renderTaskRow(task, app)).join('')}
+                    ${allTasks.map(task => this.renderTaskRow(task, app)).join('')}
                 </div>
             </div>
         `;
@@ -1941,39 +1970,37 @@ class ActionsRenderer {
     }
 
     static groupFallbackPlansByAccount(formattedPlans) {
-        const grouped = new Map();
-        
         console.log('GROUPING LOGIC: Starting to group plans by account...');
+        console.log(`Input: ${formattedPlans.length} individual plans`);
+        
+        // In the new single-action-per-plan model, each plan represents one task
+        // We should NOT merge plans - instead keep them separate but group for display
+        const grouped = new Map();
         
         for (const plan of formattedPlans) {
             const key = plan.accountId;
             console.log(`  Processing plan for account: ${key} (${plan.accountName})`);
             
-            if (grouped.has(key)) {
-                console.log(`    → Merging with existing plan for account ${key}`);
-                // Merge action items for the same account
-                const existing = grouped.get(key);
-                const existingActionCount = existing.planData.actionItems.length;
-                const newActionCount = plan.planData.actionItems.length;
-                
-                existing.planData.actionItems = [
-                    ...existing.planData.actionItems,
-                    ...plan.planData.actionItems
-                ];
-                
-                console.log(`    → Actions merged: ${existingActionCount} + ${newActionCount} = ${existing.planData.actionItems.length} total`);
-                
-                // Update last updated time if newer
-                if (new Date(plan.lastUpdated) > new Date(existing.lastUpdated)) {
-                    existing.lastUpdated = plan.lastUpdated;
-                }
-            } else {
-                console.log(`    → Creating new grouped plan for account ${key}`);
-                grouped.set(key, plan);
+            if (!grouped.has(key)) {
+                grouped.set(key, []);
             }
+            
+            // Add this plan to the array for this account
+            grouped.get(key).push(plan);
+            console.log(`    → Added plan to account ${key}. Total plans for this account: ${grouped.get(key).length}`);
         }
         
         console.log(`GROUPING COMPLETE: ${grouped.size} unique accounts`);
-        return Array.from(grouped.values());
+        
+        // Convert to array format but keep all individual plans
+        const result = [];
+        for (const [accountId, plans] of grouped) {
+            // For each account, add all its plans to the result
+            result.push(...plans);
+            console.log(`Account ${accountId}: Added ${plans.length} plans to result`);
+        }
+        
+        console.log(`Final result: ${result.length} plans total`);
+        return result;
     }
 }
