@@ -1708,8 +1708,17 @@ class ActionsRenderer {
             const fallbackData = await response.json();
             const formattedPlans = [];
 
+            console.log(`FALLBACK LOADING: Processing ${fallbackData.length} action plan records from JSON`);
+
             // Process each action plan from the JSON
-            for (const record of fallbackData) {
+            for (const [index, record] of fallbackData.entries()) {
+                console.log(`FALLBACK RECORD ${index + 1}:`, {
+                    recordId: record.id,
+                    accountId: record.content?.accountId,
+                    actionId: record.content?.actionId,
+                    title: record.content?.title,
+                    status: record.content?.status
+                });
                 const planContent = record.content;
                 if (!planContent) {
                     continue; // Skip plans with no content
@@ -1777,7 +1786,7 @@ class ActionsRenderer {
                     status: planContent.status || 'pending'
                 };
 
-                formattedPlans.push({
+                const formattedPlan = {
                     accountId: accountId,
                     accountName: accountName,
                     accountHealth: accountHealth,
@@ -1799,11 +1808,30 @@ class ActionsRenderer {
                     },
                     lastUpdated: planContent.updatedAt || planContent.createdAt,
                     nextAction: planContent.title || 'No actions defined'
+                };
+
+                console.log(`FORMATTED PLAN ${index + 1}:`, {
+                    accountId: formattedPlan.accountId,
+                    accountName: formattedPlan.accountName,
+                    actionTitle: planContent.title,
+                    status: formattedPlan.status
                 });
+
+                formattedPlans.push(formattedPlan);
             }
+
+            console.log(`BEFORE GROUPING: ${formattedPlans.length} formatted plans`);
+            formattedPlans.forEach((plan, i) => {
+                console.log(`  Plan ${i + 1}: Account ${plan.accountId} (${plan.accountName}) - ${plan.nextAction}`);
+            });
 
             // Group by account and merge duplicates
             const groupedPlans = this.groupFallbackPlansByAccount(formattedPlans);
+            
+            console.log(`AFTER GROUPING: ${groupedPlans.length} grouped plans`);
+            groupedPlans.forEach((plan, i) => {
+                console.log(`  Grouped Plan ${i + 1}: Account ${plan.accountId} (${plan.accountName}) - ${plan.planData.actionItems.length} actions`);
+            });
             
             return groupedPlans.sort((a, b) => {
                 const urgencyOrder = { critical: 0, high: 1, normal: 2 };
@@ -1873,24 +1901,37 @@ class ActionsRenderer {
     static groupFallbackPlansByAccount(formattedPlans) {
         const grouped = new Map();
         
+        console.log('GROUPING LOGIC: Starting to group plans by account...');
+        
         for (const plan of formattedPlans) {
             const key = plan.accountId;
+            console.log(`  Processing plan for account: ${key} (${plan.accountName})`);
+            
             if (grouped.has(key)) {
+                console.log(`    → Merging with existing plan for account ${key}`);
                 // Merge action items for the same account
                 const existing = grouped.get(key);
+                const existingActionCount = existing.planData.actionItems.length;
+                const newActionCount = plan.planData.actionItems.length;
+                
                 existing.planData.actionItems = [
                     ...existing.planData.actionItems,
                     ...plan.planData.actionItems
                 ];
+                
+                console.log(`    → Actions merged: ${existingActionCount} + ${newActionCount} = ${existing.planData.actionItems.length} total`);
+                
                 // Update last updated time if newer
                 if (new Date(plan.lastUpdated) > new Date(existing.lastUpdated)) {
                     existing.lastUpdated = plan.lastUpdated;
                 }
             } else {
+                console.log(`    → Creating new grouped plan for account ${key}`);
                 grouped.set(key, plan);
             }
         }
         
+        console.log(`GROUPING COMPLETE: ${grouped.size} unique accounts`);
         return Array.from(grouped.values());
     }
 }
