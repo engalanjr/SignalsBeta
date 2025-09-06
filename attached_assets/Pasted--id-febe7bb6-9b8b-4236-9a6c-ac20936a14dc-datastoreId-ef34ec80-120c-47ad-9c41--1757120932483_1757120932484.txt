@@ -56,7 +56,9 @@
       "actionId": "7c385648-79dc-4df7-a534-7b4931e99211",
       "title": "Provide App Studio Training and Enablement for Portal Development",
       "description": "let's get with Zack on this",
-      "plays": ["Instructor Led Training: Private"],
+      "plays": [
+        "Instructor Led Training: Private"
+      ],
       "priority": "medium",
       "dueDate": null,
       "createdDate": "2025-09-05T23:16:12.299Z",
