@@ -1253,26 +1253,62 @@ class ActionsRenderer {
             }
         }
         
-        // Third try: search fallback data
-        const fallbackResult = await this.findTaskInFallbackData(taskId, actionId, app);
-        if (fallbackResult) {
-            return fallbackResult;
+        // Third try: search fallback data (only if API data wasn't loaded successfully)
+        // Check if we're running in development or if API failed to load action plans
+        const shouldUseFallback = this.shouldUseFallbackData(app);
+        if (shouldUseFallback) {
+            const fallbackResult = await this.findTaskInFallbackData(taskId, actionId, app);
+            if (fallbackResult) {
+                return fallbackResult;
+            }
         }
         
         // Last resort: try to reconstruct task data from the task ID
         return this.reconstructTaskData(taskId, actionId, app);
     }
     
+    static shouldUseFallbackData(app) {
+        // Only use fallback if:
+        // 1. We're in development environment (has localhost or specific dev patterns)
+        // 2. OR the API didn't successfully load action plans (empty or failed)
+        const isDevelopment = window.location.hostname === 'localhost' || 
+                             window.location.hostname.includes('replit') ||
+                             window.location.hostname.includes('127.0.0.1');
+        
+        const hasApiData = app.actionPlans && app.actionPlans.size > 0;
+        
+        // Use fallback only in development OR when API failed to load data
+        return isDevelopment || !hasApiData;
+    }
+
     static async findTaskInFallbackData(taskId, actionId, app) {
         try {
+            console.log('Attempting to load fallback data for task search...');
             const response = await fetch('/action-plans-fallback.json');
+            
+            // Check if the response is successful
+            if (!response.ok) {
+                if (response.status === 404) {
+                    console.log('Fallback file not found (404) - this is expected in production');
+                    return null;
+                }
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const fallbackData = await response.json();
+            
+            // Validate that fallbackData is an array before iterating
+            if (!Array.isArray(fallbackData)) {
+                console.error('Fallback data is not an array:', typeof fallbackData);
+                return null;
+            }
             
             for (const record of fallbackData) {
                 const planContent = record.content;
                 if (planContent && planContent.actionItems) {
                     const actionItem = planContent.actionItems.find(item => item.actionId === actionId);
                     if (actionItem) {
+                        console.log('Found task in fallback data:', actionItem);
                         return {
                             taskId,
                             actionId,
@@ -1283,8 +1319,14 @@ class ActionsRenderer {
                     }
                 }
             }
+            
+            console.log('Task not found in fallback data');
         } catch (error) {
-            console.error('Error searching fallback data:', error);
+            if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                console.log('Fallback file not available - this is expected in production');
+            } else {
+                console.error('Error searching fallback data:', error);
+            }
         }
         return null;
     }
