@@ -74,7 +74,9 @@ class ActionsRenderer {
         const actionPlans = [];
 
         // First, process any action plans loaded from Domo API during initialization
-        for (let [accountId, planData] of app.actionPlans) {
+        for (let [planId, planData] of app.actionPlans) {
+            // Extract account ID from plan data (since map key is now planId, not accountId)
+            const accountId = planData.accountId;
             const account = app.accounts.get(accountId);
             if (!account) continue;
 
