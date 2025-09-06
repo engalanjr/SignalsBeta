@@ -517,7 +517,7 @@ class PortfolioRenderer {
             `).join('');
         }
         
-        console.error(`ERROR: No valid action-rationale pairs found for account ${account.name} (${account.id}). This should not happen if signals are properly filtered.`);
+        console.log(`INFO: No valid action-rationale pairs found for account ${account.name} (${account.id}) - account signals may be missing required fields (recommended_action, action_id, signal_rationale).`);
         
         // DO NOT USE FALLBACK - return empty instead to avoid cross-contamination
         return `
