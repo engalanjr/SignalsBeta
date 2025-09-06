@@ -260,6 +260,17 @@ class SignalsAI {
                 PortfolioRenderer.renderMyPortfolio(this);
                 break;
             case 'actions':
+                // Debug: Check if ActionsRenderer is available
+                if (typeof ActionsRenderer === 'undefined') {
+                    console.error('ActionsRenderer is not defined! Checking if script loaded...');
+                    console.log('Available classes:', {
+                        SignalRenderer: typeof SignalRenderer,
+                        PortfolioRenderer: typeof PortfolioRenderer,
+                        ActionsRenderer: typeof ActionsRenderer
+                    });
+                    return;
+                }
+                
                 ActionsRenderer.renderActions(this).catch(error => {
                     console.error('Error rendering actions:', error);
                 });
