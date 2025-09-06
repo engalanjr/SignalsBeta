@@ -473,7 +473,7 @@ class ActionsRenderer {
     }
 
     static getInitialsFromName(fullName) {
-        if (!fullName) return 'UN';
+        if (!fullName || typeof fullName !== 'string') return 'UN';
         
         const parts = fullName.trim().split(' ');
         if (parts.length === 1) {

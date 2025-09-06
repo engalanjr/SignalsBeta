@@ -1,0 +1,32 @@
+ActionsRenderer.js:65 Action Plans for KPI calculation: (4) [{…}, {…}, {…}, {…}]
+ActionsRenderer.js:101 Using 4 action plans loaded from Domo API
+ActionsRenderer.js:366 Action "Implement Finance Advanced Data Product to enhance financial planning and pricing optimization" (ID: 72241a97-f1f0-4048-aeeb-4ff562792a37) has plays: ['Finance Advanced Data Product Start with campaign performance and upgrade to campaign planning.'] count: 1
+SignalsAI.js:275 Error rendering actions: TypeError: fullName.trim is not a function
+    at ActionsRenderer.getInitialsFromName (ActionsRenderer.js:478:32)
+    at ActionsRenderer.getTasksFromPlan (ActionsRenderer.js:378:74)
+    at ActionsRenderer.renderAccountGroup (ActionsRenderer.js:202:28)
+    at ActionsRenderer.js:196:48
+    at Array.map (<anonymous>)
+    at ActionsRenderer.renderProjectManagementTable (ActionsRenderer.js:196:31)
+    at ActionsRenderer.renderActions (ActionsRenderer.js:24:36)
+(anonymous) @ SignalsAI.js:275
+Promise.catch
+renderCurrentTab @ SignalsAI.js:274
+switchTab @ SignalsAI.js:251
+handleTabSwitch @ SignalsAI.js:539
+ActionsRenderer.js:65 Action Plans for KPI calculation: (4) [{…}, {…}, {…}, {…}]
+ActionsRenderer.js:101 Using 4 action plans loaded from Domo API
+ActionsRenderer.js:366 Action "Implement Finance Advanced Data Product to enhance financial planning and pricing optimization" (ID: 72241a97-f1f0-4048-aeeb-4ff562792a37) has plays: ['Finance Advanced Data Product Start with campaign performance and upgrade to campaign planning.'] count: 1
+SignalsAI.js:275 Error rendering actions: TypeError: fullName.trim is not a function
+    at ActionsRenderer.getInitialsFromName (ActionsRenderer.js:478:32)
+    at ActionsRenderer.getTasksFromPlan (ActionsRenderer.js:378:74)
+    at ActionsRenderer.renderAccountGroup (ActionsRenderer.js:202:28)
+    at ActionsRenderer.js:196:48
+    at Array.map (<anonymous>)
+    at ActionsRenderer.renderProjectManagementTable (ActionsRenderer.js:196:31)
+    at ActionsRenderer.renderActions (ActionsRenderer.js:24:36)
+(anonymous) @ SignalsAI.js:275
+Promise.catch
+renderCurrentTab @ SignalsAI.js:274
+switchTab @ SignalsAI.js:251
+(anonymous) @ EventHandlers.js:10
