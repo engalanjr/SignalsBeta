@@ -120,6 +120,9 @@ class ActionsRenderer {
                 console.log('Storing loaded action plans in app state...');
                 fallbackPlans.forEach(plan => {
                     if (plan.accountId && app.actionPlans) {
+                        // Use unique plan ID as key instead of accountId to avoid overwrites
+                        const planId = plan.planData.originalPlanContent.id || plan.planData.id || `plan-${Date.now()}-${Math.random()}`;
+                        
                         // Store the actual plan data with necessary account info, not the wrapper
                         const actualPlanData = {
                             ...plan.planData,
@@ -139,8 +142,8 @@ class ActionsRenderer {
                             createdByUserId: plan.planData.originalPlanContent.createdByUserId
                         };
                         
-                        app.actionPlans.set(plan.accountId, actualPlanData);
-                        console.log(`Stored action plan for account: ${plan.accountName} (${plan.accountId})`);
+                        app.actionPlans.set(planId, actualPlanData);
+                        console.log(`Stored action plan with ID ${planId} for account: ${plan.accountName} (${plan.accountId})`);
                     }
                 });
                 

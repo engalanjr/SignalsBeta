@@ -76,6 +76,8 @@ The application runs on port 5000 using a Python HTTP server that:
 - **Enhanced ActionPlanService with 4-method account resolution system**: Added robust account ID resolution using selectedSignal lookup, signal-to-account mapping, drawer title parsing, and account name matching for graceful fallbacks
 - **Implemented comprehensive data validation system**: Added automatic validation during action plan creation and loading with auto-fix capabilities, pre-save validation, and clear error messaging to prevent future association issues
 - **Added professional task deletion with multi-select functionality**: Implemented Ctrl/Cmd + click multi-selection, right-click context menu for single and bulk deletion, professional confirmation modal with task count display, and full integration with ActionPlanService CRUD operations
+- **Resolved production deployment errors**: Fixed fallback JSON loading, assignee type validation, and portfolio error messaging for clean deployment to Domo production environment
+- **Fixed multiple action plans display issue**: Corrected storage logic that was overwriting plans with same account ID - now uses unique plan IDs as storage keys, allowing multiple tasks per account to display correctly
 - Configured deployment settings for autoscale target
 
 ## Deployment
