@@ -33,17 +33,23 @@ class ActionsRenderer {
             totalElement.textContent = actionPlans.length;
         }
 
-        // Update pending actions count
+        // Update pending actions count (case-insensitive comparison)
         const pendingElement = document.getElementById('pendingActions');
         if (pendingElement) {
-            const pendingCount = actionPlans.filter(plan => plan.status === 'Pending').length;
+            const pendingCount = actionPlans.filter(plan => {
+                const status = plan.status ? plan.status.toLowerCase() : '';
+                return status === 'pending';
+            }).length;
             pendingElement.textContent = pendingCount;
         }
 
-        // Update in progress actions count
+        // Update in progress actions count (case-insensitive comparison)
         const inProgressElement = document.getElementById('inProgressActions');
         if (inProgressElement) {
-            const inProgressCount = actionPlans.filter(plan => plan.status === 'In Progress').length;
+            const inProgressCount = actionPlans.filter(plan => {
+                const status = plan.status ? plan.status.toLowerCase() : '';
+                return status === 'in progress' || status === 'in-progress' || status === 'active';
+            }).length;
             inProgressElement.textContent = inProgressCount;
         }
 
@@ -54,6 +60,14 @@ class ActionsRenderer {
             const impactPercentage = actionPlans.length > 0 ? Math.round(actionPlans.length * 15) : 0;
             impactElement.textContent = `+${impactPercentage}%`;
         }
+
+        // Debug logging to verify status values
+        console.log('Action Plans for KPI calculation:', actionPlans.map(plan => ({
+            accountId: plan.accountId,
+            accountName: plan.accountName,
+            status: plan.status,
+            title: plan.title
+        })));
     }
 
     static async getFormattedActionPlans(app) {
@@ -116,6 +130,7 @@ class ActionsRenderer {
                             plays: plan.planData.originalPlanContent.plays || [],
                             actionId: plan.planData.originalPlanContent.actionId,
                             priority: plan.planData.originalPlanContent.priority || 'medium',
+                            status: plan.planData.originalPlanContent.status || 'pending',  // Preserve status field
                             dueDate: plan.planData.originalPlanContent.dueDate,
                             createdDate: plan.planData.originalPlanContent.createdDate,
                             signalId: plan.planData.originalPlanContent.signalId,
