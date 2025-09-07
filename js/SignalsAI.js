@@ -38,10 +38,12 @@ class SignalsAI {
             const actionPlansResult = await DataService.getActionPlans();
             if (actionPlansResult.success && actionPlansResult.plans && actionPlansResult.plans.length > 0) {
                 console.log(`Loaded ${actionPlansResult.plans.length} action plans from Domo API`);
-                // Populate action plans by account
+                // Populate action plans using unique plan IDs to prevent overwrites
                 actionPlansResult.plans.forEach(plan => {
                     if (plan.accountId) {
-                        this.actionPlans.set(plan.accountId, plan);
+                        // Use unique plan ID as key instead of accountId to prevent overwrites
+                        const planId = plan.id || `plan-${Date.now()}-${Math.random()}`;
+                        this.actionPlans.set(planId, plan);
                     }
                 });
             } else {
@@ -568,10 +570,9 @@ class SignalsAI {
         // Get all plans for this account
         let accountPlans = [];
 
-        // Check Map-based plans
-        if (this.actionPlans instanceof Map && this.actionPlans.has(accountId)) {
-            const plan = this.actionPlans.get(accountId);
-            accountPlans = Array.isArray(plan) ? plan : [plan];
+        // Check Map-based plans (now using plan IDs as keys)
+        if (this.actionPlans instanceof Map) {
+            accountPlans = Array.from(this.actionPlans.values()).filter(plan => plan.accountId === accountId);
         }
 
         // Check Array-based plans

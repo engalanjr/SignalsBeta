@@ -225,7 +225,8 @@ class SignalRenderer {
         
         // Check both Map-based and Array-based action plans
         if (app.actionPlans instanceof Map) {
-            hasActionPlan = app.actionPlans.has(signal.account_id);
+            // Check if any plan exists for this account (now that keys are plan IDs)
+            hasActionPlan = Array.from(app.actionPlans.values()).some(plan => plan.accountId === signal.account_id);
         } else if (Array.isArray(app.actionPlans)) {
             hasActionPlan = app.actionPlans.some(plan => plan.accountId === signal.account_id);
         }
@@ -265,7 +266,8 @@ class SignalRenderer {
         // 3. Created an action plan for this account
         let hasActionPlan = false;
         if (app.actionPlans instanceof Map) {
-            hasActionPlan = app.actionPlans.has(signal.account_id);
+            // Check if any plan exists for this account (now that keys are plan IDs)
+            hasActionPlan = Array.from(app.actionPlans.values()).some(plan => plan.accountId === signal.account_id);
         } else if (Array.isArray(app.actionPlans)) {
             hasActionPlan = app.actionPlans.some(plan => plan.accountId === signal.account_id);
         }
