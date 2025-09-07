@@ -201,7 +201,7 @@ class ActionsRenderer {
             <div class="project-management-container">
                 <div class="pm-table-header">
                     <div class="pm-header-cell checkbox-col">
-                        <input type="checkbox" id="selectAll" onchange="ActionsRenderer.toggleAllTasks(this)">
+                        <input type="checkbox" id="selectAll" onchange="ActionsRenderer.toggleAllActionPlans(this)">
                     </div>
                     <div class="pm-header-cell task-col">Action Plan</div>
                     <div class="pm-header-cell due-date-col">Due Date</div>
@@ -229,7 +229,7 @@ class ActionsRenderer {
         // Get all tasks from all plans for this account
         const allTasks = [];
         accountPlans.forEach(plan => {
-            const tasks = this.getTasksFromPlan(plan, app);
+            const tasks = this.getActionPlansFromPlan(plan, app);
             allTasks.push(...tasks);
         });
         
@@ -370,7 +370,7 @@ class ActionsRenderer {
     }
 
     // Project Management Helper Methods
-    static getTasksFromPlan(plan, app) {
+    static getActionPlansFromPlan(plan, app) {
         const tasks = [];
         
         // Handle new single-action-per-plan data model
@@ -520,7 +520,7 @@ class ActionsRenderer {
     }
 
     // Interactive Methods
-    static toggleAllTasks(checkbox) {
+    static toggleAllActionPlans(checkbox) {
         const taskCheckboxes = document.querySelectorAll('.task-checkbox');
         taskCheckboxes.forEach(cb => {
             cb.checked = checkbox.checked;
