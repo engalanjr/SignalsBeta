@@ -267,6 +267,9 @@ class DataService {
         try {
             console.log('Fetching action plans from Domo AppDB...');
             const response = await domo.get(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents`);
+            
+            // Log the raw domo.get response object for debugging
+            console.log('Raw domo.get response object:', response);
 
             if (response && Array.isArray(response)) {
                 // Handle both direct plan structure and content wrapper structure
