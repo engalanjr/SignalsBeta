@@ -4147,7 +4147,7 @@ body {
 }
 
 /* Checkboxes */
-.task-checkbox {
+.action-plan-checkbox {
     width: 16px;
     height: 16px;
     border-radius: 3px;
@@ -4859,12 +4859,12 @@ body {
     letter-spacing: 0.02em;
 }
 
-/* Task row interaction improvements */
-.task-row .pm-cell {
+/* Action Plan row interaction improvements */
+.action-plan-row .pm-cell {
     transition: all 0.2s ease;
 }
 
-.clickable-task:hover .task-title {
+.clickable-task:hover .action-plan-title {
     color: var(--domo-blue-dark);
     font-weight: 600;
 }

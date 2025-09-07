@@ -267,9 +267,9 @@ class ActionsRenderer {
                            onchange="ActionsRenderer.toggleTaskComplete('${task.id}', this.checked)">
                 </div>
                 <div class="pm-cell task-col">
-                    <div class="task-content">
-                        <span class="task-title">${task.title}</span>
-                        ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
+                    <div class="action-plan-content">
+                        <span class="action-plan-title">${task.title}</span>
+                        ${task.description ? `<div class="action-plan-description">${task.description}</div>` : ''}
                     </div>
                 </div>
                 <div class="pm-cell due-date-col">
@@ -371,7 +371,7 @@ class ActionsRenderer {
 
     // Project Management Helper Methods
     static getActionPlansFromPlan(plan, app) {
-        const tasks = [];
+        const actionPlans = [];
         
         // Handle new single-action-per-plan data model
         // Each plan now represents one action, not multiple actionItems
@@ -384,7 +384,7 @@ class ActionsRenderer {
         // Only include actions with real action IDs from CSV data
         if (!actionId) {
             console.warn(`Skipping action without actionId: ${title}`);
-            return tasks;
+            return actionPlans;
         }
         
         // Get CS plays count from the plan's plays array
@@ -418,7 +418,7 @@ class ActionsRenderer {
         const description = plan.description || plan.planData.description || '';
         const status = plan.status || plan.planData.status || 'pending';
         
-        tasks.push({
+        actionPlans.push({
             id: plan.id || plan.planData.id || `${plan.accountId}-0`,
             title: title,
             description: description.length > 100 ? description.substring(0, 100) + '...' : description,
@@ -442,7 +442,7 @@ class ActionsRenderer {
             isAIGenerated: false // All data is now real from CSV/JSON
         });
         
-        return tasks;
+        return actionPlans;
     }
     
     static capitalizeFirstLetter(string) {
@@ -547,9 +547,9 @@ class ActionsRenderer {
         const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
         if (taskRow) {
             if (completed) {
-                taskRow.classList.add('task-completed');
+                taskRow.classList.add('action-plan-completed');
             } else {
-                taskRow.classList.remove('task-completed');
+                taskRow.classList.remove('action-plan-completed');
             }
         }
         
@@ -1173,14 +1173,14 @@ class ActionsRenderer {
         
         try {
             // Find the task data (now async)
-            const taskData = await this.findTaskData(taskId, actionId, window.app);
-            if (!taskData) {
+            const actionPlanData = await this.findTaskData(taskId, actionId, window.app);
+            if (!actionPlanData) {
                 console.error('Could not find task data for:', { taskId, actionId });
                 this.showTaskUpdateError('Task data not found');
                 return;
             }
             
-            console.log('Found task data:', taskData);
+            console.log('Found action plan data:', actionPlanData);
             
             // Create or get drawer elements
             let drawer = document.getElementById('taskDetailsDrawer');
@@ -1193,7 +1193,7 @@ class ActionsRenderer {
             }
             
             // Populate drawer content
-            this.populateTaskDetailsDrawer(taskData);
+            this.populateTaskDetailsDrawer(actionPlanData);
             
             // Show drawer
             if (drawer && backdrop) {
@@ -1398,13 +1398,13 @@ class ActionsRenderer {
         };
     }
     
-    static populateTaskDetailsDrawer(taskData) {
+    static populateTaskDetailsDrawer(actionPlanData) {
         const container = document.getElementById('taskDetailsContent');
         if (!container) return;
         
-        console.log('Populating task details drawer with data:', taskData);
+        console.log('Populating action plan details drawer with data:', actionPlanData);
         
-        const { taskId, actionId, actionItem, planData } = taskData;
+        const { taskId, actionId, actionItem, planData } = actionPlanData;
         
         // Safely access plays with fallback - handle both string and object actionItem
         const plays = (typeof actionItem === 'object' && actionItem.plays) ? actionItem.plays : [];
@@ -1520,7 +1520,7 @@ class ActionsRenderer {
         container.innerHTML = html;
         
         // Store current task data for saving
-        window.currentTaskData = taskData;
+        window.currentActionPlanData = actionPlanData;
     }
     
     static convertToDateValue(dateString) {
@@ -1554,11 +1554,11 @@ class ActionsRenderer {
         }
         
         // Clear stored task data
-        window.currentTaskData = null;
+        window.currentActionPlanData = null;
     }
     
     static async saveTaskDetails() {
-        if (!window.currentTaskData) {
+        if (!window.currentActionPlanData) {
             console.error('No task data to save');
             return;
         }
@@ -1572,7 +1572,7 @@ class ActionsRenderer {
             
             console.log('Saving task details:', { dueDate, priority, assignee, status });
             
-            const { taskId, actionId, actionItem, planData, accountId } = window.currentTaskData;
+            const { taskId, actionId, actionItem, planData, accountId } = window.currentActionPlanData;
             
             // Find the action item within the plan and update it
             const updatedActionItems = planData.actionItems.map((item, index) => {
@@ -1701,11 +1701,11 @@ class ActionsRenderer {
         
         // Update task completion status
         if (updates.status === 'Complete') {
-            taskRow.classList.add('task-completed');
+            taskRow.classList.add('action-plan-completed');
             const checkbox = taskRow.querySelector('.task-checkbox');
             if (checkbox) checkbox.checked = true;
         } else {
-            taskRow.classList.remove('task-completed');
+            taskRow.classList.remove('action-plan-completed');
             const checkbox = taskRow.querySelector('.task-checkbox');
             if (checkbox) checkbox.checked = false;
         }
