@@ -467,6 +467,39 @@ class ActionsRenderer {
         return count;
     }
 
+    static getPlaysDataForAction(actionId, app) {
+        if (!actionId || !app.data) return [];
+        
+        // Find signal with this action_id to get plays data
+        const signal = app.data.find(s => s.action_id === actionId);
+        if (!signal) return [];
+
+        const plays = [];
+        if (signal.play_1_name && signal.play_1_name.trim()) {
+            plays.push({
+                playId: `play_${actionId}_1`,
+                playName: signal.play_1_name.trim(),
+                playTitle: signal.play_1_name.trim()
+            });
+        }
+        if (signal.play_2_name && signal.play_2_name.trim()) {
+            plays.push({
+                playId: `play_${actionId}_2`,
+                playName: signal.play_2_name.trim(),
+                playTitle: signal.play_2_name.trim()
+            });
+        }
+        if (signal.play_3_name && signal.play_3_name.trim()) {
+            plays.push({
+                playId: `play_${actionId}_3`,
+                playName: signal.play_3_name.trim(),
+                playTitle: signal.play_3_name.trim()
+            });
+        }
+        
+        return plays;
+    }
+
     static generateDueDate(index) {
         const today = new Date();
         const daysToAdd = Math.floor(Math.random() * 14) + 1; // 1-14 days
@@ -1372,11 +1405,14 @@ class ActionsRenderer {
         const accountId = taskId.split('-')[0];
         const taskIndex = parseInt(taskId.split('-')[1]) || 0;
         
+        // Get plays data from signal based on actionId
+        const playsData = this.getPlaysDataForAction(actionId, app);
+        
         // Create a basic action item structure
         const actionItem = {
             title: `Generated Action ${taskIndex + 1}`,
             actionId: actionId,
-            plays: [], // Empty plays array to prevent undefined error
+            plays: playsData, // Use actual plays data instead of empty array
             completed: false
         };
         
