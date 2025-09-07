@@ -1471,7 +1471,7 @@ class ActionsRenderer {
             </div>
             
             <div class="task-details-section">
-                <h3><i class="fas fa-tasks"></i> Sub Tasks (${plays.length})</h3>
+                <h3><i class="fas fa-tasks"></i> CS Plays (${plays.length})</h3>
                 <div class="plays-management">
         `;
         
@@ -1479,7 +1479,7 @@ class ActionsRenderer {
             html += `
                 <div class="no-plays-message">
                     <i class="fas fa-info-circle"></i>
-                    No sub tasks are associated with this task.
+                    No CS plays are associated with this action plan.
                 </div>
             `;
         } else {
