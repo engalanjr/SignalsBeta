@@ -203,9 +203,9 @@ class ActionsRenderer {
                     <div class="pm-header-cell checkbox-col">
                         <input type="checkbox" id="selectAll" onchange="ActionsRenderer.toggleAllTasks(this)">
                     </div>
-                    <div class="pm-header-cell task-col">Task</div>
+                    <div class="pm-header-cell task-col">Action Plan</div>
                     <div class="pm-header-cell due-date-col">Due Date</div>
-                    <div class="pm-header-cell status-col">Task Status</div>
+                    <div class="pm-header-cell status-col">Status</div>
                     <div class="pm-header-cell priority-col">Priority</div>
                     <div class="pm-header-cell assignee-col">Assignee</div>
                 </div>
@@ -241,7 +241,7 @@ class ActionsRenderer {
                     <div class="account-group-title">
                         <i class="fas fa-chevron-down group-toggle" onclick="ActionsRenderer.toggleGroup(this)"></i>
                         <span class="account-name">${firstPlan.accountName}</span>
-                        <span class="task-count">${allTasks.length} tasks</span>
+                        <span class="task-count">${allTasks.length} action plans</span>
                         <span class="account-health health-${firstPlan.accountHealth}">${firstPlan.accountHealth}</span>
                         <span class="renewal-value">$${app.formatNumber(firstPlan.renewalBaseline)}</span>
                     </div>
