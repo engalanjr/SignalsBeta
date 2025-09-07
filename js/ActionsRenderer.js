@@ -1583,6 +1583,9 @@ class ActionsRenderer {
                 
                 if (itemActionId === actionId) {
                     // Update this action item with the new task properties
+                    // Preserve existing plays from the original actionItem
+                    const originalPlays = actionItem && actionItem.plays ? actionItem.plays : [];
+                    
                     const updatedItem = typeof item === 'string' ? 
                         { 
                             title: item, 
@@ -1591,7 +1594,7 @@ class ActionsRenderer {
                             priority: priority,
                             assignee: assignee,
                             status: status,
-                            plays: []
+                            plays: originalPlays  // Preserve original plays instead of empty array
                         } : 
                         { 
                             ...item, 
