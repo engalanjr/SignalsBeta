@@ -449,6 +449,18 @@ class PortfolioRenderer {
         return text;
     }
 
+    static isActionAlreadyInPlan(actionId, app) {
+        // Check if this actionId already exists in any action plan
+        if (!app || !app.actionPlans) return false;
+        
+        for (let [planId, planData] of app.actionPlans) {
+            if (planData && planData.actionId === actionId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     static getMergedRecommendationsAndRationale(account) {
         const actionDataMap = new Map();
         
@@ -507,9 +519,12 @@ class PortfolioRenderer {
                         </div>
                         <div class="action-controls">
                             <span class="recommendation-date">${window.app ? window.app.formatDateSimple(data.date) : data.date}</span>
-                            <button class="btn-add-to-plan" data-action-id="${data.actionId}" data-action-title="${action}" data-account-id="${data.accountId}" onclick="PortfolioRenderer.openAddToPlanDrawer('${data.actionId}', '${action.replace(/'/g, "\\'")}', '${data.accountId}')">
-                                Add to Plan
-                            </button>
+                            ${this.isActionAlreadyInPlan(data.actionId, window.app) ? 
+                                `<span class="btn-added-status">Added!</span>` : 
+                                `<button class="btn-add-to-plan" data-action-id="${data.actionId}" data-action-title="${action}" data-account-id="${data.accountId}" onclick="PortfolioRenderer.openAddToPlanDrawer('${data.actionId}', '${action.replace(/'/g, "\\'")}', '${data.accountId}')">
+                                    Add to Plan
+                                </button>`
+                            }
                         </div>
                     </div>
                     <div class="recommendation-rationale">${data.rationale}</div>
