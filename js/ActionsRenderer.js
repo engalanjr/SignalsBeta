@@ -227,13 +227,13 @@ class ActionsRenderer {
         const firstPlan = accountPlans[0];
         
         // Get all tasks from all plans for this account
-        const allTasks = [];
+        const allActionPlans = [];
         accountPlans.forEach(plan => {
             const tasks = this.getActionPlansFromPlan(plan, app);
-            allTasks.push(...tasks);
+            allActionPlans.push(...tasks);
         });
         
-        console.log(`Account ${firstPlan.accountName}: Generated ${allTasks.length} tasks from ${accountPlans.length} plans`);
+        console.log(`Account ${firstPlan.accountName}: Generated ${allActionPlans.length} tasks from ${accountPlans.length} plans`);
         
         return `
             <div class="account-group">
@@ -241,14 +241,14 @@ class ActionsRenderer {
                     <div class="account-group-title">
                         <i class="fas fa-chevron-down group-toggle" onclick="ActionsRenderer.toggleGroup(this)"></i>
                         <span class="account-name">${firstPlan.accountName}</span>
-                        <span class="task-count">${allTasks.length} action plans</span>
+                        <span class="task-count">${allActionPlans.length} action plans</span>
                         <span class="account-health health-${firstPlan.accountHealth}">${firstPlan.accountHealth}</span>
                         <span class="renewal-value">$${app.formatNumber(firstPlan.renewalBaseline)}</span>
                     </div>
                 </div>
                 
-                <div class="account-tasks">
-                    ${allTasks.map(task => this.renderTaskRow(task, app)).join('')}
+                <div class="account-action-plans">
+                    ${allActionPlans.map(task => this.renderTaskRow(task, app)).join('')}
                 </div>
             </div>
         `;
@@ -256,14 +256,14 @@ class ActionsRenderer {
 
     static renderTaskRow(task, app) {
         return `
-            <div class="pm-table-row task-row clickable-task" 
+            <div class="pm-table-row action-plan-row clickable-task" 
                  data-task-id="${task.id}" 
                  data-action-id="${task.actionId}"
                  onclick="ActionsRenderer.handleTaskRowClick(event, '${task.id}', '${task.actionId}')"
                  oncontextmenu="ActionsRenderer.handleTaskRightClick(event, '${task.id}', '${task.actionId}')"
                  data-selectable="true">
                 <div class="pm-cell checkbox-col" onclick="event.stopPropagation()">
-                    <input type="checkbox" class="task-checkbox" 
+                    <input type="checkbox" class="action-plan-checkbox" 
                            onchange="ActionsRenderer.toggleTaskComplete('${task.id}', this.checked)">
                 </div>
                 <div class="pm-cell task-col">
@@ -521,16 +521,16 @@ class ActionsRenderer {
 
     // Interactive Methods
     static toggleAllActionPlans(checkbox) {
-        const taskCheckboxes = document.querySelectorAll('.task-checkbox');
+        const taskCheckboxes = document.querySelectorAll('.action-plan-checkbox');
         taskCheckboxes.forEach(cb => {
             cb.checked = checkbox.checked;
-            this.toggleTaskComplete(cb.closest('.task-row').dataset.taskId, cb.checked);
+            this.toggleTaskComplete(cb.closest('.action-plan-row').dataset.taskId, cb.checked);
         });
     }
 
     static toggleGroup(chevron) {
         const group = chevron.closest('.account-group');
-        const tasks = group.querySelector('.account-tasks');
+        const tasks = group.querySelector('.account-action-plans');
         
         if (tasks.style.display === 'none') {
             tasks.style.display = 'block';
