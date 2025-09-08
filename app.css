@@ -4156,13 +4156,19 @@ body {
     accent-color: var(--domo-blue);
 }
 
-#selectAll {
-    width: 16px;
-    height: 16px;
-    border-radius: 3px;
-    border: 2px solid var(--neutral-gray-300);
-    cursor: pointer;
-    accent-color: var(--domo-blue);
+/* Completed Task Styling */
+.action-plan-completed .action-plan-title {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.action-plan-completed .action-plan-description {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.action-plan-completed {
+    opacity: 0.8;
 }
 
 /* Responsive Design */

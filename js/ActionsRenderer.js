@@ -200,9 +200,7 @@ class ActionsRenderer {
         return `
             <div class="project-management-container">
                 <div class="pm-table-header">
-                    <div class="pm-header-cell checkbox-col">
-                        <input type="checkbox" id="selectAll" onchange="ActionsRenderer.toggleAllActionPlans(this)">
-                    </div>
+                    <div class="pm-header-cell checkbox-col"></div>
                     <div class="pm-header-cell task-col">Action Plan</div>
                     <div class="pm-header-cell due-date-col">Due Date</div>
                     <div class="pm-header-cell status-col">Status</div>
@@ -553,13 +551,6 @@ class ActionsRenderer {
     }
 
     // Interactive Methods
-    static toggleAllActionPlans(checkbox) {
-        const taskCheckboxes = document.querySelectorAll('.action-plan-checkbox');
-        taskCheckboxes.forEach(cb => {
-            cb.checked = checkbox.checked;
-            this.toggleTaskComplete(cb.closest('.action-plan-row').dataset.taskId, cb.checked);
-        });
-    }
 
     static toggleGroup(chevron) {
         const group = chevron.closest('.account-group');
@@ -576,18 +567,111 @@ class ActionsRenderer {
         }
     }
 
-    static toggleTaskComplete(taskId, completed) {
+    static async toggleTaskComplete(taskId, completed) {
         const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
-        if (taskRow) {
-            if (completed) {
-                taskRow.classList.add('action-plan-completed');
-            } else {
-                taskRow.classList.remove('action-plan-completed');
-            }
+        if (!taskRow) return;
+        
+        const actionId = taskRow.dataset.actionId;
+        
+        // Get current status before changing it
+        const statusBadge = taskRow.querySelector('.status-badge');
+        const currentStatus = statusBadge ? statusBadge.textContent.trim() : 'Pending';
+        
+        // Store previous status on the element if we haven't already
+        if (!taskRow.dataset.previousStatus && currentStatus !== 'Complete') {
+            taskRow.dataset.previousStatus = currentStatus;
         }
         
-        // Update task completion in data (if we implement persistence)
-        console.log(`Task ${taskId} marked as ${completed ? 'completed' : 'incomplete'}`);
+        // Determine new status
+        let newStatus;
+        if (completed) {
+            newStatus = 'Complete';
+            taskRow.classList.add('action-plan-completed');
+        } else {
+            // Restore previous status or default to 'Pending'
+            newStatus = taskRow.dataset.previousStatus || 'Pending';
+            taskRow.classList.remove('action-plan-completed');
+            // Clear the stored previous status since we're back to original state
+            delete taskRow.dataset.previousStatus;
+        }
+        
+        // Update the status badge immediately for responsive UI
+        if (statusBadge) {
+            statusBadge.textContent = newStatus;
+            statusBadge.className = `status-badge status-${newStatus.toLowerCase().replace(' ', '-')}`;
+        }
+        
+        console.log(`Task ${taskId} status changing from "${currentStatus}" to "${newStatus}"`);
+        
+        // Find the action plan and update it via ActionPlanService
+        try {
+            const app = window.signalsAI;
+            if (!app) {
+                console.error('SignalsAI app instance not found');
+                return;
+            }
+            
+            // Find the plan ID associated with this task
+            let planId = null;
+            let planData = null;
+            
+            // Search through action plans to find the one containing this action
+            for (let [id, plan] of app.actionPlans) {
+                if (plan.actionItems && Array.isArray(plan.actionItems)) {
+                    const actionItem = plan.actionItems.find(item => item.actionId === actionId);
+                    if (actionItem) {
+                        planId = id;
+                        planData = plan;
+                        break;
+                    }
+                }
+            }
+            
+            if (planId && planData) {
+                // Update the action item status within the plan
+                const actionItem = planData.actionItems.find(item => item.actionId === actionId);
+                if (actionItem) {
+                    actionItem.status = newStatus;
+                    
+                    // Update the entire plan with the new action item status
+                    const updateResult = await ActionPlanService.updateActionPlan(planId, {
+                        actionItems: planData.actionItems,
+                        status: planData.status, // Keep the overall plan status unchanged
+                        updatedAt: new Date().toISOString()
+                    }, app);
+                    
+                    if (updateResult.success) {
+                        console.log(`Successfully updated action plan status for task ${taskId} to ${newStatus}`);
+                    } else {
+                        console.error('Failed to update action plan:', updateResult.error);
+                        // Revert UI changes if save failed
+                        if (completed) {
+                            taskRow.classList.remove('action-plan-completed');
+                        } else {
+                            taskRow.classList.add('action-plan-completed');
+                        }
+                        if (statusBadge) {
+                            statusBadge.textContent = currentStatus;
+                            statusBadge.className = `status-badge status-${currentStatus.toLowerCase().replace(' ', '-')}`;
+                        }
+                    }
+                }
+            } else {
+                console.warn(`Could not find action plan for task ${taskId} with action ${actionId}`);
+            }
+        } catch (error) {
+            console.error('Error updating action plan status:', error);
+            // Revert UI changes if save failed
+            if (completed) {
+                taskRow.classList.remove('action-plan-completed');
+            } else {
+                taskRow.classList.add('action-plan-completed');
+            }
+            if (statusBadge) {
+                statusBadge.textContent = currentStatus;
+                statusBadge.className = `status-badge status-${currentStatus.toLowerCase().replace(' ', '-')}`;
+            }
+        }
     }
 
     // === MULTI-SELECT AND RIGHT-CLICK FUNCTIONALITY ===
