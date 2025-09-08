@@ -169,8 +169,14 @@ class DataService {
         }
 
         // Find the plan to update
+        console.log(`DEBUG: DataService searching for planId "${planId}" in array of ${this.actionPlans.length} plans`);
+        this.actionPlans.forEach((plan, index) => {
+            console.log(`DEBUG: Array plan ${index}: ID="${plan.id}" Status="${plan.status}"`);
+        });
+        
         const planIndex = this.actionPlans.findIndex(plan => plan.id === planId);
         if (planIndex === -1) {
+            console.log(`DEBUG: Plan "${planId}" not found in DataService.actionPlans array`);
             return { success: false, error: 'Action plan not found' };
         }
 
