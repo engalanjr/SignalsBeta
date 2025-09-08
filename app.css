@@ -1527,8 +1527,9 @@ body {
 
 .action-plan-content {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
 }
 
 .action-plan-description {
