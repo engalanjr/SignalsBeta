@@ -616,44 +616,40 @@ class ActionsRenderer {
             let planData = null;
             
             // Search through action plans to find the one containing this action
+            // Handle new single-action-per-plan data model where each plan represents one action
             for (let [id, plan] of app.actionPlans) {
-                if (plan.actionItems && Array.isArray(plan.actionItems)) {
-                    const actionItem = plan.actionItems.find(item => item.actionId === actionId);
-                    if (actionItem) {
-                        planId = id;
-                        planData = plan;
-                        break;
-                    }
+                // Check if this plan's actionId matches the task's actionId
+                const planActionId = plan.actionId || plan.planData?.actionId;
+                if (planActionId === actionId) {
+                    planId = id;
+                    planData = plan;
+                    break;
                 }
             }
             
             if (planId && planData) {
-                // Update the action item status within the plan
-                const actionItem = planData.actionItems.find(item => item.actionId === actionId);
-                if (actionItem) {
-                    actionItem.status = newStatus;
-                    
-                    // Update the entire plan with the new action item status
-                    const updateResult = await ActionPlanService.updateActionPlan(planId, {
-                        actionItems: planData.actionItems,
-                        status: planData.status, // Keep the overall plan status unchanged
-                        updatedAt: new Date().toISOString()
-                    }, app);
-                    
-                    if (updateResult.success) {
-                        console.log(`Successfully updated action plan status for task ${taskId} to ${newStatus}`);
+                // Update the plan's status directly (new single-action-per-plan model)
+                planData.status = newStatus;
+                
+                // Update the entire plan with the new status
+                const updateResult = await ActionPlanService.updateActionPlan(planId, {
+                    status: newStatus,
+                    updatedAt: new Date().toISOString()
+                }, app);
+                
+                if (updateResult.success) {
+                    console.log(`Successfully updated action plan status for task ${taskId} to ${newStatus}`);
+                } else {
+                    console.error('Failed to update action plan:', updateResult.error);
+                    // Revert UI changes if save failed
+                    if (completed) {
+                        taskRow.classList.remove('action-plan-completed');
                     } else {
-                        console.error('Failed to update action plan:', updateResult.error);
-                        // Revert UI changes if save failed
-                        if (completed) {
-                            taskRow.classList.remove('action-plan-completed');
-                        } else {
-                            taskRow.classList.add('action-plan-completed');
-                        }
-                        if (statusBadge) {
-                            statusBadge.textContent = currentStatus;
-                            statusBadge.className = `status-badge status-${currentStatus.toLowerCase().replace(' ', '-')}`;
-                        }
+                        taskRow.classList.add('action-plan-completed');
+                    }
+                    if (statusBadge) {
+                        statusBadge.textContent = currentStatus;
+                        statusBadge.className = `status-badge status-${currentStatus.toLowerCase().replace(' ', '-')}`;
                     }
                 }
             } else {
