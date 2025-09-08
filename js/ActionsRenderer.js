@@ -266,7 +266,7 @@ class ActionsRenderer {
                 </div>
                 <div class="pm-cell task-col">
                     <div class="action-plan-content">
-                        <span class="action-plan-title">${task.title}</span>
+                        <div class="action-plan-title">${task.title}</div>
                         ${task.description ? `<div class="action-plan-description">${task.description}</div>` : ''}
                     </div>
                 </div>
@@ -605,7 +605,7 @@ class ActionsRenderer {
         
         // Find the action plan and update it via ActionPlanService
         try {
-            const app = window.signalsAI;
+            const app = window.app;
             if (!app) {
                 console.error('SignalsAI app instance not found');
                 return;
