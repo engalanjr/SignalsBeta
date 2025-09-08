@@ -120,6 +120,9 @@ class ActionsRenderer {
                 
                 // Store the fallback plans in the app's action plans map
                 console.log('Storing loaded action plans in app state...');
+                
+                // Clear DataService array first to avoid duplicates
+                DataService.actionPlans.length = 0;
                 fallbackPlans.forEach(plan => {
                     if (plan.accountId && app.actionPlans) {
                         // Use unique plan ID as key instead of accountId to avoid overwrites
@@ -145,6 +148,15 @@ class ActionsRenderer {
                         };
                         
                         app.actionPlans.set(planId, actualPlanData);
+                        
+                        // CRITICAL: Synchronize with DataService.actionPlans array
+                        // Ensure the plan has the correct ID structure for DataService
+                        const dataServicePlan = {
+                            ...actualPlanData,
+                            id: planId // Ensure ID is set for DataService array lookup
+                        };
+                        DataService.actionPlans.push(dataServicePlan);
+                        
                         console.log(`Stored action plan with ID ${planId} for account: ${plan.accountName} (${plan.accountId})`);
                     }
                 });
