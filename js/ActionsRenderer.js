@@ -617,14 +617,26 @@ class ActionsRenderer {
             
             // Search through action plans to find the one containing this action
             // Handle new single-action-per-plan data model where each plan represents one action
+            console.log(`DEBUG: Searching for actionId "${actionId}" in ${app.actionPlans.size} plans`);
+            
             for (let [id, plan] of app.actionPlans) {
                 // Check if this plan's actionId matches the task's actionId
                 const planActionId = plan.actionId || plan.planData?.actionId;
+                console.log(`DEBUG: Plan ID "${id}" has actionId "${planActionId}"`);
+                
                 if (planActionId === actionId) {
                     planId = id;
                     planData = plan;
+                    console.log(`DEBUG: Found matching plan with ID "${planId}"`);
                     break;
                 }
+            }
+            
+            // If we didn't find by actionId, try to find by the task ID itself (fallback)
+            if (!planId && app.actionPlans.has(taskId)) {
+                planId = taskId;
+                planData = app.actionPlans.get(taskId);
+                console.log(`DEBUG: Found plan using taskId "${taskId}" as fallback`);
             }
             
             if (planId && planData) {
