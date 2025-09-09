@@ -1784,16 +1784,12 @@ class ActionsRenderer {
                 }
             } else {
                 console.error(`Failed to auto-save ${propertyName}:`, result ? result.error : 'Unknown error');
-                // Optionally show a notification to the user about the save failure
-                if (window.app && window.app.notificationService) {
-                    window.app.notificationService.showNotification(`Failed to save ${propertyName} change`, 'error');
-                }
+                // Show error notification to the user about the save failure
+                NotificationService.showError(`Failed to save ${propertyName} change`);
             }
         } catch (error) {
             console.error(`Error auto-saving ${propertyName}:`, error);
-            if (window.app && window.app.notificationService) {
-                window.app.notificationService.showNotification(`Error saving ${propertyName} change`, 'error');
-            }
+            NotificationService.showError(`Error saving ${propertyName} change`);
         }
     }
     
@@ -1857,10 +1853,8 @@ class ActionsRenderer {
                 }
                 
                 // Show success notification
-                if (window.app && window.app.notificationService) {
-                    const statusText = isChecked ? 'completed' : 'pending';
-                    window.app.notificationService.showNotification(`Play marked as ${statusText}`, 'success');
-                }
+                const statusText = isChecked ? 'completed' : 'pending';
+                NotificationService.showSuccess(`Play marked as ${statusText}`);
             } else {
                 console.error('Failed to update play completion:', result ? result.error : 'Unknown error');
                 
@@ -1879,15 +1873,11 @@ class ActionsRenderer {
                     checkbox.checked = !isChecked;
                 }
                 
-                if (window.app && window.app.notificationService) {
-                    window.app.notificationService.showNotification('Failed to update play status', 'error');
-                }
+                NotificationService.showError('Failed to update play status');
             }
         } catch (error) {
             console.error('Error toggling play completion:', error);
-            if (window.app && window.app.notificationService) {
-                window.app.notificationService.showNotification('Error updating play status', 'error');
-            }
+            NotificationService.showError('Error updating play status');
         }
     }
     
