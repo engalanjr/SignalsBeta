@@ -1516,9 +1516,19 @@ class ActionsRenderer {
         // Get plays data from signal based on actionId
         const playsData = this.getPlaysDataForAction(actionId, app);
         
+        // Get actual action title from signal data
+        let actionTitle = `Generated Action ${taskIndex + 1}`; // fallback
+        
+        if (app && app.allSignals) {
+            const signal = app.allSignals.find(s => s.id === actionId);
+            if (signal) {
+                actionTitle = signal.recommended_action || signal.action_context || signal.name || actionTitle;
+            }
+        }
+        
         // Create a basic action item structure
         const actionItem = {
-            title: `Generated Action ${taskIndex + 1}`,
+            title: actionTitle,
             actionId: actionId,
             plays: playsData, // Use actual plays data instead of empty array
             completed: false
@@ -1714,7 +1724,9 @@ class ActionsRenderer {
             if (updates.dueDate) {
                 const dueDateElement = taskRow.querySelector('.due-date');
                 if (dueDateElement) {
-                    dueDateElement.textContent = updates.dueDate || 'Not Set';
+                    // Format the date properly for display
+                    const formattedDate = this.formatDateForDisplay(updates.dueDate);
+                    dueDateElement.textContent = formattedDate || 'Not Set';
                 }
             }
             
@@ -1841,6 +1853,23 @@ class ActionsRenderer {
                 currentData: window.currentActionPlanData
             });
             NotificationService.showError(`Error saving ${propertyName} change`);
+        }
+    }
+    
+    static formatDateForDisplay(dateValue) {
+        if (!dateValue || dateValue === 'Not Set') return 'Not Set';
+        
+        try {
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) return 'Not Set';
+            
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch (error) {
+            console.error('Error formatting date:', error);
+            return 'Not Set';
         }
     }
     
