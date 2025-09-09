@@ -1695,6 +1695,46 @@ class ActionsRenderer {
         window.currentActionPlanData = null;
     }
     
+    // Helper method to update task row display immediately
+    static updateTaskRowDisplay(taskId, updates) {
+        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (!taskRow) return;
+        
+        try {
+            if (updates.dueDate) {
+                const dueDateElement = taskRow.querySelector('.due-date');
+                if (dueDateElement) {
+                    dueDateElement.textContent = updates.dueDate || 'Not Set';
+                }
+            }
+            
+            if (updates.priority) {
+                const priorityElement = taskRow.querySelector('.priority-badge');
+                if (priorityElement) {
+                    priorityElement.textContent = updates.priority;
+                    priorityElement.className = `priority-badge priority-${updates.priority.toLowerCase()}`;
+                }
+            }
+            
+            if (updates.assignee) {
+                const assigneeElement = taskRow.querySelector('.assignee-initials');
+                if (assigneeElement) {
+                    assigneeElement.textContent = updates.assignee;
+                }
+            }
+            
+            if (updates.status) {
+                const statusElement = taskRow.querySelector('.status-badge');
+                if (statusElement) {
+                    statusElement.textContent = updates.status;
+                    statusElement.className = `status-badge status-${updates.status.toLowerCase().replace(' ', '-')}`;
+                }
+            }
+        } catch (error) {
+            console.error('Error updating task row display:', error);
+        }
+    }
+    
     // Auto-save functionality for task properties
     static async autoSaveTaskProperty(propertyName, value) {
         if (!window.currentActionPlanData) {
