@@ -1563,6 +1563,7 @@ class ActionsRenderer {
         const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
         const currentDueDate = taskRow ? taskRow.querySelector('.due-date').textContent.trim() : 'Not Set';
         const currentPriority = taskRow ? taskRow.querySelector('.priority-badge').textContent.trim() : 'Medium';
+        const currentStatus = taskRow ? taskRow.querySelector('.status-badge').textContent.trim() : 'Pending';
         const currentAssignee = taskRow ? taskRow.querySelector('.assignee-initials').textContent.trim() : 'UN';
         
         let html = `
@@ -1606,9 +1607,9 @@ class ActionsRenderer {
                     <div class="property-field">
                         <label for="taskStatus">Task Status</label>
                         <select id="taskStatus" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('status', this.value)">
-                            <option value="Pending">Pending</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Complete">Complete</option>
+                            <option value="Pending" ${currentStatus === 'Pending' ? 'selected' : ''}>Pending</option>
+                            <option value="In Progress" ${currentStatus === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="Complete" ${currentStatus === 'Complete' ? 'selected' : ''}>Complete</option>
                         </select>
                     </div>
                 </div>
