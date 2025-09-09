@@ -74,11 +74,17 @@ class ActionsRenderer {
         const actionPlans = [];
 
         // First, process any action plans loaded from Domo API during initialization
+        console.log(`Processing ${app.actionPlans.size} action plans from app state...`);
         for (let [planId, planData] of app.actionPlans) {
             // Extract account ID from plan data (since map key is now planId, not accountId)
             const accountId = planData.accountId;
             const account = app.accounts.get(accountId);
-            if (!account) continue;
+            if (!account) {
+                console.warn(`Skipping plan ${planId} - account ${accountId} not found in app.accounts`);
+                console.log(`Available account IDs in app.accounts:`, Array.from(app.accounts.keys()));
+                console.log(`Plan data:`, { planId, accountId, planTitle: planData.title });
+                continue;
+            }
 
             const highPrioritySignals = account.signals.filter(s => s.priority === 'High');
 
@@ -100,7 +106,7 @@ class ActionsRenderer {
 
         // If we have Domo action plans, return them
         if (actionPlans.length > 0) {
-            console.log(`Using ${actionPlans.length} action plans loaded from Domo API`);
+            console.log(`Using ${actionPlans.length} action plans from app state`);
             return actionPlans.sort((a, b) => {
                 // Sort by urgency first, then by last updated
                 const urgencyOrder = { critical: 0, high: 1, normal: 2 };

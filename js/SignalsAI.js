@@ -273,6 +273,8 @@ class SignalsAI {
                     return;
                 }
                 
+                // Always ensure we have the latest action plans data when switching to Actions tab
+                console.log(`Rendering Actions tab - current action plans count: ${this.actionPlans.size}`);
                 ActionsRenderer.renderActions(this).catch(error => {
                     console.error('Error rendering actions:', error);
                 });
