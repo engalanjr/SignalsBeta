@@ -295,6 +295,7 @@ class ActionPlanService {
             plays.push({
                 title: signal.play_1_name.trim(),
                 description: signal.play_1_description || signal.play_1 || 'No description available',
+                executingRole: signal.play_1_executing_role || 'Not specified',
                 priority: signalPriority,
                 fieldName: 'play_1'
             });
@@ -303,6 +304,7 @@ class ActionPlanService {
             plays.push({
                 title: signal.play_1.trim(),
                 description: 'No description available',
+                executingRole: signal.play_1_executing_role || 'Not specified',
                 priority: signalPriority,
                 fieldName: 'play_1'
             });
@@ -314,6 +316,7 @@ class ActionPlanService {
             plays.push({
                 title: signal.play_2_name.trim(),
                 description: signal.play_2_description || signal.play_2 || 'No description available',
+                executingRole: signal.play_2_executing_role || 'Not specified',
                 priority: signalPriority,
                 fieldName: 'play_2'
             });
@@ -322,6 +325,7 @@ class ActionPlanService {
             plays.push({
                 title: signal.play_2.trim(),
                 description: 'No description available',
+                executingRole: signal.play_2_executing_role || 'Not specified',
                 priority: signalPriority,
                 fieldName: 'play_2'
             });
@@ -333,6 +337,7 @@ class ActionPlanService {
             plays.push({
                 title: signal.play_3_name.trim(),
                 description: signal.play_3_description || signal.play_3 || 'No description available',
+                executingRole: signal.play_3_executing_role || 'Not specified',
                 priority: signalPriority,
                 fieldName: 'play_3'
             });
@@ -341,6 +346,7 @@ class ActionPlanService {
             plays.push({
                 title: signal.play_3.trim(),
                 description: 'No description available',
+                executingRole: signal.play_3_executing_role || 'Not specified',
                 priority: signalPriority,
                 fieldName: 'play_3'
             });
