@@ -1362,9 +1362,8 @@ class ActionsRenderer {
                 </div>
                 
                 <div class="drawer-footer">
-                    <button class="btn btn-secondary" onclick="ActionsRenderer.closeTaskDetailsDrawer()">Cancel</button>
-                    <button class="btn btn-primary" onclick="ActionsRenderer.saveTaskDetails()">
-                        <i class="fas fa-save"></i> Save Changes
+                    <button class="btn btn-primary" onclick="ActionsRenderer.closeTaskDetailsDrawer()">
+                        <i class="fas fa-times"></i> Close
                     </button>
                 </div>
             </div>
@@ -1571,12 +1570,12 @@ class ActionsRenderer {
                 <div class="task-properties-grid">
                     <div class="property-field">
                         <label for="taskDueDate">Due Date</label>
-                        <input type="date" id="taskDueDate" class="form-input" value="${this.convertToDateValue(currentDueDate)}">
+                        <input type="date" id="taskDueDate" class="form-input" value="${this.convertToDateValue(currentDueDate)}" onchange="ActionsRenderer.autoSaveTaskProperty('dueDate', this.value)">
                     </div>
                     
                     <div class="property-field">
                         <label for="taskPriority">Priority</label>
-                        <select id="taskPriority" class="form-select">
+                        <select id="taskPriority" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('priority', this.value)">
                             <option value="High" ${currentPriority === 'High' ? 'selected' : ''}>High</option>
                             <option value="Medium" ${currentPriority === 'Medium' ? 'selected' : ''}>Medium</option>
                             <option value="Low" ${currentPriority === 'Low' ? 'selected' : ''}>Low</option>
@@ -1585,7 +1584,7 @@ class ActionsRenderer {
                     
                     <div class="property-field">
                         <label for="taskAssignee">Assignee</label>
-                        <select id="taskAssignee" class="form-select">
+                        <select id="taskAssignee" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('assignee', this.value)">
                             <option value="CU" ${currentAssignee === 'CU' ? 'selected' : ''}>Current User</option>
                             <option value="JS" ${currentAssignee === 'JS' ? 'selected' : ''}>John Smith</option>
                             <option value="MK" ${currentAssignee === 'MK' ? 'selected' : ''}>Maria Kim</option>
@@ -1597,7 +1596,7 @@ class ActionsRenderer {
                     
                     <div class="property-field">
                         <label for="taskStatus">Task Status</label>
-                        <select id="taskStatus" class="form-select">
+                        <select id="taskStatus" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('status', this.value)">
                             <option value="Pending">Pending</option>
                             <option value="In Progress">In Progress</option>
                             <option value="Complete">Complete</option>
@@ -1630,11 +1629,12 @@ class ActionsRenderer {
                         <div class="play-info">
                             <div class="play-title ${isCompleted ? 'completed' : ''}">${playTitle}</div>
                             <div class="play-actions">
-                                <button class="btn btn-sm ${isCompleted ? 'btn-warning' : 'btn-success'}" 
-                                        onclick="ActionsRenderer.togglePlayCompletion('${actionId}', '${playId}', ${index}, ${!isCompleted})">
-                                    <i class="fas ${isCompleted ? 'fa-undo' : 'fa-check'}"></i>
-                                    ${isCompleted ? 'Mark Pending' : 'Mark Complete'}
-                                </button>
+                                <label class="play-checkbox-container">
+                                    <input type="checkbox" class="play-checkbox" 
+                                           ${isCompleted ? 'checked' : ''}
+                                           onchange="ActionsRenderer.togglePlayCompletionCheckbox('${actionId}', '${playId}', ${index}, this.checked)">
+                                    <span class="checkmark"></span>
+                                </label>
                                 <button class="btn btn-sm btn-danger" 
                                         onclick="ActionsRenderer.deletePlay('${actionId}', '${playId}', ${index})">
                                     <i class="fas fa-trash"></i>
