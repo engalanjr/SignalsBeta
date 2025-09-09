@@ -1526,7 +1526,7 @@ class ActionsRenderer {
         
         // Create basic plan data
         const planData = {
-            id: `reconstructed-${taskId}`,
+            id: taskId,  // Use original task ID, not reconstructed
             actionItems: [actionItem],
             status: 'Pending',
             assignee: 'Current User',
