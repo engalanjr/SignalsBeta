@@ -14,6 +14,30 @@ class SignalsAI {
         this.init();
     }
 
+    // Helper method to get playbook details by play ID
+    getPlaybookById(playId) {
+        if (!playId || !this.playbooks) return null;
+        return this.playbooks.find(playbook => playbook.play_id === playId);
+    }
+
+    // Helper method to get playbook details for a signal's plays
+    getSignalPlaybooks(signal) {
+        const playbooks = [];
+        
+        // Check PLAY_1, PLAY_2, PLAY_3 fields
+        ['play_1', 'play_2', 'play_3'].forEach(playField => {
+            const playId = signal[playField];
+            if (playId && playId !== 'N/A' && playId !== '') {
+                const playbook = this.getPlaybookById(playId);
+                if (playbook) {
+                    playbooks.push(playbook);
+                }
+            }
+        });
+        
+        return playbooks;
+    }
+
     async init() {
         console.log('Initializing SignalsAI v8.0...');
         this.showLoading();
