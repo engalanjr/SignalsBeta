@@ -1233,7 +1233,7 @@ class DataService {
 
                 // Call information
                 call_id: row['call_id'] || row['Call Id'] || row['CALL_ID'] || '',
-                call_date: row['call_date'] || row['Call Date'] || row['CALL_DATE'] || ''
+                call_date: row['call_date'] || row['Call Date'] || row['CALL_DATE'] || '',
 
                 // Play recommendations - correct CSV field mapping
                 play_1: row['play_1'] || row['Play 1'] || row['PLAY_1'] || '',
