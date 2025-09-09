@@ -265,8 +265,9 @@ class ActionsRenderer {
     }
 
     static renderTaskRow(task, app) {
+        const isComplete = task.status && task.status.toLowerCase() === 'complete';
         return `
-            <div class="pm-table-row action-plan-row clickable-task" 
+            <div class="pm-table-row action-plan-row clickable-task ${isComplete ? 'task-completed' : ''}" 
                  data-task-id="${task.id}" 
                  data-action-id="${task.actionId}"
                  onclick="ActionsRenderer.handleTaskRowClick(event, '${task.id}', '${task.actionId}')"

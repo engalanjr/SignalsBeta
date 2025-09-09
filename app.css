@@ -3802,9 +3802,14 @@ body {
     opacity: 0.6;
 }
 
-.pm-table-row.task-completed .task-title {
+.pm-table-row.task-completed .action-plan-title {
     text-decoration: line-through;
     color: var(--neutral-gray-500);
+}
+
+.pm-table-row.task-completed .action-plan-description {
+    text-decoration: line-through;
+    opacity: 0.7;
 }
 
 /* Multi-Select and Right-Click Task Management */
