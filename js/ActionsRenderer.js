@@ -1627,14 +1627,16 @@ class ActionsRenderer {
                 html += `
                     <div class="play-management-item" data-play-id="${playId}" data-play-index="${index}">
                         <div class="play-info">
-                            <div class="play-title ${isCompleted ? 'completed' : ''}">${playTitle}</div>
-                            <div class="play-actions">
+                            <div class="play-content">
                                 <label class="play-checkbox-container">
                                     <input type="checkbox" class="play-checkbox" 
                                            ${isCompleted ? 'checked' : ''}
                                            onchange="ActionsRenderer.togglePlayCompletionCheckbox('${actionId}', '${playId}', ${index}, this.checked)">
                                     <span class="checkmark"></span>
                                 </label>
+                                <div class="play-title ${isCompleted ? 'completed' : ''}">${playTitle}</div>
+                            </div>
+                            <div class="play-actions">
                                 <button class="btn btn-sm btn-danger" 
                                         onclick="ActionsRenderer.deletePlay('${actionId}', '${playId}', ${index})">
                                     <i class="fas fa-trash"></i>
@@ -1691,6 +1693,162 @@ class ActionsRenderer {
         
         // Clear stored task data
         window.currentActionPlanData = null;
+    }
+    
+    // Auto-save functionality for task properties
+    static async autoSaveTaskProperty(propertyName, value) {
+        if (!window.currentActionPlanData) {
+            console.error('No task data available for auto-save');
+            return;
+        }
+        
+        try {
+            const { taskId, actionId, planData, accountId } = window.currentActionPlanData;
+            
+            console.log(`Auto-saving ${propertyName}:`, value);
+            
+            // Update the task row display immediately for better UX
+            this.updateTaskRowDisplay(taskId, { [propertyName]: value });
+            
+            // Prepare update data based on property name
+            let updateData = {};
+            switch(propertyName) {
+                case 'dueDate':
+                    updateData.dueDate = value;
+                    break;
+                case 'priority':
+                    updateData.priority = value;
+                    break;
+                case 'assignee':
+                    updateData.assignee = value;
+                    break;
+                case 'status':
+                    updateData.status = value;
+                    break;
+                default:
+                    console.warn('Unknown property for auto-save:', propertyName);
+                    return;
+            }
+            
+            // Call the CRUD method to save changes
+            const result = await ActionPlanService.updateActionPlan(planData.id, updateData, window.app);
+            
+            if (result && result.success) {
+                console.log(`Successfully auto-saved ${propertyName}`);
+                // Update local data if needed
+                if (window.app && window.app.actionPlans && window.app.actionPlans.has(accountId)) {
+                    const currentPlan = window.app.actionPlans.get(accountId);
+                    if (currentPlan) {
+                        window.app.actionPlans.set(accountId, result.plan || currentPlan);
+                    }
+                }
+            } else {
+                console.error(`Failed to auto-save ${propertyName}:`, result ? result.error : 'Unknown error');
+                // Optionally show a notification to the user about the save failure
+                if (window.app && window.app.notificationService) {
+                    window.app.notificationService.showNotification(`Failed to save ${propertyName} change`, 'error');
+                }
+            }
+        } catch (error) {
+            console.error(`Error auto-saving ${propertyName}:`, error);
+            if (window.app && window.app.notificationService) {
+                window.app.notificationService.showNotification(`Error saving ${propertyName} change`, 'error');
+            }
+        }
+    }
+    
+    // New checkbox-based play completion toggle
+    static async togglePlayCompletionCheckbox(actionId, playId, playIndex, isChecked) {
+        if (!window.currentActionPlanData) {
+            console.error('No task data available for play completion toggle');
+            return;
+        }
+        
+        try {
+            const { taskId, planData, accountId } = window.currentActionPlanData;
+            
+            console.log(`Toggling play completion: ${playId} -> ${isChecked}`);
+            
+            // Find and update the play in the action items
+            let updatedActionItems = [...planData.actionItems];
+            let playUpdated = false;
+            
+            for (let actionItem of updatedActionItems) {
+                if (actionItem.plays && Array.isArray(actionItem.plays)) {
+                    for (let play of actionItem.plays) {
+                        if (play.playId === playId) {
+                            play.completed = isChecked;
+                            playUpdated = true;
+                            break;
+                        }
+                    }
+                }
+                if (playUpdated) break;
+            }
+            
+            if (!playUpdated) {
+                console.error('Could not find play to update:', playId);
+                return;
+            }
+            
+            // Update the visual state immediately
+            const playElement = document.querySelector(`[data-play-id="${playId}"] .play-title`);
+            if (playElement) {
+                if (isChecked) {
+                    playElement.classList.add('completed');
+                } else {
+                    playElement.classList.remove('completed');
+                }
+            }
+            
+            // Save the changes using CRUD method
+            const updateData = {
+                actionItems: updatedActionItems
+            };
+            
+            const result = await ActionPlanService.updateActionPlan(planData.id, updateData, window.app);
+            
+            if (result && result.success) {
+                console.log('Successfully updated play completion status');
+                
+                // Update local data
+                if (window.app && window.app.actionPlans && window.app.actionPlans.has(accountId)) {
+                    window.app.actionPlans.set(accountId, result.plan || planData);
+                }
+                
+                // Show success notification
+                if (window.app && window.app.notificationService) {
+                    const statusText = isChecked ? 'completed' : 'pending';
+                    window.app.notificationService.showNotification(`Play marked as ${statusText}`, 'success');
+                }
+            } else {
+                console.error('Failed to update play completion:', result ? result.error : 'Unknown error');
+                
+                // Revert the visual state on failure
+                if (playElement) {
+                    if (isChecked) {
+                        playElement.classList.remove('completed');
+                    } else {
+                        playElement.classList.add('completed');
+                    }
+                }
+                
+                // Revert the checkbox state
+                const checkbox = document.querySelector(`[data-play-id="${playId}"] .play-checkbox`);
+                if (checkbox) {
+                    checkbox.checked = !isChecked;
+                }
+                
+                if (window.app && window.app.notificationService) {
+                    window.app.notificationService.showNotification('Failed to update play status', 'error');
+                }
+            }
+        } catch (error) {
+            console.error('Error toggling play completion:', error);
+            if (window.app && window.app.notificationService) {
+                window.app.notificationService.showNotification('Error updating play status', 'error');
+            }
+        }
     }
     
     static async saveTaskDetails() {
