@@ -53,12 +53,15 @@ class ActionsRenderer {
             inProgressElement.textContent = inProgressCount;
         }
 
-        // Update projected impact
-        const impactElement = document.getElementById('projectedImpact');
-        if (impactElement) {
-            // Calculate projected impact based on action plans
-            const impactPercentage = actionPlans.length > 0 ? Math.round(actionPlans.length * 15) : 0;
-            impactElement.textContent = `+${impactPercentage}%`;
+        // Update completed count
+        const completedElement = document.getElementById('projectedImpact');
+        if (completedElement) {
+            // Count completed action plans
+            const completedCount = actionPlans.filter(plan => {
+                const status = plan.status ? plan.status.toLowerCase() : '';
+                return status === 'complete' || status === 'completed';
+            }).length;
+            completedElement.textContent = completedCount;
         }
 
         // Debug logging to verify status values
