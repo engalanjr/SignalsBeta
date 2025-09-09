@@ -797,16 +797,16 @@ class PortfolioRenderer {
                 // Close drawer
                 this.closeAddToPlanDrawer();
                 
-                // Restore expanded account state after refresh
-                if (wasAccountExpanded) {
-                    setTimeout(() => {
-                        this.expandAccount(accountId);
-                    }, 100);
-                }
-                
                 // Refresh the portfolio view to show updated state
                 if (window.app && window.app.renderCurrentTab) {
                     window.app.renderCurrentTab();
+                    
+                    // Restore expanded account state after render is complete
+                    if (wasAccountExpanded) {
+                        setTimeout(() => {
+                            this.expandAccount(accountId);
+                        }, 150);
+                    }
                 }
                 
                 // Show success notification
