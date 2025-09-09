@@ -1229,6 +1229,11 @@ class DataService {
                 signal_rationale: row['signal_rationale'] || row['Signal Rationale'] || row['SIGNAL_RATIONALE'] || '',
                 signal_confidence: parseFloat(row['signal_confidence'] || row['Signal Confidence'] || row['SIGNAL_CONFIDENCE'] || '0') || 0.7,
                 action_id: row['action_id'] || row['Action Id'] || row['ACTION_ID'] || '', // GUID of the action
+                signal_id: row['Signal Id'] || row['SIGNAL_ID'] || row['signal_id'] || '', // Separate Signal ID field
+
+                // Call information
+                call_id: row['call_id'] || row['Call Id'] || row['CALL_ID'] || '',
+                call_date: row['call_date'] || row['Call Date'] || row['CALL_DATE'] || ''
 
                 // Play recommendations - correct CSV field mapping
                 play_1: row['play_1'] || row['Play 1'] || row['PLAY_1'] || '',
@@ -1237,11 +1242,25 @@ class DataService {
                 
                 // Correct mapping: Use Play Name fields for shorter titles, not descriptions
                 play_1_name: row['Play 1 Name'] || row['play_1'] || '', // Use the actual name field
-                play_1_description: row['Play 1 Description'] || 'Customer Success enablement play',
+                play_1_description: row['Play 1 Description'] || row['play_1_description'] || 'Customer Success enablement play',
                 play_2_name: row['Play 2 Name'] || row['play_2'] || '', // Use the actual name field  
-                play_2_description: row['Play 2 Description'] || 'Customer Success management play',
+                play_2_description: row['Play 2 Description'] || row['play_2_description'] || 'Customer Success management play',
                 play_3_name: row['Play 3 Name'] || row['play_3'] || '', // Use the actual name field
-                play_3_description: row['Play 3 Description'] || 'Customer Success optimization play',
+                play_3_description: row['Play 3 Description'] || row['play_3_description'] || 'Customer Success optimization play',
+                
+                // Extended play metadata
+                play_1_play_type: row['play_1_play_type'] || row['Play 1 Play Type'] || '',
+                play_1_initiating_role: row['play_1_initiating_role'] || row['Play 1 Initiating Role'] || '',
+                play_1_executing_role: row['play_1_executing_role'] || row['Play 1 Executing Role'] || '',
+                play_1_doc_location: row['play_1_doc_location'] || row['Play 1 Doc Location'] || '',
+                play_2_play_type: row['play_2_play_type'] || row['Play 2 Play Type'] || '',
+                play_2_initiating_role: row['play_2_initiating_role'] || row['Play 2 Initiating Role'] || '',
+                play_2_executing_role: row['play_2_executing_role'] || row['Play 2 Executing Role'] || '',
+                play_2_doc_location: row['play_2_doc_location'] || row['Play 2 Doc Location'] || '',
+                play_3_play_type: row['play_3_play_type'] || row['Play 3 Play Type'] || '',
+                play_3_initiating_role: row['play_3_initiating_role'] || row['Play 3 Initiating Role'] || '',
+                play_3_executing_role: row['play_3_executing_role'] || row['Play 3 Executing Role'] || '',
+                play_3_doc_location: row['play_3_doc_location'] || row['Play 3 Doc Location'] || '',
 
                 // Account health metrics (GPA components)
                 relationship: row['Relationship'] || row['RELATIONSHIP'] || '',
