@@ -256,8 +256,15 @@ class ActionPlanService {
                                            data-play-field="${play.fieldName}"
                                            onchange="ActionPlanService.togglePlaySelection('${recommendationId}', '${playIndex}')">
                                     <label for="play-${recommendationId}-${playIndex}" class="play-label">
-                                        <span class="play-title">${play.title}</span>
-                                        <span class="play-priority-badge ${play.priority}">${play.priority.toUpperCase()}</span>
+                                        <div class="play-header">
+                                            <span class="play-title">${play.title}</span>
+                                            <span class="play-priority-badge ${play.priority}">${play.priority.toUpperCase()}</span>
+                                        </div>
+                                        <div class="play-description">${this.truncateText(play.description, 250)}</div>
+                                        <div class="play-owner">
+                                            <span class="play-owner-label">Play Owner:</span>
+                                            <span class="play-owner-value">${play.executingRole || 'Not specified'}</span>
+                                        </div>
                                     </label>
                                 </div>
                             `).join('') : '<div class="no-plays">No specific plays available for this recommendation</div>'}
@@ -438,8 +445,15 @@ class ActionPlanService {
                                            data-play-field="${play.fieldName}"
                                            onchange="ActionPlanService.togglePlaySelection('${recommendationId}', '${playIndex}')">
                                     <label for="play-${recommendationId}-${playIndex}" class="play-label">
-                                        <span class="play-title">${play.title}</span>
-                                        <span class="play-priority-badge ${play.priority}">${play.priority.toUpperCase()}</span>
+                                        <div class="play-header">
+                                            <span class="play-title">${play.title}</span>
+                                            <span class="play-priority-badge ${play.priority}">${play.priority.toUpperCase()}</span>
+                                        </div>
+                                        <div class="play-description">${this.truncateText(play.description, 250)}</div>
+                                        <div class="play-owner">
+                                            <span class="play-owner-label">Play Owner:</span>
+                                            <span class="play-owner-value">${play.executingRole || 'Not specified'}</span>
+                                        </div>
                                     </label>
                                 </div>
                             `).join('')}
@@ -1550,6 +1564,11 @@ class ActionPlanService {
             'Low': 'low'
         };
         return priorityMap[priority] || 'medium';
+    }
+
+    static truncateText(text, maxLength) {
+        if (!text || text.length <= maxLength) return text;
+        return text.substring(0, maxLength).trim() + '...';
     }
 
     static generateGUID() {
