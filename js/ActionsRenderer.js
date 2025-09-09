@@ -1746,13 +1746,31 @@ class ActionsRenderer {
     
     // Auto-save functionality for task properties
     static async autoSaveTaskProperty(propertyName, value) {
+        // Enhanced debugging for production troubleshooting
+        console.log('🐛 DEBUG: autoSaveTaskProperty called with:', { propertyName, value });
+        console.log('🐛 DEBUG: window.currentActionPlanData exists:', !!window.currentActionPlanData);
+        
         if (!window.currentActionPlanData) {
-            console.error('No task data available for auto-save');
+            console.error('❌ No task data available for auto-save');
+            console.log('🐛 DEBUG: Available global data:', {
+                app: !!window.app,
+                actionPlans: window.app ? window.app.actionPlans?.size : 'N/A'
+            });
+            NotificationService.showError('Task data not found - please refresh and try again');
             return;
         }
         
         try {
             const { taskId, actionId, planData, accountId } = window.currentActionPlanData;
+            
+            console.log('🐛 DEBUG: Task data breakdown:', {
+                taskId,
+                actionId,
+                accountId,
+                planDataExists: !!planData,
+                planDataId: planData?.id,
+                planDataStatus: planData?.status
+            });
             
             console.log(`Auto-saving ${propertyName}:`, value);
             
@@ -1779,11 +1797,19 @@ class ActionsRenderer {
                     return;
             }
             
+            console.log('🐛 DEBUG: About to call ActionPlanService.updateActionPlan with:', {
+                planId: planData.id,
+                updateData,
+                appExists: !!window.app
+            });
+            
             // Call the CRUD method to save changes
             const result = await ActionPlanService.updateActionPlan(planData.id, updateData, window.app);
             
+            console.log('🐛 DEBUG: ActionPlanService.updateActionPlan result:', result);
+            
             if (result && result.success) {
-                console.log(`Successfully auto-saved ${propertyName}`);
+                console.log(`✅ Successfully auto-saved ${propertyName}`);
                 // Update local data if needed
                 if (window.app && window.app.actionPlans && window.app.actionPlans.has(accountId)) {
                     const currentPlan = window.app.actionPlans.get(accountId);
@@ -1791,13 +1817,19 @@ class ActionsRenderer {
                         window.app.actionPlans.set(accountId, result.plan || currentPlan);
                     }
                 }
+                NotificationService.showSuccess(`Successfully saved ${propertyName} change`);
             } else {
-                console.error(`Failed to auto-save ${propertyName}:`, result ? result.error : 'Unknown error');
+                console.error(`❌ Failed to auto-save ${propertyName}:`, result ? result.error : 'Unknown error');
                 // Show error notification to the user about the save failure
                 NotificationService.showError(`Failed to save ${propertyName} change`);
             }
         } catch (error) {
-            console.error(`Error auto-saving ${propertyName}:`, error);
+            console.error(`💥 Error auto-saving ${propertyName}:`, error);
+            console.log('🐛 DEBUG: Error details:', {
+                message: error.message,
+                stack: error.stack,
+                currentData: window.currentActionPlanData
+            });
             NotificationService.showError(`Error saving ${propertyName} change`);
         }
     }
