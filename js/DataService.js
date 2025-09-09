@@ -169,14 +169,8 @@ class DataService {
         }
 
         // Find the plan to update
-        console.log(`DEBUG: DataService searching for planId "${planId}" in array of ${this.actionPlans.length} plans`);
-        this.actionPlans.forEach((plan, index) => {
-            console.log(`DEBUG: Array plan ${index}: ID="${plan.id}" Status="${plan.status}"`);
-        });
-        
         const planIndex = this.actionPlans.findIndex(plan => plan.id === planId);
         if (planIndex === -1) {
-            console.log(`DEBUG: Plan "${planId}" not found in DataService.actionPlans array`);
             return { success: false, error: 'Action plan not found' };
         }
 
@@ -218,12 +212,12 @@ class DataService {
             console.log('Updated action plan via Domo AppDB:', updatedPlan);
             return { success: true, plan: updatedPlan };
         } catch (error) {
-            console.error('Failed to update action plan in Domo AppDB:', error);
+            console.warn('Domo AppDB unavailable, saving action plan locally:', planId);
 
             // Update local array as fallback (same as comments pattern)
             this.actionPlans[planIndex] = updatedPlan;
-            console.log('Action plan updated locally as fallback:', planId);
-            return { success: true, plan: updatedPlan }; // Remove error property to match comments pattern
+            console.log('✅ Action plan updated successfully (local storage):', planId);
+            return { success: true, plan: updatedPlan, warning: 'Changes saved locally (Domo API unavailable)' };
         }
     }
 
