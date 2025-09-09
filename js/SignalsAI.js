@@ -4,6 +4,7 @@ class SignalsAI {
         this.data = [];
         this.filteredData = [];
         this.accounts = [];
+        this.playbooks = [];
         this.actionPlans = new Map();
         this.viewedSignals = new Set();
         this.currentTab = 'signal-feed';
@@ -85,6 +86,10 @@ class SignalsAI {
             });
             this.data = Array.from(uniqueSignals.values());
             console.log(`After deduplication: ${this.data.length} unique signals`);
+
+            console.log('Loading playbooks...');
+            this.playbooks = await DataService.loadPlaybooks();
+            console.log(`Loaded ${this.playbooks.length} playbooks via DataService`);
 
             console.log('Loading interactions to restore feedback state...');
             await DataService.loadInteractions();
