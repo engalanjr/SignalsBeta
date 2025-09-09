@@ -4862,11 +4862,19 @@ body {
     gap: 1rem;
 }
 
+.play-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
 .play-title {
     flex: 1;
     font-weight: 500;
     color: var(--neutral-gray-800);
     line-height: 1.4;
+    transition: all 0.3s ease;
 }
 
 .play-title.completed {
@@ -4878,6 +4886,62 @@ body {
     display: flex;
     gap: 0.5rem;
     flex-shrink: 0;
+}
+
+/* Custom checkbox styling for task details drawer */
+.play-checkbox-container {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+    user-select: none;
+}
+
+.play-checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    position: relative;
+    height: 18px;
+    width: 18px;
+    background-color: #fff;
+    border: 2px solid #ddd;
+    border-radius: 3px;
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+.play-checkbox-container:hover input ~ .checkmark {
+    border-color: var(--domo-blue);
+}
+
+.play-checkbox-container input:checked ~ .checkmark {
+    background-color: var(--domo-blue);
+    border-color: var(--domo-blue);
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.play-checkbox-container input:checked ~ .checkmark:after {
+    display: block;
+}
+
+.play-checkbox-container .checkmark:after {
+    left: 5px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
 }
 
 .btn-sm {
