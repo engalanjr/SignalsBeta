@@ -795,12 +795,23 @@ class PortfolioRenderer {
             if (result && result.success) {
                 console.log('Plan created successfully from drawer:', result.plan);
                 
+                // Update local action plans collection immediately for "Added!" state
+                if (window.app && window.app.actionPlans && result.plan) {
+                    // Use a unique plan ID as the key (not just accountId) to allow multiple plans per account
+                    const planKey = result.plan.id || `plan-${Date.now()}`;
+                    window.app.actionPlans.set(planKey, result.plan);
+                }
+                
                 // Store expanded account state before closing drawer
                 const wasAccountExpanded = this.isAccountExpanded(accountId);
-                console.log('Account expansion state before drawer close:', accountId, wasAccountExpanded);
                 
                 // Close drawer
                 this.closeAddToPlanDrawer();
+                
+                // Show success notification first
+                if (window.app && window.app.notificationService) {
+                    window.app.notificationService.showNotification('🎉 Action plan created successfully!', 'success');
+                }
                 
                 // Refresh the portfolio view to show updated state
                 if (window.app && window.app.renderCurrentTab) {
@@ -809,18 +820,9 @@ class PortfolioRenderer {
                     // Restore expanded account state after render is complete
                     if (wasAccountExpanded) {
                         setTimeout(() => {
-                            console.log('Attempting to restore account expansion for:', accountId);
                             this.expandAccount(accountId);
-                            // Verify it worked
-                            const isNowExpanded = this.isAccountExpanded(accountId);
-                            console.log('Account expansion restored successfully:', isNowExpanded);
                         }, 150);
                     }
-                }
-                
-                // Show success notification
-                if (window.app.notificationService) {
-                    window.app.notificationService.showNotification('Action plan created successfully!', 'success');
                 }
             } else {
                 console.error('Failed to create plan from drawer:', result ? result.error : 'Unknown error');
