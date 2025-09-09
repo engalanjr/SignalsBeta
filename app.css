@@ -2321,9 +2321,7 @@ body {
 }
 
 .play-label {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: block;
     flex: 1;
     cursor: pointer;
 }
@@ -2374,6 +2372,13 @@ body {
     transition: all 0.2s ease;
 }
 
+.play-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
 .play-title {
     font-size: 0.9rem;
     font-weight: 600;
@@ -2409,6 +2414,31 @@ body {
 .play-priority-badge.low {
     background: rgba(40, 167, 69, 0.1);
     color: var(--healthy-green);
+}
+
+.play-description {
+    font-size: 0.8rem;
+    color: var(--neutral-gray-600);
+    line-height: 1.4;
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.play-owner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+}
+
+.play-owner-label {
+    font-weight: 500;
+    color: var(--neutral-gray-600);
+}
+
+.play-owner-value {
+    color: var(--domo-blue);
+    font-weight: 500;
 }
 
 .no-plays {
