@@ -648,6 +648,11 @@ class PortfolioRenderer {
         }
     }
 
+    static truncateText(text, maxLength) {
+        if (!text || text.length <= maxLength) return text;
+        return text.substring(0, maxLength).trim() + '...';
+    }
+
     static loadDrawerCSPlays(actionId) {
         // Find the signal with this action_id to get its specific plays
         let csPlays = [];
@@ -656,16 +661,37 @@ class PortfolioRenderer {
             const signal = window.app.data.find(s => s.action_id === actionId);
             
             if (signal) {
-                // Extract play names using the correct snake_case field names
-                const play1Name = signal.play_1_name;
-                const play2Name = signal.play_2_name;
-                const play3Name = signal.play_3_name;
-                
                 console.log('Loading CS Plays for drawer action:', actionId, 'for account:', signal.account_id);
                 
-                if (play1Name && play1Name.trim()) csPlays.push(play1Name.trim());
-                if (play2Name && play2Name.trim()) csPlays.push(play2Name.trim());
-                if (play3Name && play3Name.trim()) csPlays.push(play3Name.trim());
+                // Extract play 1 with enhanced data
+                if (signal.play_1_name && signal.play_1_name.trim() && 
+                    signal.play_1_name !== 'N/A' && signal.play_1_name !== '') {
+                    csPlays.push({
+                        title: signal.play_1_name.trim(),
+                        description: signal.play_1_description || signal.play_1 || 'No description available',
+                        executingRole: signal.play_1_executing_role || 'Not specified'
+                    });
+                }
+                
+                // Extract play 2 with enhanced data
+                if (signal.play_2_name && signal.play_2_name.trim() && 
+                    signal.play_2_name !== 'N/A' && signal.play_2_name !== '') {
+                    csPlays.push({
+                        title: signal.play_2_name.trim(),
+                        description: signal.play_2_description || signal.play_2 || 'No description available',
+                        executingRole: signal.play_2_executing_role || 'Not specified'
+                    });
+                }
+                
+                // Extract play 3 with enhanced data
+                if (signal.play_3_name && signal.play_3_name.trim() && 
+                    signal.play_3_name !== 'N/A' && signal.play_3_name !== '') {
+                    csPlays.push({
+                        title: signal.play_3_name.trim(),
+                        description: signal.play_3_description || signal.play_3 || 'No description available',
+                        executingRole: signal.play_3_executing_role || 'Not specified'
+                    });
+                }
             }
         }
         
@@ -681,8 +707,8 @@ class PortfolioRenderer {
         if (csPlays.length === 0) {
             playsContainer.innerHTML = '<p class="no-plays-message">No recommended plays for this action.</p>';
         } else {
-            // Ensure we have a valid array of strings
-            const validPlays = csPlays.filter(play => play && typeof play === 'string' && play.trim().length > 0);
+            // Ensure we have a valid array of play objects
+            const validPlays = csPlays.filter(play => play && play.title && play.title.trim().length > 0);
             
             if (validPlays.length === 0) {
                 playsContainer.innerHTML = '<p class="no-plays-message">No valid plays found.</p>';
@@ -690,13 +716,19 @@ class PortfolioRenderer {
             }
             
             const playCheckboxes = validPlays.map((play, index) => {
-                // Clean up the play title
-                const cleanPlayTitle = String(play).trim().replace(/\s+/g, ' ');
-                
                 return `
                     <div class="drawer-play-item">
-                        <input type="checkbox" id="drawerPlay${index}" value="${cleanPlayTitle}" checked>
-                        <label for="drawerPlay${index}" class="drawer-play-title">${cleanPlayTitle}</label>
+                        <input type="checkbox" id="drawerPlay${index}" value="${play.title}" checked>
+                        <label for="drawerPlay${index}" class="drawer-play-label">
+                            <div class="play-header">
+                                <span class="play-title">${play.title}</span>
+                            </div>
+                            <div class="play-description">${this.truncateText(play.description, 250)}</div>
+                            <div class="play-owner">
+                                <span class="play-owner-label">Play Owner:</span>
+                                <span class="play-owner-value">${play.executingRole || 'Not specified'}</span>
+                            </div>
+                        </label>
                     </div>
                 `;
             }).join('');
