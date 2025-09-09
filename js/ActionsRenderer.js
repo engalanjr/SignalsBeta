@@ -1817,6 +1817,15 @@ class ActionsRenderer {
                         window.app.actionPlans.set(accountId, result.plan || currentPlan);
                     }
                 }
+                
+                // Refresh Action Plans view if currently visible
+                if (window.app && typeof window.app.renderCurrentTab === 'function') {
+                    const currentTab = document.querySelector('.tab-button.active')?.dataset?.tab;
+                    if (currentTab === 'actions') {
+                        window.app.renderCurrentTab();
+                    }
+                }
+                
                 NotificationService.showSuccess(`Successfully saved ${propertyName} change`);
             } else {
                 console.error(`❌ Failed to auto-save ${propertyName}:`, result ? result.error : 'Unknown error');
@@ -1891,6 +1900,14 @@ class ActionsRenderer {
                 // Update local data
                 if (window.app && window.app.actionPlans && window.app.actionPlans.has(accountId)) {
                     window.app.actionPlans.set(accountId, result.plan || planData);
+                }
+                
+                // Refresh Action Plans view if currently visible
+                if (window.app && typeof window.app.renderCurrentTab === 'function') {
+                    const currentTab = document.querySelector('.tab-button.active')?.dataset?.tab;
+                    if (currentTab === 'actions') {
+                        window.app.renderCurrentTab();
+                    }
                 }
                 
                 // Show success notification
