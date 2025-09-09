@@ -637,14 +637,18 @@ class PortfolioRenderer {
     }
     
     static isAccountExpanded(accountId) {
-        const signalsContainer = document.querySelector(`[data-account-id="${accountId}"] .account-details`);
+        const signalsContainer = document.getElementById(`signals-${accountId}`);
         return signalsContainer && signalsContainer.classList.contains('expanded');
     }
     
     static expandAccount(accountId) {
-        const signalsContainer = document.querySelector(`[data-account-id="${accountId}"] .account-details`);
+        const signalsContainer = document.getElementById(`signals-${accountId}`);
+        const chevron = document.getElementById(`chevron-${accountId}`);
         if (signalsContainer) {
             signalsContainer.classList.add('expanded');
+            if (chevron) {
+                chevron.classList.add('rotated');
+            }
         }
     }
 
@@ -793,6 +797,7 @@ class PortfolioRenderer {
                 
                 // Store expanded account state before closing drawer
                 const wasAccountExpanded = this.isAccountExpanded(accountId);
+                console.log('Account expansion state before drawer close:', accountId, wasAccountExpanded);
                 
                 // Close drawer
                 this.closeAddToPlanDrawer();
@@ -804,7 +809,11 @@ class PortfolioRenderer {
                     // Restore expanded account state after render is complete
                     if (wasAccountExpanded) {
                         setTimeout(() => {
+                            console.log('Attempting to restore account expansion for:', accountId);
                             this.expandAccount(accountId);
+                            // Verify it worked
+                            const isNowExpanded = this.isAccountExpanded(accountId);
+                            console.log('Account expansion restored successfully:', isNowExpanded);
                         }, 150);
                     }
                 }
