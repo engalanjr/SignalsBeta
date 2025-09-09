@@ -200,12 +200,24 @@ class DataService {
         try {
             console.log('Updating action plan via Domo AppDB:', updatedPlan);
             
+            // FIXED: Get all documents first to find the correct document ID (like Comments)
+            const response = await domo.get(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents`);
+            const documents = response || [];
+
+            // Find the document containing our action plan
+            const docToUpdate = documents.find(doc => doc.content && doc.content.id === planId);
+
+            if (!docToUpdate) {
+                throw new Error('Action plan document not found in AppDB');
+            }
+
             // For AppDB, wrap in content structure
             const appDbPlan = {
                 content: updatedPlan
             };
             
-            const response = await domo.put(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${planId}`, appDbPlan);
+            // Use the correct document ID from AppDB (not the plan ID)
+            await domo.put(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${docToUpdate.id}`, appDbPlan);
 
             // Update local array
             this.actionPlans[planIndex] = updatedPlan;
@@ -247,7 +259,20 @@ class DataService {
 
         try {
             console.log('Deleting action plan via Domo AppDB:', planId, 'by user:', userName);
-            const response = await domo.delete(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${planId}`);
+            
+            // FIXED: Get all documents first to find the correct document ID (like Comments) 
+            const response = await domo.get(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents`);
+            const documents = response || [];
+
+            // Find the document containing our action plan
+            const docToDelete = documents.find(doc => doc.content && doc.content.id === planId);
+
+            if (!docToDelete) {
+                throw new Error('Action plan document not found in AppDB');
+            }
+
+            // Use the correct document ID from AppDB (not the plan ID)
+            await domo.delete(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${docToDelete.id}`);
 
             // Remove from local array
             this.actionPlans.splice(planIndex, 1);
