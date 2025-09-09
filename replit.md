@@ -37,7 +37,9 @@ The application runs on port 5000 using a Python HTTP server that:
 - Application gracefully falls back to sample data when Domo APIs are unavailable
 
 ## Recent Changes
-- Updated master data source to use comprehensive CSV file: "SignalsAI _ CORE _ WIP 4_1757016310504.csv" containing all 9,568 signal records
+- **Updated master data source to new PDP dataset**: "View of SignalsAI _ CORE _ WIP _ PDP_1757418159244.csv" containing 295 comprehensive signal records with expanded field set
+- **Enhanced signals data model**: Added new fields including signal_id, call_id, call_date, and extended play metadata (play types, roles, documentation locations)
+- **Improved CSV parsing**: Updated DataService.js to handle all new columns from the PDP dataset including AI context fields and enhanced play information
 - Implemented priority-based signal sorting (High > Medium > Low, then by call_date DESC for chronological accuracy)
 - Added pagination system for portfolio view showing 3 signals at a time with "+X more" functionality
 - Fixed Map.get() error and renderCurrentTab() function reference issues
