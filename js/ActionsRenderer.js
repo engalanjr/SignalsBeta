@@ -1513,36 +1513,75 @@ class ActionsRenderer {
         const accountId = taskId.split('-')[0];
         const taskIndex = parseInt(taskId.split('-')[1]) || 0;
         
-        // Get plays data from signal based on actionId
-        const playsData = this.getPlaysDataForAction(actionId, app);
-        
-        // Get actual action title from signal data
         let actionTitle = 'Action Details'; // fallback
+        let foundSignal = null;
         
         console.log('🔍 Looking for signal with actionId:', actionId);
         console.log('📊 Available signals count:', app?.allSignals?.length || 0);
         
         if (app && app.allSignals) {
-            const signal = app.allSignals.find(s => s.id === actionId);
-            console.log('🎯 Found signal:', signal);
+            // Method 1: Try direct ID match (for real signal IDs)
+            foundSignal = app.allSignals.find(s => s.id === actionId);
+            console.log('🎯 Direct ID match result:', foundSignal);
             
-            if (signal) {
-                // Try multiple fields to get the real action title from CSV data
-                actionTitle = signal.recommended_action || 
-                             signal.action_context || 
-                             signal.name || 
-                             signal.title ||
-                             signal.summary ||
-                             signal.action_title ||
+            // Method 2: If no direct match, try to find by action text in existing plans
+            if (!foundSignal) {
+                console.log('🔄 No direct match, trying to find signal by existing action plan data...');
+                
+                // Try to get the action title from saved action plans first
+                let existingActionTitle = null;
+                if (app.actionPlans) {
+                    for (let [accId, planData] of app.actionPlans) {
+                        if (planData.actionItems) {
+                            const actionItem = planData.actionItems.find(item => item.actionId === actionId);
+                            if (actionItem && actionItem.title) {
+                                existingActionTitle = actionItem.title;
+                                console.log('📋 Found existing action title:', existingActionTitle);
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Now try to find the signal by matching the action text with CSV data
+                if (existingActionTitle) {
+                    foundSignal = app.allSignals.find(s => {
+                        const signalAction = s.recommended_action || s.action_context || s.name || s.title || s.summary;
+                        return signalAction && signalAction.includes(existingActionTitle.substring(0, 30));
+                    });
+                    console.log('🎯 Found signal by action text match:', foundSignal);
+                }
+                
+                // Method 3: Last resort - find any signal from the same account
+                if (!foundSignal && accountId) {
+                    foundSignal = app.allSignals.find(s => s.account_id === accountId);
+                    console.log('🎯 Found signal by account fallback:', foundSignal);
+                }
+            }
+            
+            if (foundSignal) {
+                // Use the real signal data
+                actionTitle = foundSignal.recommended_action || 
+                             foundSignal.action_context || 
+                             foundSignal.name || 
+                             foundSignal.title ||
+                             foundSignal.summary ||
                              actionTitle;
-                console.log('✅ Using action title from signal:', actionTitle);
+                console.log('✅ Using action title from found signal:', actionTitle);
+                
+                // Update actionId to use the real signal ID
+                actionId = foundSignal.id;
+                console.log('🔄 Updated actionId to real signal ID:', actionId);
             } else {
-                console.warn('❌ No signal found with actionId:', actionId);
+                console.warn('❌ No signal found - using fallback');
                 console.log('📋 Available signal IDs:', app.allSignals.map(s => s.id).slice(0, 5));
             }
         } else {
             console.warn('❌ No app.allSignals available');
         }
+        
+        // Get plays data from signal based on the (possibly updated) actionId
+        const playsData = this.getPlaysDataForAction(actionId, app);
         
         // Create a basic action item structure
         const actionItem = {
