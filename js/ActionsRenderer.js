@@ -1579,9 +1579,9 @@ class ActionsRenderer {
                 actionTitle = actionItem;
             } else if (typeof actionItem === 'object') {
                 actionTitle = actionItem.title || actionItem.name || actionTitle;
-                currentDueDate = actionItem.dueDate ? this.formatDateForDisplay(new Date(actionItem.dueDate)) : currentDueDate;
-                currentPriority = actionItem.priority ? this.capitalizeFirst(actionItem.priority) : currentPriority;
-                currentStatus = actionItem.status ? this.capitalizeFirst(actionItem.status) : currentStatus;
+                currentDueDate = actionItem.dueDate ? new Date(actionItem.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : currentDueDate;
+                currentPriority = actionItem.priority ? (actionItem.priority.charAt(0).toUpperCase() + actionItem.priority.slice(1).toLowerCase()) : currentPriority;
+                currentStatus = actionItem.status ? (actionItem.status.charAt(0).toUpperCase() + actionItem.status.slice(1).toLowerCase()) : currentStatus;
                 currentAssignee = actionItem.assignee || currentAssignee;
             }
         }
@@ -1595,7 +1595,7 @@ class ActionsRenderer {
             rawActionItem: actionItem
         });
         
-        console.log('Task details extracted:', { actionTitle, currentDueDate, currentPriority, currentStatus, currentAssignee, hasTaskRow: !!taskRow });
+        console.log('Task details extracted:', { actionTitle, currentDueDate, currentPriority, currentStatus, currentAssignee });
         
         // Debug the values before rendering
         console.log('🔍 ABOUT TO RENDER HTML WITH:', {
