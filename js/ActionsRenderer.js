@@ -1566,31 +1566,34 @@ class ActionsRenderer {
         console.log('Action item:', actionItem);
         console.log('Plays found:', plays);
         
-        // Get action title from action item, fallback to reading from DOM
+        // Use actionItem data as primary source (most reliable)
         let actionTitle = 'Action Details';
-        if (typeof actionItem === 'string') {
-            actionTitle = actionItem;
-        } else if (actionItem && actionItem.title) {
-            actionTitle = actionItem.title;
-        } else if (actionItem && actionItem.name) {
-            actionTitle = actionItem.name;
-        } else {
-            // Fallback: Read from the action plans table row if available
-            const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
-            if (taskRow) {
-                const titleElement = taskRow.querySelector('.action-plan-title');
-                if (titleElement) {
-                    actionTitle = titleElement.textContent.trim();
-                }
+        let currentDueDate = 'Not Set';
+        let currentPriority = 'Medium';
+        let currentStatus = 'Pending';
+        let currentAssignee = 'CU';
+        
+        // Extract from actionItem data first
+        if (actionItem) {
+            if (typeof actionItem === 'string') {
+                actionTitle = actionItem;
+            } else if (typeof actionItem === 'object') {
+                actionTitle = actionItem.title || actionItem.name || actionTitle;
+                currentDueDate = actionItem.dueDate ? this.formatDateForDisplay(new Date(actionItem.dueDate)) : currentDueDate;
+                currentPriority = actionItem.priority ? this.capitalizeFirst(actionItem.priority) : currentPriority;
+                currentStatus = actionItem.status ? this.capitalizeFirst(actionItem.status) : currentStatus;
+                currentAssignee = actionItem.assignee || currentAssignee;
             }
         }
         
-        // Get current task properties from DOM (most reliable source) with fallbacks
-        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
-        const currentDueDate = taskRow ? taskRow.querySelector('.due-date')?.textContent.trim() || 'Not Set' : 'Not Set';
-        const currentPriority = taskRow ? taskRow.querySelector('.priority-badge')?.textContent.trim() || 'Medium' : 'Medium';
-        const currentStatus = taskRow ? taskRow.querySelector('.status-badge')?.textContent.trim() || 'Pending' : 'Pending';
-        const currentAssignee = taskRow ? taskRow.querySelector('.assignee-initials')?.textContent.trim() || 'CU' : 'CU';
+        console.log('📊 DATA FROM ACTIONITEM:', {
+            actionTitle,
+            currentDueDate,
+            currentPriority, 
+            currentStatus,
+            currentAssignee,
+            rawActionItem: actionItem
+        });
         
         console.log('Task details extracted:', { actionTitle, currentDueDate, currentPriority, currentStatus, currentAssignee, hasTaskRow: !!taskRow });
         
