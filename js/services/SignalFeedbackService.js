@@ -3,8 +3,13 @@
 class SignalFeedbackService {
     
     static async acknowledgeSignal(signalId, feedbackType, app) {
+        console.log(`🔄 SignalFeedbackService.acknowledgeSignal called: ${signalId}, ${feedbackType}`);
         const signal = app.data.find(s => s.id === signalId);
-        if (!signal) return;
+        if (!signal) {
+            console.error(`❌ Signal not found: ${signalId}`);
+            return;
+        }
+        console.log(`📊 Current signal feedback: ${signal.currentUserFeedback}`);
 
         const isAlreadySelected = signal.currentUserFeedback === feedbackType;
 
@@ -61,8 +66,13 @@ class SignalFeedbackService {
             }
 
             // Re-render the current tab to show updated button states
+            console.log(`🔄 About to call app.renderCurrentTab()`);
             if (app && typeof app.renderCurrentTab === 'function') {
+                console.log(`✅ Calling app.renderCurrentTab()`);
                 app.renderCurrentTab();
+                console.log(`✅ app.renderCurrentTab() completed`);
+            } else {
+                console.error(`❌ app.renderCurrentTab is not available:`, app, typeof app.renderCurrentTab);
             }
         } catch (error) {
             console.error('Error updating signal feedback:', error);
