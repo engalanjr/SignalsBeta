@@ -837,27 +837,8 @@ class DataService {
         const currentUserId = DataCache.userInfo.userId || 'user-1';
         const viewedSignalIds = DataCache.getViewedSignalsForUser(currentUserId);
 
-            const viewedSignalIds = new Set();
-
-            // Process interactions to find viewed signals for current user
-            response.forEach(interaction => {
-                const interactionData = interaction.content || interaction;
-                const signalId = interactionData.signalId;
-                const interactionType = interactionData.interactionType;
-                const userId = interactionData.userId || 'unknown';
-
-                if (signalId && interactionType === 'signal_viewed' && userId === currentUserId) {
-                    viewedSignalIds.add(signalId);
-                }
-            });
-
-            console.log(`Loaded ${viewedSignalIds.size} viewed signals for user ${currentUserId}`);
-            return viewedSignalIds;
-
-        } catch (error) {
-            console.error('Failed to load viewed signals from SignalAI.Interactions AppDB:', error);
-            return new Set();
-        }
+        console.log(`✅ Retrieved ${viewedSignalIds.size} viewed signals for user ${currentUserId} from cache`);
+        return viewedSignalIds;
     }
 
     static initializeMockComments() {
