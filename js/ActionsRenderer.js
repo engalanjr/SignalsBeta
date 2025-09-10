@@ -1661,6 +1661,14 @@ class ActionsRenderer {
             }, 300);
         }
         
+        // Auto-refresh the current tab to reflect any status changes made in the modal
+        if (window.app && window.app.renderCurrentTab) {
+            // Re-render the current tab to show updated task statuses
+            setTimeout(() => {
+                window.app.renderCurrentTab();
+            }, 350); // Small delay to ensure modal close animation completes
+        }
+        
         // Clear stored task data
         window.currentActionPlanData = null;
     }
