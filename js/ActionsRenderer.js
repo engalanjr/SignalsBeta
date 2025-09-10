@@ -1566,8 +1566,8 @@ class ActionsRenderer {
             signal.id === actionId
         );
         
-        // Use actual action context/title if available from signals
-        const actionTitle = relevantSignal?.action_context || relevantSignal?.name || `Action for ${actionId}`;
+        // Use actual recommended action title if available from signals
+        const actionTitle = relevantSignal?.recommended_action || relevantSignal?.name || `Action for ${actionId}`;
         
         // Create a basic action item structure
         const actionItem = {
