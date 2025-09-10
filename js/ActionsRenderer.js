@@ -22,6 +22,9 @@ class ActionsRenderer {
 
         // Render as project management table
         container.innerHTML = this.renderProjectManagementTable(filteredPlans, app);
+        
+        // 🔒 SECURITY FIX: Set up delegated event listeners after rendering
+        this.setupDelegatedEventListeners(container);
     }
 
     static updateActionsOverview(app) {
@@ -254,15 +257,16 @@ class ActionsRenderer {
         
         console.log(`Account ${firstPlan.accountName}: Generated ${allActionPlans.length} tasks from ${accountPlans.length} plans`);
         
-        return `
+        // 🔒 SECURITY FIX: Create HTML template and then safely set untrusted content
+        const html = `
             <div class="account-group">
                 <div class="account-group-header">
                     <div class="account-group-title">
-                        <i class="fas fa-chevron-down group-toggle" onclick="ActionsRenderer.toggleGroup(this)"></i>
-                        <span class="account-name">${firstPlan.accountName}</span>
+                        <i class="fas fa-chevron-down group-toggle" data-action="toggle-group"></i>
+                        <span class="account-name"></span>
                         <span class="task-count">${allActionPlans.length} action plans</span>
-                        <span class="account-health health-${firstPlan.accountHealth}">${firstPlan.accountHealth}</span>
-                        <span class="renewal-value">$${app.formatNumber(firstPlan.renewalBaseline)}</span>
+                        <span class="account-health health-${firstPlan.accountHealth}"></span>
+                        <span class="renewal-value"></span>
                     </div>
                 </div>
                 
@@ -271,43 +275,132 @@ class ActionsRenderer {
                 </div>
             </div>
         `;
+        
+        // Set account info safely via DOM manipulation
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        
+        // Set account name safely
+        const accountNameSpan = tempDiv.querySelector('.account-name');
+        if (accountNameSpan) {
+            accountNameSpan.textContent = firstPlan.accountName || 'Unknown Account';
+        }
+        
+        // Set account health safely
+        const accountHealthSpan = tempDiv.querySelector('.account-health');
+        if (accountHealthSpan) {
+            accountHealthSpan.textContent = firstPlan.accountHealth || 'Unknown';
+        }
+        
+        // Set renewal value safely
+        const renewalValueSpan = tempDiv.querySelector('.renewal-value');
+        if (renewalValueSpan) {
+            renewalValueSpan.textContent = `$${app.formatNumber(firstPlan.renewalBaseline || 0)}`;
+        }
+        
+        return tempDiv.innerHTML;
     }
 
     static renderTaskRow(task, app) {
         const isComplete = StatusUtils.normalizeStatusToCanonical(task.status) === 'complete';
-        return `
-            <div class="pm-table-row action-plan-row clickable-task ${isComplete ? 'task-completed' : ''}" 
-                 data-task-id="${task.id}" 
-                 data-action-id="${task.actionId}"
-                 onclick="ActionsRenderer.handleTaskRowClick(event, '${task.id}', '${task.actionId}')"
-                 oncontextmenu="ActionsRenderer.handleTaskRightClick(event, '${task.id}', '${task.actionId}')"
-                 data-selectable="true">
-                <div class="pm-cell checkbox-col" onclick="event.stopPropagation()">
-                    <input type="checkbox" class="action-plan-checkbox" 
-                           onchange="ActionsRenderer.toggleTaskComplete('${task.id}', this.checked)">
-                </div>
-                <div class="pm-cell task-col">
-                    <div class="action-plan-content">
-                        <div class="action-plan-title">${task.title}</div>
-                        ${task.description ? `<div class="action-plan-description">${task.description}</div>` : ''}
-                    </div>
-                </div>
-                <div class="pm-cell due-date-col">
-                    <span class="due-date ${task.overdue ? 'overdue' : ''}">${task.dueDate}</span>
-                </div>
-                <div class="pm-cell status-col">
-                    <span class="status-badge ${task.status ? StatusUtils.getStatusCSSClass(StatusUtils.normalizeStatusToCanonical(task.status)) : 'status-pending'}">${task.status || 'Pending'}</span>
-                </div>
-                <div class="pm-cell priority-col">
-                    <span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>
-                </div>
-                <div class="pm-cell assignee-col">
-                    <div class="assignee-avatar">
-                        <span class="assignee-initials">${task.assigneeInitials}</span>
-                    </div>
-                </div>
-            </div>
-        `;
+        
+        // 🔒 SECURITY FIX: Create DOM elements safely instead of HTML interpolation
+        const row = document.createElement('div');
+        row.className = `pm-table-row action-plan-row clickable-task ${isComplete ? 'task-completed' : ''}`;
+        row.setAttribute('data-task-id', task.id || '');
+        row.setAttribute('data-action-id', task.actionId || '');
+        row.setAttribute('data-selectable', 'true');
+        
+        // Create checkbox column
+        const checkboxCol = document.createElement('div');
+        checkboxCol.className = 'pm-cell checkbox-col';
+        // Checkbox click handling will be managed by delegation
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'action-plan-checkbox';
+        checkbox.checked = isComplete; // Set initial state
+        
+        checkboxCol.appendChild(checkbox);
+        
+        // Create task column
+        const taskCol = document.createElement('div');
+        taskCol.className = 'pm-cell task-col';
+        
+        const actionPlanContent = document.createElement('div');
+        actionPlanContent.className = 'action-plan-content';
+        
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'action-plan-title';
+        titleDiv.textContent = task.title || ''; // Safe text content
+        
+        actionPlanContent.appendChild(titleDiv);
+        
+        if (task.description) {
+            const descDiv = document.createElement('div');
+            descDiv.className = 'action-plan-description';
+            descDiv.textContent = task.description; // Safe text content
+            actionPlanContent.appendChild(descDiv);
+        }
+        
+        taskCol.appendChild(actionPlanContent);
+        
+        // Create due date column
+        const dueDateCol = document.createElement('div');
+        dueDateCol.className = 'pm-cell due-date-col';
+        
+        const dueDateSpan = document.createElement('span');
+        dueDateSpan.className = `due-date ${task.overdue ? 'overdue' : ''}`;
+        dueDateSpan.textContent = task.dueDate || ''; // Safe text content
+        
+        dueDateCol.appendChild(dueDateSpan);
+        
+        // Create status column with whitelisted values
+        const statusCol = document.createElement('div');
+        statusCol.className = 'pm-cell status-col';
+        
+        const statusSpan = document.createElement('span');
+        const safeStatus = StatusUtils.normalizeStatusToCanonical(task.status) || 'pending';
+        const safeStatusDisplay = StatusUtils.getStatusDisplayLabel ? StatusUtils.getStatusDisplayLabel(safeStatus) : (task.status || 'Pending');
+        statusSpan.className = `status-badge ${StatusUtils.getStatusCSSClass(safeStatus)}`;
+        statusSpan.textContent = safeStatusDisplay; // Safe text content
+        
+        statusCol.appendChild(statusSpan);
+        
+        // Create priority column with whitelisted values
+        const priorityCol = document.createElement('div');
+        priorityCol.className = 'pm-cell priority-col';
+        
+        const prioritySpan = document.createElement('span');
+        const safePriority = ['High', 'Medium', 'Low'].includes(task.priority) ? task.priority : 'Medium';
+        prioritySpan.className = `priority-badge priority-${safePriority.toLowerCase()}`;
+        prioritySpan.textContent = safePriority; // Safe text content
+        
+        priorityCol.appendChild(prioritySpan);
+        
+        // Create assignee column
+        const assigneeCol = document.createElement('div');
+        assigneeCol.className = 'pm-cell assignee-col';
+        
+        const assigneeAvatar = document.createElement('div');
+        assigneeAvatar.className = 'assignee-avatar';
+        
+        const assigneeInitials = document.createElement('span');
+        assigneeInitials.className = 'assignee-initials';
+        assigneeInitials.textContent = task.assigneeInitials || ''; // Safe text content
+        
+        assigneeAvatar.appendChild(assigneeInitials);
+        assigneeCol.appendChild(assigneeAvatar);
+        
+        // Assemble the row
+        row.appendChild(checkboxCol);
+        row.appendChild(taskCol);
+        row.appendChild(dueDateCol);
+        row.appendChild(statusCol);
+        row.appendChild(priorityCol);
+        row.appendChild(assigneeCol);
+        
+        return row.outerHTML;
     }
 
     static renderEmptyState() {
@@ -322,10 +415,10 @@ class ActionsRenderer {
                     Go to the Signal Feed or My Portfolio to create your first action plan.
                 </div>
                 <div class="empty-state-actions">
-                    <button class="btn btn-primary" onclick="app.switchTab('signal-feed')">
+                    <button class="btn btn-primary" data-action="switch-tab" data-tab="signal-feed">
                         <i class="fas fa-stream"></i> View Signal Feed
                     </button>
-                    <button class="btn btn-secondary" onclick="app.switchTab('my-portfolio')">
+                    <button class="btn btn-secondary" data-action="switch-tab" data-tab="my-portfolio">
                         <i class="fas fa-briefcase"></i> View Portfolio
                     </button>
                 </div>
@@ -1503,9 +1596,8 @@ class ActionsRenderer {
         const currentTitle = actionItem.title || 'No Title';
         const currentStatus = this.normalizeStatusToCanonical(actionItem.status || 'pending');
         
-        // 🔧 FIXED: Resolve assignee using same logic as table view
-        const rawAssignee = planData.assignee || planData.createdBy || 'Current User';
-        const currentAssignee = this.resolveAssigneeName(rawAssignee);
+        // Get current plan details (description)
+        const currentPlanDetails = planData.description || '';
         
         // 🔧 FIXED: Format due date consistently 
         const currentDueDate = actionItem.dueDate ? new Date(actionItem.dueDate).toISOString().split('T')[0] : '';
@@ -1515,11 +1607,10 @@ class ActionsRenderer {
         console.log('🔍 [MAPPING] Extracted values (FIXED):', {
             currentTitle,
             currentStatus,
-            currentAssignee, 
+            currentPlanDetails,
             currentDueDate,
             currentPriority,
-            accountId,
-            rawAssignee
+            accountId
         });
         
         let html = `
@@ -1549,19 +1640,6 @@ class ActionsRenderer {
                     </div>
                     
                     <div class="property-field">
-                        <label for="taskAssignee">Assignee</label>
-                        <select id="taskAssignee" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('assignee', this.value)">
-                            <option value="Current User" ${currentAssignee === 'Current User' ? 'selected' : ''}>Current User</option>
-                            <option value="Ed Engalan" ${currentAssignee === 'Ed Engalan' ? 'selected' : ''}>Ed Engalan</option>
-                            <option value="John Smith" ${currentAssignee === 'John Smith' ? 'selected' : ''}>John Smith</option>
-                            <option value="Maria Kim" ${currentAssignee === 'Maria Kim' ? 'selected' : ''}>Maria Kim</option>
-                            <option value="Alex Brown" ${currentAssignee === 'Alex Brown' ? 'selected' : ''}>Alex Brown</option>
-                            <option value="Ryan Taylor" ${currentAssignee === 'Ryan Taylor' ? 'selected' : ''}>Ryan Taylor</option>
-                            <option value="Lisa Wilson" ${currentAssignee === 'Lisa Wilson' ? 'selected' : ''}>Lisa Wilson</option>
-                        </select>
-                    </div>
-                    
-                    <div class="property-field">
                         <label for="taskStatus">Task Status</label>
                         <select id="taskStatus" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('status', this.value)">
                             <option value="pending" ${currentStatus === 'pending' ? 'selected' : ''}>Pending</option>
@@ -1571,6 +1649,17 @@ class ActionsRenderer {
                             <option value="on_hold" ${currentStatus === 'on_hold' ? 'selected' : ''}>On Hold</option>
                         </select>
                     </div>
+                </div>
+            </div>
+            
+            <div class="task-details-section">
+                <h3><i class="fas fa-clipboard-list"></i> Plan Details</h3>
+                <div class="plan-details-field">
+                    <textarea id="taskPlanDetails" 
+                              class="form-textarea" 
+                              placeholder="Add details about this action plan..."
+                              oninput="ActionsRenderer.debouncedAutoSave('description', this.value)"
+                              rows="4"></textarea>
                 </div>
             </div>
             
@@ -1626,6 +1715,12 @@ class ActionsRenderer {
         `;
         
         container.innerHTML = html;
+        
+        // 🔒 SECURITY FIX: Set textarea value safely via JavaScript to prevent XSS
+        const planDetailsTextarea = document.getElementById('taskPlanDetails');
+        if (planDetailsTextarea) {
+            planDetailsTextarea.value = currentPlanDetails;
+        }
         
         // Store current task data for saving
         window.currentActionPlanData = actionPlanData;
@@ -1708,6 +1803,22 @@ class ActionsRenderer {
                     statusElement.className = `status-badge ${StatusUtils.getStatusCSSClass(StatusUtils.normalizeStatusToCanonical(updates.status))}`;
                 }
             }
+            
+            if (updates.description) {
+                const descriptionElement = taskRow.querySelector('.action-plan-description');
+                if (descriptionElement) {
+                    descriptionElement.textContent = updates.description;
+                } else {
+                    // If no description element exists, create one
+                    const contentElement = taskRow.querySelector('.action-plan-content');
+                    if (contentElement && updates.description.trim()) {
+                        const newDescElement = document.createElement('div');
+                        newDescElement.className = 'action-plan-description';
+                        newDescElement.textContent = updates.description;
+                        contentElement.appendChild(newDescElement);
+                    }
+                }
+            }
         } catch (error) {
             console.error('Error updating task row display:', error);
         }
@@ -1779,6 +1890,10 @@ class ActionsRenderer {
                     // Update plan level (assignee is at planData level)
                     updateData.assignee = value;
                     break;
+                case 'description':
+                    // Update plan details/description at plan level
+                    updateData.description = value;
+                    break;
                 default:
                     console.warn('Unknown property for auto-save:', propertyName);
                     return;
@@ -1834,6 +1949,88 @@ class ActionsRenderer {
         } catch (error) {
             console.error(`Error auto-saving ${propertyName}:`, error);
             NotificationService.showError(`Error saving ${propertyName} change`);
+        }
+    }
+    
+    // 🚀 PERFORMANCE: Debounced auto-save to prevent spam writes
+    static debouncedAutoSave = (function() {
+        let timeout;
+        return function(propertyName, value) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                ActionsRenderer.autoSaveTaskProperty(propertyName, value);
+            }, 300); // 300ms debounce
+        };
+    })();
+    
+    // 🔒 SECURITY FIX: Delegated event listeners for secure interaction
+    static setupDelegatedEventListeners(container) {
+        // Check if already initialized to prevent duplicates
+        if (container.dataset.delegatedListenersInitialized) {
+            return;
+        }
+        
+        // Add delegated listeners
+        container.addEventListener('click', this.handleDelegatedClick.bind(this));
+        container.addEventListener('contextmenu', this.handleDelegatedContextMenu.bind(this));
+        container.addEventListener('change', this.handleDelegatedChange.bind(this));
+        
+        // Mark as initialized
+        container.dataset.delegatedListenersInitialized = 'true';
+    }
+    
+    static handleDelegatedClick(event) {
+        // Handle empty state tab switching
+        const tabButton = event.target.closest('[data-action="switch-tab"]');
+        if (tabButton) {
+            const tab = tabButton.getAttribute('data-tab');
+            if (tab && window.app) {
+                window.app.switchTab(tab);
+            }
+            return;
+        }
+        
+        // Handle group toggle clicks
+        if (event.target.closest('.group-toggle')) {
+            this.toggleGroup(event.target.closest('.group-toggle'));
+            return;
+        }
+        
+        // Handle checkbox column clicks (stop propagation)
+        if (event.target.closest('.checkbox-col')) {
+            event.stopPropagation();
+            return;
+        }
+        
+        // Handle task row clicks
+        const taskRow = event.target.closest('.action-plan-row');
+        if (taskRow) {
+            const taskId = taskRow.getAttribute('data-task-id');
+            const actionId = taskRow.getAttribute('data-action-id');
+            if (taskId && actionId) {
+                this.handleTaskRowClick(event, taskId, actionId);
+            }
+        }
+    }
+    
+    static handleDelegatedContextMenu(event) {
+        const taskRow = event.target.closest('.action-plan-row');
+        if (taskRow) {
+            const taskId = taskRow.getAttribute('data-task-id');
+            const actionId = taskRow.getAttribute('data-action-id');
+            if (taskId && actionId) {
+                this.handleTaskRightClick(event, taskId, actionId);
+            }
+        }
+    }
+    
+    static handleDelegatedChange(event) {
+        if (event.target.classList.contains('action-plan-checkbox')) {
+            const taskRow = event.target.closest('.action-plan-row');
+            if (taskRow) {
+                const taskId = taskRow.getAttribute('data-task-id');
+                this.toggleTaskComplete(taskId, event.target.checked);
+            }
         }
     }
     
