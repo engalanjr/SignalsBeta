@@ -1612,11 +1612,13 @@ class ActionsRenderer {
         // Use the actual action title, handle both string and object cases
         const actionTitle = typeof actionItem === 'string' ? actionItem : (actionItem.title || actionItem.name || 'Action Details');
         
-        // Get current task data from rendered table for editable fields
-        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
-        const currentDueDate = taskRow ? taskRow.querySelector('.due-date').textContent.trim() : 'Not Set';
-        const currentPriority = taskRow ? taskRow.querySelector('.priority-badge').textContent.trim() : 'Medium';
-        const currentAssignee = taskRow ? taskRow.querySelector('.assignee-initials').textContent.trim() : 'UN';
+        // Use data directly from action plan object, not from rendered table
+        const currentTitle = actionItem.title || 'No Title';
+        const currentStatus = actionItem.status || 'pending';
+        const currentAssignee = planData.assignee || 'Current User';
+        const currentDueDate = actionItem.dueDate ? new Date(actionItem.dueDate).toISOString().split('T')[0] : '';
+        const currentPriority = actionItem.priority || 'Medium';
+        const accountId = planData.accountId || actionPlanData.accountId;
         
         let html = `
             <div class="task-details-section">
@@ -1632,7 +1634,7 @@ class ActionsRenderer {
                 <div class="task-properties-grid">
                     <div class="property-field">
                         <label for="taskDueDate">Due Date</label>
-                        <input type="date" id="taskDueDate" class="form-input" value="${this.convertToDateValue(currentDueDate)}" onchange="ActionsRenderer.autoSaveTaskProperty('dueDate', this.value)">
+                        <input type="date" id="taskDueDate" class="form-input" value="${currentDueDate}" onchange="ActionsRenderer.autoSaveTaskProperty('dueDate', this.value)">
                     </div>
                     
                     <div class="property-field">
@@ -1647,21 +1649,23 @@ class ActionsRenderer {
                     <div class="property-field">
                         <label for="taskAssignee">Assignee</label>
                         <select id="taskAssignee" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('assignee', this.value)">
-                            <option value="CU" ${currentAssignee === 'CU' ? 'selected' : ''}>Current User</option>
-                            <option value="JS" ${currentAssignee === 'JS' ? 'selected' : ''}>John Smith</option>
-                            <option value="MK" ${currentAssignee === 'MK' ? 'selected' : ''}>Maria Kim</option>
-                            <option value="AB" ${currentAssignee === 'AB' ? 'selected' : ''}>Alex Brown</option>
-                            <option value="RT" ${currentAssignee === 'RT' ? 'selected' : ''}>Ryan Taylor</option>
-                            <option value="LW" ${currentAssignee === 'LW' ? 'selected' : ''}>Lisa Wilson</option>
+                            <option value="Current User" ${currentAssignee === 'Current User' ? 'selected' : ''}>Current User</option>
+                            <option value="John Smith" ${currentAssignee === 'John Smith' ? 'selected' : ''}>John Smith</option>
+                            <option value="Maria Kim" ${currentAssignee === 'Maria Kim' ? 'selected' : ''}>Maria Kim</option>
+                            <option value="Alex Brown" ${currentAssignee === 'Alex Brown' ? 'selected' : ''}>Alex Brown</option>
+                            <option value="Ryan Taylor" ${currentAssignee === 'Ryan Taylor' ? 'selected' : ''}>Ryan Taylor</option>
+                            <option value="Lisa Wilson" ${currentAssignee === 'Lisa Wilson' ? 'selected' : ''}>Lisa Wilson</option>
                         </select>
                     </div>
                     
                     <div class="property-field">
                         <label for="taskStatus">Task Status</label>
                         <select id="taskStatus" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('status', this.value)">
-                            <option value="Pending">Pending</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Complete">Complete</option>
+                            <option value="pending" ${currentStatus === 'pending' ? 'selected' : ''}>Pending</option>
+                            <option value="in_progress" ${currentStatus === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="complete" ${currentStatus === 'complete' ? 'selected' : ''}>Complete</option>
+                            <option value="cancelled" ${currentStatus === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                            <option value="on_hold" ${currentStatus === 'on_hold' ? 'selected' : ''}>On Hold</option>
                         </select>
                     </div>
                 </div>
