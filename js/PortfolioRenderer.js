@@ -5,14 +5,58 @@ class PortfolioRenderer {
         const container = document.getElementById('accountsList');
         if (!container) return;
 
-        const sortedAccounts = Array.from(app.accounts.values()).sort((a, b) => {
-            return a.name.localeCompare(b.name);
-        });
-
         // Update dashboard card values
         this.updateDashboardCards(app);
 
-        container.innerHTML = sortedAccounts.map(account => this.renderAccountCard(account, app)).join('');
+        // Get all accounts
+        const allAccounts = Array.from(app.accounts.values());
+
+        // Filter accounts with recent high priority signals
+        const accountsWithHighPrioritySignals = allAccounts
+            .filter(account => account.signals.some(signal => signal.priority === 'High'))
+            .map(account => {
+                // Find the most recent high priority signal's call_date for sorting
+                const highPrioritySignals = account.signals.filter(signal => signal.priority === 'High');
+                const mostRecentHighPriorityDate = Math.max(
+                    ...highPrioritySignals.map(signal => new Date(signal.call_date || signal.created_date).getTime())
+                );
+                return { ...account, mostRecentHighPriorityDate };
+            })
+            .sort((a, b) => {
+                // Sort by most recent high priority signal date (descending)
+                return b.mostRecentHighPriorityDate - a.mostRecentHighPriorityDate;
+            });
+
+        // Sort all accounts alphabetically
+        const sortedAllAccounts = allAccounts.sort((a, b) => {
+            return a.name.localeCompare(b.name);
+        });
+
+        let html = '';
+
+        // Render "Accounts with recent high Priority Signal" section
+        if (accountsWithHighPrioritySignals.length > 0) {
+            html += `
+                <div class="portfolio-section">
+                    <h3 class="portfolio-section-header">Accounts with a recent high Priority Signal</h3>
+                    <div class="portfolio-section-content">
+                        ${accountsWithHighPrioritySignals.map(account => this.renderAccountCard(account, app)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render "All Accounts" section
+        html += `
+            <div class="portfolio-section">
+                <h3 class="portfolio-section-header">All Accounts</h3>
+                <div class="portfolio-section-content">
+                    ${sortedAllAccounts.map(account => this.renderAccountCard(account, app)).join('')}
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = html;
     }
 
     static updateDashboardCards(app) {
