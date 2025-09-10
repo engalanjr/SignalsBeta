@@ -1837,29 +1837,55 @@ class ActionsRenderer {
         }
         
         try {
-            const { taskId, planData, accountId } = window.currentActionPlanData;
+            const { taskId, actionItem, planData } = window.currentActionPlanData;
             
-            console.log(`Toggling play completion: ${playId} -> ${isChecked}`);
+            // Safety check for actionItem
+            if (!actionItem || !actionItem.plays) {
+                console.error('No actionItem or plays available in currentActionPlanData');
+                return;
+            }
             
-            // Find and update the play in the action items
-            let updatedActionItems = [...planData.actionItems];
+            console.log(`Toggling play completion: ${playId} -> ${isChecked} (playIndex: ${playIndex})`);
+            console.log('Available plays:', actionItem.plays);
+            
+            // Get the plays array from the action item
+            const plays = [...actionItem.plays]; // Create a copy for safety
             let playUpdated = false;
             
-            for (let actionItem of updatedActionItems) {
-                if (actionItem.plays && Array.isArray(actionItem.plays)) {
-                    for (let play of actionItem.plays) {
-                        if (play.playId === playId) {
-                            play.completed = isChecked;
-                            playUpdated = true;
-                            break;
-                        }
+            // Update the specific play by index since playId is generated, not stored
+            if (playIndex >= 0 && playIndex < plays.length) {
+                const play = plays[playIndex];
+                
+                // Handle both string and object plays - normalize to consistent object format
+                if (typeof play === 'string') {
+                    // Convert string play to normalized object with completion status
+                    plays[playIndex] = {
+                        playName: play,
+                        playTitle: play, // Add for compatibility
+                        playId: `play_${playIndex + 1}`, // Add stable playId
+                        completed: isChecked
+                    };
+                } else if (typeof play === 'object') {
+                    // Update existing object play
+                    play.completed = isChecked;
+                    // Ensure it has the required fields
+                    if (!play.playName && !play.playTitle) {
+                        play.playName = play.playTitle || `Play ${playIndex + 1}`;
                     }
+                    if (!play.playId) {
+                        play.playId = `play_${playIndex + 1}`;
+                    }
+                } else {
+                    console.error('Unexpected play format:', play);
+                    return;
                 }
-                if (playUpdated) break;
+                
+                playUpdated = true;
+                console.log('Updated play at index', playIndex, ':', plays[playIndex]);
             }
             
             if (!playUpdated) {
-                console.error('Could not find play to update:', playId);
+                console.error('Could not find play to update at index:', playIndex);
                 return;
             }
             
@@ -1875,17 +1901,44 @@ class ActionsRenderer {
             
             // Save the changes using CRUD method
             const updateData = {
-                actionItems: updatedActionItems
+                plays: plays  // Update the plays array in the plan data
             };
             
-            const result = await ActionPlanService.updateActionPlan(planData.id, updateData, window.app);
+            // Find the correct plan key in app.actionPlans (may not match planData.id)
+            let planKey = null;
+            if (window.app && window.app.actionPlans) {
+                for (let [key, plan] of window.app.actionPlans) {
+                    if (plan.id === planData.id || key === planData.id) {
+                        planKey = key;
+                        break;
+                    }
+                }
+            }
+            
+            if (!planKey) {
+                console.error('Could not find plan key for update');
+                return;
+            }
+            
+            const result = await ActionPlanService.updateActionPlan(planKey, updateData, window.app);
             
             if (result && result.success) {
                 console.log('Successfully updated play completion status');
                 
-                // Update local data
-                if (window.app && window.app.actionPlans && window.app.actionPlans.has(accountId)) {
-                    window.app.actionPlans.set(accountId, result.plan || planData);
+                // Update local data using the correct plan key
+                if (window.app && window.app.actionPlans && window.app.actionPlans.has(planKey)) {
+                    const plan = window.app.actionPlans.get(planKey);
+                    // Update plays in both possible locations for consistency
+                    plan.plays = plays;
+                    if (plan.planData) {
+                        plan.planData.plays = plays;
+                    }
+                    window.app.actionPlans.set(planKey, plan);
+                    
+                    // Trigger cache update events for UI consistency
+                    if (window.DataCache && window.DataCache.emit) {
+                        window.DataCache.emit('actionPlansChanged');
+                    }
                 }
                 
                 // Show success notification
