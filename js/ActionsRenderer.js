@@ -1566,15 +1566,16 @@ class ActionsRenderer {
         console.log('Action item:', actionItem);
         console.log('Plays found:', plays);
         
-        // Use the actual action title, handle both string and object cases
+        // Use the actual action title from action item data (not DOM)
         const actionTitle = typeof actionItem === 'string' ? actionItem : (actionItem.title || actionItem.name || 'Action Details');
         
-        // Get current task data from rendered table for editable fields
-        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
-        const currentDueDate = taskRow ? taskRow.querySelector('.due-date').textContent.trim() : 'Not Set';
-        const currentPriority = taskRow ? taskRow.querySelector('.priority-badge').textContent.trim() : 'Medium';
-        const currentStatus = taskRow ? taskRow.querySelector('.status-badge').textContent.trim() : 'Pending';
-        const currentAssignee = taskRow ? taskRow.querySelector('.assignee-initials').textContent.trim() : 'UN';
+        // Get current task properties from action item data (not DOM) with fallbacks
+        const currentDueDate = (actionItem && actionItem.dueDate) ? this.formatDateForDisplay(actionItem.dueDate) : 'Not Set';
+        const currentPriority = (actionItem && actionItem.priority) ? this.capitalizeFirst(actionItem.priority) : 'Medium';
+        const currentStatus = (actionItem && actionItem.status) ? this.capitalizeFirst(actionItem.status) : 'Pending';
+        const currentAssignee = (actionItem && actionItem.assignee) ? actionItem.assignee : 'CU';
+        
+        console.log('Task details extracted:', { actionTitle, currentDueDate, currentPriority, currentStatus, currentAssignee });
         
         let html = `
             <div class="task-details-section">
@@ -1871,6 +1872,11 @@ class ActionsRenderer {
             console.error('Error formatting date:', error);
             return 'Not Set';
         }
+    }
+    
+    static capitalizeFirst(str) {
+        if (!str) return str;
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
     }
     
     // New checkbox-based play completion toggle
