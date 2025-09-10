@@ -293,8 +293,64 @@ class DataService {
             console.log('Fetching action plans from Domo AppDB...');
             const response = await domo.get(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents`);
             
-            // Log the raw domo.get response object for debugging
+            // 🔍 COMPREHENSIVE DOMO API RESPONSE LOGGING
+            console.log('📊 DOMO API RESPONSE ANALYSIS - START');
+            console.log('Raw domo.get response type:', typeof response);
+            console.log('Raw domo.get response is array:', Array.isArray(response));
+            console.log('Raw domo.get response length:', response?.length || 'N/A');
             console.log('Raw domo.get response object:', response);
+            
+            // Analyze each document structure
+            if (response && Array.isArray(response) && response.length > 0) {
+                console.log(`🔍 ANALYZING ${response.length} DOCUMENTS:`);
+                response.forEach((doc, index) => {
+                    console.log(`\n--- DOCUMENT ${index + 1} ---`);
+                    console.log('Document keys:', Object.keys(doc || {}));
+                    console.log('Has content property:', 'content' in (doc || {}));
+                    console.log('Document structure:', doc);
+                    
+                    // Check if data is nested under 'content' or at root level
+                    const planData = doc.content || doc;
+                    console.log('\n📋 PLAN DATA ANALYSIS:');
+                    console.log('Plan data keys:', Object.keys(planData || {}));
+                    console.log('Plan data structure:', planData);
+                    
+                    // Critical field mapping
+                    console.log('\n🎯 CRITICAL FIELD MAPPING:');
+                    console.log('id:', planData.id);
+                    console.log('title:', planData.title);
+                    console.log('status:', planData.status);
+                    console.log('assignee:', planData.assignee);
+                    console.log('accountId:', planData.accountId);
+                    console.log('actionId:', planData.actionId);
+                    console.log('priority:', planData.priority);
+                    console.log('dueDate:', planData.dueDate);
+                    console.log('plays:', planData.plays);
+                    
+                    // Action items structure
+                    console.log('\n📝 ACTION ITEMS ANALYSIS:');
+                    console.log('actionItems type:', typeof planData.actionItems);
+                    console.log('actionItems is array:', Array.isArray(planData.actionItems));
+                    console.log('actionItems length:', planData.actionItems?.length || 'N/A');
+                    
+                    if (planData.actionItems && Array.isArray(planData.actionItems)) {
+                        planData.actionItems.forEach((item, itemIndex) => {
+                            console.log(`\n  ACTION ITEM ${itemIndex + 1}:`);
+                            console.log('  Type:', typeof item);
+                            console.log('  Keys:', Object.keys(item || {}));
+                            console.log('  Structure:', item);
+                            if (typeof item === 'object') {
+                                console.log('  title:', item.title);
+                                console.log('  actionId:', item.actionId);
+                                console.log('  status:', item.status);
+                                console.log('  plays:', item.plays);
+                            }
+                        });
+                    }
+                    console.log('--- END DOCUMENT ANALYSIS ---');
+                });
+            }
+            console.log('📊 DOMO API RESPONSE ANALYSIS - END\n');
 
             if (response && Array.isArray(response)) {
                 // Handle both direct plan structure and content wrapper structure
