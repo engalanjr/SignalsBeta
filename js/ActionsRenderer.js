@@ -1410,19 +1410,42 @@ class ActionsRenderer {
         }
         
         // Second try: find in live action plans  
+        console.log('🔍 [DEBUG] Searching live action plans for:', { taskId, actionId });
+        console.log('🔍 [DEBUG] Live action plans keys:', Array.from(app.actionPlans.keys()));
+        
         for (let [accountId, planData] of app.actionPlans) {
+            console.log('🔍 [DEBUG] Checking plan:', { accountId, planId: planData.id, hasActionItems: !!planData.actionItems });
+            
+            // Check if this plan matches the taskId
+            if (planData.id === taskId) {
+                console.log('🔍 [DEBUG] Found plan by ID match!');
+                const actionItem = planData.actionItems?.find(item => item.actionId === actionId);
+                if (actionItem) {
+                    console.log('🔍 [DEBUG] Found action item in matched plan:', actionItem);
+                    return {
+                        taskId,
+                        actionId,
+                        actionItem,
+                        planData,
+                        accountId: planData.accountId || accountId
+                    };
+                }
+            }
+            
+            // Also check action items by actionId (fallback)
             if (planData.actionItems) {
                 const actionItem = planData.actionItems.find(item => 
                     item.actionId === actionId || 
                     (typeof item === 'object' && item.actionId === actionId)
                 );
                 if (actionItem) {
+                    console.log('🔍 [DEBUG] Found action item by actionId:', actionItem);
                     return {
                         taskId,
                         actionId,
                         actionItem,
                         planData,
-                        accountId
+                        accountId: planData.accountId || accountId
                     };
                 }
             }
@@ -1507,7 +1530,28 @@ class ActionsRenderer {
     }
     
     static reconstructTaskData(taskId, actionId, app) {
-        console.log('Reconstructing task data for:', { taskId, actionId });
+        console.log('🔍 [DEBUG] Reconstructing task data for:', { taskId, actionId });
+        console.log('🔍 [DEBUG] Available action plans keys:', Array.from(app.actionPlans.keys()));
+        
+        // First, try one more time to find the actual plan using just the plan ID
+        console.log('🔍 [DEBUG] Searching for plan with taskId:', taskId);
+        for (let [key, plan] of app.actionPlans) {
+            console.log('🔍 [DEBUG] Checking plan key:', key, 'plan.id:', plan.id);
+            if (plan.id === taskId || key === taskId) {
+                console.log('🔍 [DEBUG] Found plan during reconstruction!', { key, planId: plan.id });
+                // Find the specific action item
+                const actionItem = plan.actionItems?.find(item => item.actionId === actionId);
+                if (actionItem) {
+                    return {
+                        taskId,
+                        actionId,
+                        actionItem,
+                        planData: plan,
+                        accountId: plan.accountId || key
+                    };
+                }
+            }
+        }
         
         // Try to extract account ID from task ID (format: accountId-index)
         const accountId = taskId.split('-')[0];
@@ -1516,17 +1560,26 @@ class ActionsRenderer {
         // Get plays data from signal based on actionId
         const playsData = this.getPlaysDataForAction(actionId, app);
         
+        // Try to find relevant signal data to get the actual action title
+        const relevantSignal = app.signals && app.signals.find(signal => 
+            signal.action_id === actionId || 
+            signal.id === actionId
+        );
+        
+        // Use actual action context/title if available from signals
+        const actionTitle = relevantSignal?.action_context || relevantSignal?.name || `Action for ${actionId}`;
+        
         // Create a basic action item structure
         const actionItem = {
-            title: `Generated Action ${taskIndex + 1}`,
+            title: actionTitle, // Use real title instead of "Generated Action"
             actionId: actionId,
             plays: playsData, // Use actual plays data instead of empty array
             completed: false
         };
         
-        // Create basic plan data
+        // Create basic plan data - DO NOT add "reconstructed-" prefix
         const planData = {
-            id: `reconstructed-${taskId}`,
+            id: taskId, // Use original taskId, not reconstructed prefix
             actionItems: [actionItem],
             status: 'Pending',
             assignee: 'Current User',
