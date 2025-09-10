@@ -571,6 +571,31 @@ class ActionsRenderer {
             return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
         }
     }
+    
+    // 🔧 NEW: Resolve assignee using same logic as table view
+    static resolveAssigneeName(assignee) {
+        if (!assignee) return 'Current User';
+        if (assignee === 'Current User') return 'Current User';
+        
+        // Handle user IDs (numbers) by mapping to known users
+        if (typeof assignee === 'number' || /^\d+$/.test(assignee)) {
+            // Map known user IDs to names (from production data)
+            const userIdMap = {
+                '621623466': 'Ed Engalan',
+                // Add more user ID mappings as needed
+            };
+            return userIdMap[assignee.toString()] || 'Current User';
+        }
+        
+        // If it's already a name, return as is
+        return assignee;
+    }
+    
+    // 🔧 NEW: Capitalize first letter (same as existing logic)
+    static capitalizeFirstLetter(str) {
+        if (!str) return str;
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    }
 
     // Interactive Methods
 
@@ -1616,21 +1641,27 @@ class ActionsRenderer {
         // Use the actual action title, handle both string and object cases
         const actionTitle = typeof actionItem === 'string' ? actionItem : (actionItem.title || actionItem.name || 'Action Details');
         
-        // Extract values correctly from the data structure
+        // 🔧 FIXED: Apply consistent field mapping like the table view
         const currentTitle = actionItem.title || 'No Title';
-        const currentStatus = actionItem.status || 'pending';
-        const currentAssignee = planData.assignee || 'Current User';
+        const currentStatus = this.capitalizeFirstLetter(actionItem.status || 'pending');
+        
+        // 🔧 FIXED: Resolve assignee using same logic as table view
+        const rawAssignee = planData.assignee || planData.createdBy || 'Current User';
+        const currentAssignee = this.resolveAssigneeName(rawAssignee);
+        
+        // 🔧 FIXED: Format due date consistently 
         const currentDueDate = actionItem.dueDate ? new Date(actionItem.dueDate).toISOString().split('T')[0] : '';
-        const currentPriority = actionItem.priority || 'Medium';
+        const currentPriority = this.capitalizeFirstLetter(actionItem.priority || 'Medium');
         const accountId = planData.accountId || actionPlanData.accountId;
         
-        console.log('🔍 [MAPPING] Extracted values:', {
+        console.log('🔍 [MAPPING] Extracted values (FIXED):', {
             currentTitle,
             currentStatus,
             currentAssignee, 
             currentDueDate,
             currentPriority,
-            accountId
+            accountId,
+            rawAssignee
         });
         
         let html = `
@@ -1663,6 +1694,7 @@ class ActionsRenderer {
                         <label for="taskAssignee">Assignee</label>
                         <select id="taskAssignee" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('assignee', this.value)">
                             <option value="Current User" ${currentAssignee === 'Current User' ? 'selected' : ''}>Current User</option>
+                            <option value="Ed Engalan" ${currentAssignee === 'Ed Engalan' ? 'selected' : ''}>Ed Engalan</option>
                             <option value="John Smith" ${currentAssignee === 'John Smith' ? 'selected' : ''}>John Smith</option>
                             <option value="Maria Kim" ${currentAssignee === 'Maria Kim' ? 'selected' : ''}>Maria Kim</option>
                             <option value="Alex Brown" ${currentAssignee === 'Alex Brown' ? 'selected' : ''}>Alex Brown</option>
