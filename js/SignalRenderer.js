@@ -333,7 +333,6 @@ class SignalRenderer {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const signalId = btn.getAttribute('data-signal-id');
-                console.log(`👍 Like button clicked for signal: ${signalId}`);
                 SignalFeedbackService.acknowledgeSignal(signalId, 'like', app);
             });
         });
@@ -342,7 +341,6 @@ class SignalRenderer {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const signalId = btn.getAttribute('data-signal-id');
-                console.log(`👎 Not accurate button clicked for signal: ${signalId}`);
                 SignalFeedbackService.acknowledgeSignal(signalId, 'not-accurate', app);
             });
         });
