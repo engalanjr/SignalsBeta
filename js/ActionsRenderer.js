@@ -427,9 +427,11 @@ class ActionsRenderer {
         
         // Get assignee initials from plan data or generate
         let assigneeInitials;
-        const assignee = plan.assignee || plan.planData.assignee || plan.createdBy || plan.planData.createdBy;
-        if (assignee) {
-            assigneeInitials = assignee === 'Current User' ? 'CU' : this.getInitialsFromName(assignee);
+        const rawAssignee = plan.assignee || plan.planData.assignee || plan.createdBy || plan.planData.createdBy;
+        if (rawAssignee) {
+            // 🔧 FIXED: Resolve assignee name first, then get initials
+            const resolvedAssignee = this.resolveAssigneeName(rawAssignee);
+            assigneeInitials = resolvedAssignee === 'Current User' ? 'CU' : this.getInitialsFromName(resolvedAssignee);
         } else {
             assigneeInitials = this.generateAssigneeInitials();
         }
