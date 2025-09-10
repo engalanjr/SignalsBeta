@@ -14,53 +14,51 @@ class SignalsAI {
     }
 
     async init() {
-        console.log('Initializing SignalsAI v8.0...');
+        console.log('🚀 Initializing SignalsAI v8.0 with optimized batch loading...');
         this.showLoading();
 
         try {
-            console.log('Loading data...');
-            await this.loadData();
-            console.log('Processing accounts...');
+            // ⚡ NEW: Single parallel batch load for all data types
+            console.log('📡 Starting optimized batch data load...');
+            const allData = await DataLoader.loadAllData();
+            
+            // Initialize the in-memory cache with all data
+            DataCache.initialize(allData);
+            
+            // Set up the app with cached data (no additional API calls needed!)
+            this.data = allData.signals;
+            this.filteredData = [...this.data];
+            
+            console.log('📊 Processing accounts from cached signals...');
             this.processAccounts();
 
-            // Load account comments after accounts are processed
-            console.log('Loading account comments...');
+            // Load cached comments and action plans instantly
             this.accountComments = new Map();
-            for (let [accountId, account] of this.accounts) {
-                const accountCommentsResult = await DataService.getAccountComments(accountId);
-                if (accountCommentsResult.success) {
-                    this.accountComments.set(accountId, accountCommentsResult.comments);
+            this.actionPlans = new Map();
+            
+            // Populate action plans from cache
+            allData.actionPlans.forEach(plan => {
+                if (plan.id) {
+                    this.actionPlans.set(plan.id, plan);
                 }
-            }
-
-            // Load action plans from Domo API
-            console.log('Loading action plans from Domo...');
-            const actionPlansResult = await DataService.getActionPlans();
-            if (actionPlansResult.success && actionPlansResult.plans && actionPlansResult.plans.length > 0) {
-                console.log(`Loaded ${actionPlansResult.plans.length} action plans from Domo API`);
-                // Populate action plans using unique plan IDs to prevent overwrites
-                actionPlansResult.plans.forEach(plan => {
-                    if (plan.accountId) {
-                        // Use unique plan ID as key instead of accountId to prevent overwrites
-                        const planId = plan.id || `plan-${Date.now()}-${Math.random()}`;
-                        this.actionPlans.set(planId, plan);
-                    }
-                });
-            } else {
-                console.log('No action plans found in Domo API, fallback will be used when needed');
-            }
-            console.log('Setting up event listeners...');
+            });
+            
+            console.log('🎯 Setting up event listeners...');
             this.setupEventListeners();
-            console.log('Rendering current tab...');
+            
+            console.log('🎨 Rendering current tab...');
             this.renderCurrentTab();
-            console.log('Updating summary stats...');
+            
+            console.log('📈 Updating summary stats...');
             // Use setTimeout to ensure DOM is fully rendered
             setTimeout(() => {
                 this.updateSummaryStats();
             }, 100);
-            console.log('SignalsAI initialization complete');
+            
+            console.log('✅ SignalsAI initialization complete with optimized loading!');
+            
         } catch (error) {
-            console.error('Failed to initialize app at step:', error);
+            console.error('❌ Failed to initialize app:', error);
             console.error('Error details:', error.message);
             console.error('Stack trace:', error.stack);
             this.showErrorMessage('Failed to load SignalsAI data. Please refresh the page.');
