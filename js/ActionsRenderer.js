@@ -1412,34 +1412,40 @@ class ActionsRenderer {
     }
     
     static async findTaskData(taskId, actionId, app) {
-        // 🔧 SIMPLIFIED: Use exact same data source as grid for perfect consistency
-        console.log('🔍 [SIMPLIFIED] Finding task using same data source as grid:', { taskId, actionId });
+        // 🔧 FIXED: Work with actual structure from getFormattedActionPlans
+        console.log('🔍 [FIXED] Finding task using correct plan structure:', { taskId, actionId });
         
         const formattedActionPlans = await this.getFormattedActionPlans(app);
+        console.log('🔍 [FIXED] Formatted plans structure:', formattedActionPlans.map(p => ({ 
+            planDataId: p.planData?.id, 
+            actionId: p.planData?.actionId, 
+            accountId: p.accountId 
+        })));
         
-        // Find the specific task by matching taskId and actionId
+        // Find the specific task by matching the plan data structure
         for (const plan of formattedActionPlans) {
-            if (plan.id === taskId && plan.actionId === actionId) {
-                console.log('🔍 [SIMPLIFIED] Found task:', plan);
+            const planDataId = plan.planData?.id;
+            const planActionId = plan.planData?.actionId;
+            
+            if (planDataId === taskId && planActionId === actionId) {
+                console.log('🔍 [FIXED] Found matching task:', plan);
                 
-                // Create action item structure from the formatted plan data
+                // Create action item structure from the plan data
                 const actionItem = {
-                    title: plan.title,
-                    actionId: plan.actionId,
-                    status: plan.rawActionItem.status,
-                    priority: plan.rawActionItem.priority,
-                    dueDate: plan.dueDate,
-                    plays: plan.rawActionItem.plays || []
+                    title: plan.planData.title || plan.planData.planTitle || 'Untitled Action',
+                    actionId: plan.planData.actionId,
+                    status: plan.planData.status || 'pending',
+                    priority: plan.planData.priority || 'Medium',
+                    dueDate: plan.planData.dueDate,
+                    plays: plan.planData.plays || []
                 };
                 
-                // Create plan data structure that matches expected format
+                // Use the plan data directly
                 const planData = {
-                    id: plan.id,
+                    ...plan.planData,
+                    id: plan.planData.id,
                     accountId: plan.accountId,
-                    assignee: plan.rawActionItem.assignee || 'Current User',
-                    status: plan.rawActionItem.status,
-                    priority: plan.rawActionItem.priority,
-                    actionItems: [actionItem]
+                    assignee: plan.planData.assignee || plan.planData.createdBy || 'Current User'
                 };
                 
                 return {
@@ -1452,8 +1458,11 @@ class ActionsRenderer {
             }
         }
         
-        console.error('🔍 [SIMPLIFIED] Task not found in formatted plans:', { taskId, actionId });
-        console.log('🔍 [SIMPLIFIED] Available plans:', formattedActionPlans.map(p => ({ id: p.id, actionId: p.actionId })));
+        console.error('🔍 [FIXED] Task not found in formatted plans:', { taskId, actionId });
+        console.log('🔍 [FIXED] Available task/action IDs:', formattedActionPlans.map(p => ({ 
+            planId: p.planData?.id, 
+            actionId: p.planData?.actionId 
+        })));
         return null;
     }
     
