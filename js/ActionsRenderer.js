@@ -1594,6 +1594,16 @@ class ActionsRenderer {
         
         console.log('Task details extracted:', { actionTitle, currentDueDate, currentPriority, currentStatus, currentAssignee, hasTaskRow: !!taskRow });
         
+        // Debug the values before rendering
+        console.log('🔍 ABOUT TO RENDER HTML WITH:', {
+            actionTitle,
+            currentDueDate,
+            currentPriority, 
+            currentStatus,
+            currentAssignee,
+            convertedDate: this.convertToDateValue(currentDueDate)
+        });
+        
         let html = `
             <div class="task-details-section">
                 <h3><i class="fas fa-lightbulb"></i> Recommended Action</h3>
