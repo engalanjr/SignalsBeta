@@ -528,10 +528,6 @@ class SignalsAI {
         NotificationService.showSuccess(message);
     }
 
-    showWarningMessage(message) {
-        NotificationService.showError(message);
-    }
-
     showErrorMessage(message) {
         NotificationService.showError(message);
     }

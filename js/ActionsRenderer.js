@@ -1513,79 +1513,12 @@ class ActionsRenderer {
         const accountId = taskId.split('-')[0];
         const taskIndex = parseInt(taskId.split('-')[1]) || 0;
         
-        let actionTitle = 'Action Details'; // fallback
-        let foundSignal = null;
-        
-        console.log('🔍 Looking for signal with actionId:', actionId);
-        console.log('📊 Available signals count:', app?.allSignals?.length || 0);
-        
-        if (app && app.allSignals) {
-            // Method 1: Try direct ID match (for real signal IDs)
-            foundSignal = app.allSignals.find(s => s.id === actionId);
-            console.log('🎯 Direct ID match result:', foundSignal);
-            
-            // Method 2: If no direct match, try to find by action text in existing plans
-            if (!foundSignal) {
-                console.log('🔄 No direct match, trying to find signal by existing action plan data...');
-                
-                // Try to get the action title from saved action plans first
-                let existingActionTitle = null;
-                if (app.actionPlans) {
-                    for (let [accId, planData] of app.actionPlans) {
-                        if (planData.actionItems) {
-                            const actionItem = planData.actionItems.find(item => item.actionId === actionId);
-                            if (actionItem && actionItem.title) {
-                                existingActionTitle = actionItem.title;
-                                console.log('📋 Found existing action title:', existingActionTitle);
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                // Now try to find the signal by matching the action text with CSV data
-                if (existingActionTitle) {
-                    foundSignal = app.allSignals.find(s => {
-                        const signalAction = s.recommended_action || s.action_context || s.name || s.title || s.summary;
-                        return signalAction && signalAction.includes(existingActionTitle.substring(0, 30));
-                    });
-                    console.log('🎯 Found signal by action text match:', foundSignal);
-                }
-                
-                // Method 3: Last resort - find any signal from the same account
-                if (!foundSignal && accountId) {
-                    foundSignal = app.allSignals.find(s => s.account_id === accountId);
-                    console.log('🎯 Found signal by account fallback:', foundSignal);
-                }
-            }
-            
-            if (foundSignal) {
-                // Use the real signal data
-                actionTitle = foundSignal.recommended_action || 
-                             foundSignal.action_context || 
-                             foundSignal.name || 
-                             foundSignal.title ||
-                             foundSignal.summary ||
-                             actionTitle;
-                console.log('✅ Using action title from found signal:', actionTitle);
-                
-                // Update actionId to use the real signal ID
-                actionId = foundSignal.id;
-                console.log('🔄 Updated actionId to real signal ID:', actionId);
-            } else {
-                console.warn('❌ No signal found - using fallback');
-                console.log('📋 Available signal IDs:', app.allSignals.map(s => s.id).slice(0, 5));
-            }
-        } else {
-            console.warn('❌ No app.allSignals available');
-        }
-        
-        // Get plays data from signal based on the (possibly updated) actionId
+        // Get plays data from signal based on actionId
         const playsData = this.getPlaysDataForAction(actionId, app);
         
         // Create a basic action item structure
         const actionItem = {
-            title: actionTitle,
+            title: `Generated Action ${taskIndex + 1}`,
             actionId: actionId,
             plays: playsData, // Use actual plays data instead of empty array
             completed: false
@@ -1593,7 +1526,7 @@ class ActionsRenderer {
         
         // Create basic plan data
         const planData = {
-            id: taskId,  // Use original task ID, not reconstructed
+            id: `reconstructed-${taskId}`,
             actionItems: [actionItem],
             status: 'Pending',
             assignee: 'Current User',
@@ -1623,46 +1556,14 @@ class ActionsRenderer {
         console.log('Action item:', actionItem);
         console.log('Plays found:', plays);
         
-        // Use actionItem data as primary source (most reliable)
-        let actionTitle = 'Action Details';
-        let currentDueDate = 'Not Set';
-        let currentPriority = 'Medium';
-        let currentStatus = 'Pending';
-        let currentAssignee = 'CU';
+        // Use the actual action title, handle both string and object cases
+        const actionTitle = typeof actionItem === 'string' ? actionItem : (actionItem.title || actionItem.name || 'Action Details');
         
-        // Extract from actionItem data first
-        if (actionItem) {
-            if (typeof actionItem === 'string') {
-                actionTitle = actionItem;
-            } else if (typeof actionItem === 'object') {
-                actionTitle = actionItem.title || actionItem.name || actionTitle;
-                currentDueDate = actionItem.dueDate ? new Date(actionItem.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : currentDueDate;
-                currentPriority = actionItem.priority ? (actionItem.priority.charAt(0).toUpperCase() + actionItem.priority.slice(1).toLowerCase()) : currentPriority;
-                currentStatus = actionItem.status ? (actionItem.status.charAt(0).toUpperCase() + actionItem.status.slice(1).toLowerCase()) : currentStatus;
-                currentAssignee = actionItem.assignee || currentAssignee;
-            }
-        }
-        
-        console.log('📊 DATA FROM ACTIONITEM:', {
-            actionTitle,
-            currentDueDate,
-            currentPriority, 
-            currentStatus,
-            currentAssignee,
-            rawActionItem: actionItem
-        });
-        
-        console.log('Task details extracted:', { actionTitle, currentDueDate, currentPriority, currentStatus, currentAssignee });
-        
-        // Debug the values before rendering
-        console.log('🔍 ABOUT TO RENDER HTML WITH:', {
-            actionTitle,
-            currentDueDate,
-            currentPriority, 
-            currentStatus,
-            currentAssignee,
-            convertedDate: this.convertToDateValue(currentDueDate)
-        });
+        // Get current task data from rendered table for editable fields
+        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+        const currentDueDate = taskRow ? taskRow.querySelector('.due-date').textContent.trim() : 'Not Set';
+        const currentPriority = taskRow ? taskRow.querySelector('.priority-badge').textContent.trim() : 'Medium';
+        const currentAssignee = taskRow ? taskRow.querySelector('.assignee-initials').textContent.trim() : 'UN';
         
         let html = `
             <div class="task-details-section">
@@ -1705,9 +1606,9 @@ class ActionsRenderer {
                     <div class="property-field">
                         <label for="taskStatus">Task Status</label>
                         <select id="taskStatus" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('status', this.value)">
-                            <option value="Pending" ${currentStatus === 'Pending' ? 'selected' : ''}>Pending</option>
-                            <option value="In Progress" ${currentStatus === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                            <option value="Complete" ${currentStatus === 'Complete' ? 'selected' : ''}>Complete</option>
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Complete">Complete</option>
                         </select>
                     </div>
                 </div>
@@ -1774,31 +1675,12 @@ class ActionsRenderer {
         
         // Try to parse the date string and convert to YYYY-MM-DD format
         try {
-            // Handle various date formats
-            let date;
-            
-            // If it's already in ISO format
-            if (dateString.includes('T') || dateString.match(/^\d{4}-\d{2}-\d{2}/)) {
-                date = new Date(dateString);
-            }
-            // Handle formats like "Sep 13", "Sept 13", etc.
-            else if (dateString.match(/^[A-Za-z]{3,4}\s+\d{1,2}$/)) {
-                date = new Date(dateString + ', 2025');
-            }
-            // Handle MM/DD/YYYY format
-            else if (dateString.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-                date = new Date(dateString);
-            }
-            // Default case
-            else {
-                date = new Date(dateString);
-            }
-            
+            const date = new Date(dateString + ', 2025'); // Add year for better parsing
             if (!isNaN(date.getTime())) {
                 return date.toISOString().split('T')[0];
             }
         } catch (error) {
-            console.warn('Could not parse date:', dateString, error);
+            console.warn('Could not parse date:', dateString);
         }
         
         return '';
@@ -1831,9 +1713,7 @@ class ActionsRenderer {
             if (updates.dueDate) {
                 const dueDateElement = taskRow.querySelector('.due-date');
                 if (dueDateElement) {
-                    // Format the date properly for display
-                    const formattedDate = this.formatDateForDisplay(updates.dueDate);
-                    dueDateElement.textContent = formattedDate || 'Not Set';
+                    dueDateElement.textContent = updates.dueDate || 'Not Set';
                 }
             }
             
@@ -1866,31 +1746,13 @@ class ActionsRenderer {
     
     // Auto-save functionality for task properties
     static async autoSaveTaskProperty(propertyName, value) {
-        // Enhanced debugging for production troubleshooting
-        console.log('🐛 DEBUG: autoSaveTaskProperty called with:', { propertyName, value });
-        console.log('🐛 DEBUG: window.currentActionPlanData exists:', !!window.currentActionPlanData);
-        
         if (!window.currentActionPlanData) {
-            console.error('❌ No task data available for auto-save');
-            console.log('🐛 DEBUG: Available global data:', {
-                app: !!window.app,
-                actionPlans: window.app ? window.app.actionPlans?.size : 'N/A'
-            });
-            NotificationService.showError('Task data not found - please refresh and try again');
+            console.error('No task data available for auto-save');
             return;
         }
         
         try {
             const { taskId, actionId, planData, accountId } = window.currentActionPlanData;
-            
-            console.log('🐛 DEBUG: Task data breakdown:', {
-                taskId,
-                actionId,
-                accountId,
-                planDataExists: !!planData,
-                planDataId: planData?.id,
-                planDataStatus: planData?.status
-            });
             
             console.log(`Auto-saving ${propertyName}:`, value);
             
@@ -1917,19 +1779,11 @@ class ActionsRenderer {
                     return;
             }
             
-            console.log('🐛 DEBUG: About to call ActionPlanService.updateActionPlan with:', {
-                planId: planData.id,
-                updateData,
-                appExists: !!window.app
-            });
-            
             // Call the CRUD method to save changes
             const result = await ActionPlanService.updateActionPlan(planData.id, updateData, window.app);
             
-            console.log('🐛 DEBUG: ActionPlanService.updateActionPlan result:', result);
-            
             if (result && result.success) {
-                console.log(`✅ Successfully auto-saved ${propertyName}`);
+                console.log(`Successfully auto-saved ${propertyName}`);
                 // Update local data if needed
                 if (window.app && window.app.actionPlans && window.app.actionPlans.has(accountId)) {
                     const currentPlan = window.app.actionPlans.get(accountId);
@@ -1937,52 +1791,15 @@ class ActionsRenderer {
                         window.app.actionPlans.set(accountId, result.plan || currentPlan);
                     }
                 }
-                
-                // Refresh Action Plans view if currently visible
-                if (window.app && typeof window.app.renderCurrentTab === 'function') {
-                    const currentTab = document.querySelector('.tab-button.active')?.dataset?.tab;
-                    if (currentTab === 'actions') {
-                        window.app.renderCurrentTab();
-                    }
-                }
-                
-                NotificationService.showSuccess(`Successfully saved ${propertyName} change`);
             } else {
-                console.error(`❌ Failed to auto-save ${propertyName}:`, result ? result.error : 'Unknown error');
+                console.error(`Failed to auto-save ${propertyName}:`, result ? result.error : 'Unknown error');
                 // Show error notification to the user about the save failure
                 NotificationService.showError(`Failed to save ${propertyName} change`);
             }
         } catch (error) {
-            console.error(`💥 Error auto-saving ${propertyName}:`, error);
-            console.log('🐛 DEBUG: Error details:', {
-                message: error.message,
-                stack: error.stack,
-                currentData: window.currentActionPlanData
-            });
+            console.error(`Error auto-saving ${propertyName}:`, error);
             NotificationService.showError(`Error saving ${propertyName} change`);
         }
-    }
-    
-    static formatDateForDisplay(dateValue) {
-        if (!dateValue || dateValue === 'Not Set') return 'Not Set';
-        
-        try {
-            const date = new Date(dateValue);
-            if (isNaN(date.getTime())) return 'Not Set';
-            
-            return date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric'
-            });
-        } catch (error) {
-            console.error('Error formatting date:', error);
-            return 'Not Set';
-        }
-    }
-    
-    static capitalizeFirst(str) {
-        if (!str) return str;
-        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
     }
     
     // New checkbox-based play completion toggle
@@ -2042,14 +1859,6 @@ class ActionsRenderer {
                 // Update local data
                 if (window.app && window.app.actionPlans && window.app.actionPlans.has(accountId)) {
                     window.app.actionPlans.set(accountId, result.plan || planData);
-                }
-                
-                // Refresh Action Plans view if currently visible
-                if (window.app && typeof window.app.renderCurrentTab === 'function') {
-                    const currentTab = document.querySelector('.tab-button.active')?.dataset?.tab;
-                    if (currentTab === 'actions') {
-                        window.app.renderCurrentTab();
-                    }
                 }
                 
                 // Show success notification
