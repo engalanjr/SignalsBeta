@@ -1566,7 +1566,7 @@ class ActionsRenderer {
         console.log('Action item:', actionItem);
         console.log('Plays found:', plays);
         
-        // Use the actual action title from action item data (not DOM)
+        // Get action title from action item, fallback to reading from DOM
         let actionTitle = 'Action Details';
         if (typeof actionItem === 'string') {
             actionTitle = actionItem;
@@ -1574,15 +1574,25 @@ class ActionsRenderer {
             actionTitle = actionItem.title;
         } else if (actionItem && actionItem.name) {
             actionTitle = actionItem.name;
+        } else {
+            // Fallback: Read from the action plans table row if available
+            const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+            if (taskRow) {
+                const titleElement = taskRow.querySelector('.action-plan-title');
+                if (titleElement) {
+                    actionTitle = titleElement.textContent.trim();
+                }
+            }
         }
         
-        // Get current task properties from action item data (not DOM) with fallbacks
-        const currentDueDate = (actionItem && actionItem.dueDate) ? this.formatDateForDisplay(actionItem.dueDate) : 'Not Set';
-        const currentPriority = (actionItem && actionItem.priority) ? this.capitalizeFirst(actionItem.priority) : 'Medium';
-        const currentStatus = (actionItem && actionItem.status) ? this.capitalizeFirst(actionItem.status) : 'Pending';
-        const currentAssignee = (actionItem && actionItem.assignee) ? actionItem.assignee : 'CU';
+        // Get current task properties from DOM (most reliable source) with fallbacks
+        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+        const currentDueDate = taskRow ? taskRow.querySelector('.due-date')?.textContent.trim() || 'Not Set' : 'Not Set';
+        const currentPriority = taskRow ? taskRow.querySelector('.priority-badge')?.textContent.trim() || 'Medium' : 'Medium';
+        const currentStatus = taskRow ? taskRow.querySelector('.status-badge')?.textContent.trim() || 'Pending' : 'Pending';
+        const currentAssignee = taskRow ? taskRow.querySelector('.assignee-initials')?.textContent.trim() || 'CU' : 'CU';
         
-        console.log('Task details extracted:', { actionTitle, currentDueDate, currentPriority, currentStatus, currentAssignee });
+        console.log('Task details extracted:', { actionTitle, currentDueDate, currentPriority, currentStatus, currentAssignee, hasTaskRow: !!taskRow });
         
         let html = `
             <div class="task-details-section">
