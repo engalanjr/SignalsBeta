@@ -1219,15 +1219,44 @@ class ActionPlanService {
 
     static async updateActionPlan(planId, updateData, app) {
         try {
+            console.log(`🔍 [DEBUG] ActionPlanService.updateActionPlan called with:`, {
+                planId,
+                planIdType: typeof planId,
+                planIdLength: planId ? planId.length : 'null',
+                updateData,
+                hasApp: !!app,
+                actionPlansMapSize: app?.actionPlans?.size || 0
+            });
+            
             const result = await DataService.updateActionPlan(planId, updateData);
 
             if (result.success) {
                 // Update local state
+                console.log(`🔍 [DEBUG] Update successful, looking for plan in local state:`, {
+                    planId,
+                    actionPlansMapKeys: Array.from(app.actionPlans.keys()),
+                    actionPlansMapSize: app.actionPlans.size
+                });
+                
+                let foundPlan = false;
                 for (let [key, plan] of app.actionPlans) {
+                    console.log(`🔍 [DEBUG] Checking plan:`, {
+                        key,
+                        planId: plan.id,
+                        keyMatchesPlanId: key === planId,
+                        planIdMatchesPlanId: plan.id === planId
+                    });
+                    
                     if (plan.id === planId || key === planId) {
+                        console.log(`🔍 [DEBUG] Found matching plan, updating:`, { key, planId: plan.id });
                         app.actionPlans.set(key, result.plan);
+                        foundPlan = true;
                         break;
                     }
+                }
+                
+                if (!foundPlan) {
+                    console.warn(`🔍 [DEBUG] Plan not found in local state for planId: ${planId}`);
                 }
 
                 // Show success message, but also handle warnings (like local-only saves)

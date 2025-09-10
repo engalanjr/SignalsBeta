@@ -1754,7 +1754,16 @@ class ActionsRenderer {
         try {
             const { taskId, actionId, planData, accountId } = window.currentActionPlanData;
             
-            console.log(`Auto-saving ${propertyName}:`, value);
+            console.log(`🔍 [DEBUG] Auto-saving ${propertyName}:`, value);
+            console.log(`🔍 [DEBUG] Current action plan data:`, {
+                taskId,
+                actionId,
+                planId: planData?.id,
+                accountId,
+                planDataKeys: Object.keys(planData || {}),
+                hasActionItems: !!planData?.actionItems,
+                actionItemsCount: planData?.actionItems?.length || 0
+            });
             
             // Update the task row display immediately for better UX
             this.updateTaskRowDisplay(taskId, { [propertyName]: value });
@@ -1780,6 +1789,13 @@ class ActionsRenderer {
             }
             
             // Call the CRUD method to save changes
+            console.log(`🔍 [DEBUG] Calling updateActionPlan with:`, {
+                planId: planData.id,
+                updateData,
+                planDataType: typeof planData.id,
+                planIdExists: !!planData.id
+            });
+            
             const result = await ActionPlanService.updateActionPlan(planData.id, updateData, window.app);
             
             if (result && result.success) {
