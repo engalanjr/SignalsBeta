@@ -1091,7 +1091,7 @@ class ActionPlanService {
                 }
                 
                 // Show success for multiple plans
-                app.showSuccessMessage(`${planActionItems.length} action plans created successfully!`);
+                NotificationService.showSuccess(`${planActionItems.length} action plans created successfully!`);
                 this.closePlanDrawer();
                 
                 // Re-render the current tab
@@ -1182,9 +1182,9 @@ class ActionPlanService {
 
                 // Show success message
                 if (result.warning) {
-                    app.showWarningMessage(`${message} (${result.warning})`);
+                    NotificationService.showWarning(`${message} (${result.warning})`);
                 } else {
-                    app.showSuccessMessage(message);
+                    NotificationService.showSuccess(message);
                 }
 
                 // Re-render the current tab to show updates
@@ -1232,19 +1232,19 @@ class ActionPlanService {
 
                 // Show success message, but also handle warnings (like local-only saves)
                 if (result.warning) {
-                    app.showWarningMessage(result.warning);
+                    NotificationService.showWarning(result.warning);
                 } else {
-                    app.showSuccessMessage('Action plan updated successfully!');
+                    NotificationService.showSuccess('Action plan updated successfully!');
                 }
                 
                 return { success: true, plan: result.plan };
             } else {
-                app.showErrorMessage(result.error || 'Failed to update action plan');
+                NotificationService.showError(result.error || 'Failed to update action plan');
                 return { success: false, error: result.error || 'Update failed' };
             }
         } catch (error) {
             console.error('Error updating action plan:', error);
-            app.showErrorMessage('Failed to update action plan');
+            NotificationService.showError('Failed to update action plan');
             return { success: false, error: error.message || 'Unexpected error occurred' };
         }
     }
@@ -1262,7 +1262,7 @@ class ActionPlanService {
                     }
                 }
 
-                app.showSuccessMessage('Action plan deleted successfully!');
+                NotificationService.showSuccess('Action plan deleted successfully!');
 
                 // Re-render current tab
                 if (app.currentTab === 'actions') {
@@ -1271,11 +1271,11 @@ class ActionPlanService {
                     PortfolioRenderer.renderMyPortfolio(app);
                 }
             } else {
-                app.showErrorMessage('Failed to delete action plan');
+                NotificationService.showError('Failed to delete action plan');
             }
         } catch (error) {
             console.error('Error deleting action plan:', error);
-            app.showErrorMessage('Failed to delete action plan');
+            NotificationService.showError('Failed to delete action plan');
         }
     }
 
