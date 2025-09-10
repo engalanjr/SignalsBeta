@@ -1412,84 +1412,49 @@ class ActionsRenderer {
     }
     
     static async findTaskData(taskId, actionId, app) {
-        // First, try to find in the current rendered action plans (includes AI recommendations)
-        const currentActionPlans = await this.getFormattedActionPlans(app);
+        // 🔧 SIMPLIFIED: Use exact same data source as grid for perfect consistency
+        console.log('🔍 [SIMPLIFIED] Finding task using same data source as grid:', { taskId, actionId });
         
-        for (const plan of currentActionPlans) {
-            if (plan.planData && plan.planData.actionItems) {
-                const actionItem = plan.planData.actionItems.find(item => {
-                    // Check if this is the task we're looking for
-                    const itemActionId = item.actionId; // Only use real action IDs from CSV data
-                    return itemActionId === actionId;
-                });
+        const formattedActionPlans = await this.getFormattedActionPlans(app);
+        
+        // Find the specific task by matching taskId and actionId
+        for (const plan of formattedActionPlans) {
+            if (plan.id === taskId && plan.actionId === actionId) {
+                console.log('🔍 [SIMPLIFIED] Found task:', plan);
                 
-                if (actionItem) {
-                    console.log('Found task in current action plans:', actionItem);
-                    return {
-                        taskId,
-                        actionId,
-                        actionItem,
-                        planData: plan.planData,
-                        accountId: plan.accountId
-                    };
-                }
+                // Create action item structure from the formatted plan data
+                const actionItem = {
+                    title: plan.title,
+                    actionId: plan.actionId,
+                    status: plan.rawActionItem.status,
+                    priority: plan.rawActionItem.priority,
+                    dueDate: plan.dueDate,
+                    plays: plan.rawActionItem.plays || []
+                };
+                
+                // Create plan data structure that matches expected format
+                const planData = {
+                    id: plan.id,
+                    accountId: plan.accountId,
+                    assignee: plan.rawActionItem.assignee || 'Current User',
+                    status: plan.rawActionItem.status,
+                    priority: plan.rawActionItem.priority,
+                    actionItems: [actionItem]
+                };
+                
+                return {
+                    taskId,
+                    actionId,
+                    actionItem,
+                    planData,
+                    accountId: plan.accountId
+                };
             }
         }
         
-        // Second try: find in live action plans  
-        console.log('🔍 [DEBUG] Searching live action plans for:', { taskId, actionId });
-        console.log('🔍 [DEBUG] Live action plans keys:', Array.from(app.actionPlans.keys()));
-        
-        for (let [accountId, planData] of app.actionPlans) {
-            console.log('🔍 [DEBUG] Checking plan:', { accountId, planId: planData.id, hasActionItems: !!planData.actionItems });
-            
-            // Check if this plan matches the taskId
-            if (planData.id === taskId) {
-                console.log('🔍 [DEBUG] Found plan by ID match!');
-                const actionItem = planData.actionItems?.find(item => item.actionId === actionId);
-                if (actionItem) {
-                    console.log('🔍 [DEBUG] Found action item in matched plan:', actionItem);
-                    return {
-                        taskId,
-                        actionId,
-                        actionItem,
-                        planData,
-                        accountId: planData.accountId || accountId
-                    };
-                }
-            }
-            
-            // Also check action items by actionId (fallback)
-            if (planData.actionItems) {
-                const actionItem = planData.actionItems.find(item => 
-                    item.actionId === actionId || 
-                    (typeof item === 'object' && item.actionId === actionId)
-                );
-                if (actionItem) {
-                    console.log('🔍 [DEBUG] Found action item by actionId:', actionItem);
-                    return {
-                        taskId,
-                        actionId,
-                        actionItem,
-                        planData,
-                        accountId: planData.accountId || accountId
-                    };
-                }
-            }
-        }
-        
-        // Third try: search fallback data (only if API data wasn't loaded successfully)
-        // Check if we're running in development or if API failed to load action plans
-        const shouldUseFallback = this.shouldUseFallbackData(app);
-        if (shouldUseFallback) {
-            const fallbackResult = await this.findTaskInFallbackData(taskId, actionId, app);
-            if (fallbackResult) {
-                return fallbackResult;
-            }
-        }
-        
-        // Last resort: try to reconstruct task data from the task ID
-        return this.reconstructTaskData(taskId, actionId, app);
+        console.error('🔍 [SIMPLIFIED] Task not found in formatted plans:', { taskId, actionId });
+        console.log('🔍 [SIMPLIFIED] Available plans:', formattedActionPlans.map(p => ({ id: p.id, actionId: p.actionId })));
+        return null;
     }
     
     static shouldUseFallbackData(app) {
