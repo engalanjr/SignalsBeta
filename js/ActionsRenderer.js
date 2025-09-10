@@ -81,6 +81,10 @@ class ActionsRenderer {
 
         // First, process any action plans loaded from Domo API during initialization
         console.log(`Processing ${app.actionPlans.size} action plans from app state...`);
+        
+        // 🔧 FIX: Ensure DataService.actionPlans is synchronized
+        DataService.actionPlans.length = 0; // Clear existing
+        
         for (let [planId, planData] of app.actionPlans) {
             // Extract account ID from plan data (since map key is now planId, not accountId)
             const accountId = planData.accountId;
@@ -93,6 +97,15 @@ class ActionsRenderer {
             }
 
             const highPrioritySignals = account.signals.filter(s => s.priority === 'High');
+            
+            // 🔧 FIX: Normalize planData to include canonical ID
+            const normalizedPlanData = {
+                ...planData,
+                id: planId // Ensure ID matches the Map key
+            };
+            
+            // 🔧 FIX: Sync to DataService.actionPlans for auto-save
+            DataService.actionPlans.push(normalizedPlanData);
 
             actionPlans.push({
                 accountId: accountId,
@@ -103,7 +116,7 @@ class ActionsRenderer {
                 renewalBaseline: this.getRandomRenewalValue(),
                 status: planData.status || 'Pending',
                 urgency: highPrioritySignals.length > 1 ? 'critical' : highPrioritySignals.length === 1 ? 'high' : 'normal',
-                planData: planData,
+                planData: normalizedPlanData,
                 lastUpdated: planData.updatedAt || planData.createdAt,
                 nextAction: this.getNextAction(planData),
                 daysUntilRenewal: Math.floor(Math.random() * 300) + 30
@@ -113,6 +126,7 @@ class ActionsRenderer {
         // If we have Domo action plans, return them
         if (actionPlans.length > 0) {
             console.log(`Using ${actionPlans.length} action plans from app state`);
+            console.log(`🔧 [FIX] Synced ${DataService.actionPlans.length} plans to DataService for auto-save`);
             return actionPlans.sort((a, b) => {
                 // Sort by urgency first, then by last updated
                 const urgencyOrder = { critical: 0, high: 1, normal: 2 };
@@ -1579,8 +1593,11 @@ class ActionsRenderer {
         
         const { taskId, actionId, actionItem, planData } = actionPlanData;
         
-        // Store globally for auto-save functions
-        window.currentActionPlanData = actionPlanData;
+        // Store globally for auto-save functions with canonical planId
+        window.currentActionPlanData = {
+            ...actionPlanData,
+            planId: actionPlanData.planData.id // Canonical plan ID for auto-save
+        };
         
         // Safely access plays with fallback - handle both string and object actionItem
         const plays = (typeof actionItem === 'object' && actionItem.plays) ? actionItem.plays : [];
@@ -1909,7 +1926,10 @@ class ActionsRenderer {
                 planIdExists: !!planData.id
             });
             
-            const result = await ActionPlanService.updateActionPlan(planData.id, updateData, window.app);
+            // 🔧 FIX: Use canonical planId from modal context
+            const planId = window.currentActionPlanData.planId;
+            console.log(`🔧 [FIX] Auto-saving with canonical planId: ${planId}`);
+            const result = await ActionPlanService.updateActionPlan(planId, updateData, window.app);
             
             if (result && result.success) {
                 console.log(`Successfully auto-saved ${propertyName}:`, result);

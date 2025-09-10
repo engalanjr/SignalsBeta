@@ -169,9 +169,19 @@ class DataService {
         }
 
         // Find the plan to update
-        const planIndex = this.actionPlans.findIndex(plan => plan.id === planId);
+        let planIndex = this.actionPlans.findIndex(plan => plan.id === planId);
         if (planIndex === -1) {
-            return { success: false, error: 'Action plan not found' };
+            // 🔧 FIX: Defensive fallback - try to sync from app.actionPlans
+            console.warn(`Plan ${planId} not found in DataService, attempting sync from app.actionPlans`);
+            if (window.app && window.app.actionPlans && window.app.actionPlans.has(planId)) {
+                const planData = window.app.actionPlans.get(planId);
+                const normalizedPlan = { ...planData, id: planId };
+                this.actionPlans.push(normalizedPlan);
+                planIndex = this.actionPlans.length - 1;
+                console.log(`🔧 [FIX] Successfully synced plan ${planId} to DataService`);
+            } else {
+                return { success: false, error: 'Action plan not found' };
+            }
         }
 
         // Ensure actionItems maintain proper structure with action_ids
@@ -221,6 +231,13 @@ class DataService {
 
             // Update local array
             this.actionPlans[planIndex] = updatedPlan;
+            
+            // 🔧 CRITICAL FIX: Sync back to app.actionPlans Map to prevent data loss on re-render
+            if (window.app && window.app.actionPlans && window.app.actionPlans.has(planId)) {
+                window.app.actionPlans.set(planId, updatedPlan);
+                console.log(`🔧 [CRITICAL FIX] Synced updated plan ${planId} back to app.actionPlans`);
+            }
+            
             console.log('Updated action plan via Domo AppDB:', updatedPlan);
             return { success: true, plan: updatedPlan };
         } catch (error) {
@@ -228,6 +245,13 @@ class DataService {
 
             // Update local array as fallback (same as comments pattern)
             this.actionPlans[planIndex] = updatedPlan;
+            
+            // 🔧 CRITICAL FIX: Sync back to app.actionPlans Map to prevent data loss on re-render
+            if (window.app && window.app.actionPlans && window.app.actionPlans.has(planId)) {
+                window.app.actionPlans.set(planId, updatedPlan);
+                console.log(`🔧 [CRITICAL FIX] Synced updated plan ${planId} back to app.actionPlans`);
+            }
+            
             console.log('✅ Action plan updated successfully (local storage):', planId);
             return { success: true, plan: updatedPlan, warning: 'Changes saved locally (Domo API unavailable)' };
         }
