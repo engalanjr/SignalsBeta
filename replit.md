@@ -84,6 +84,7 @@ The application runs on port 5000 using a Python HTTP server that:
 - **Simplified data source consistency**: Streamlined task details drawer to use same data source (`getFormattedActionPlans()`) as Action Plans table, eliminating complex dual-lookup system and ensuring perfect data consistency between grid and drawer views
 - **Fixed task details drawer opening issue**: Resolved "Could not find task data" error by correcting the data structure mismatch between grid display and drawer lookup - drawer now properly accesses plan data structure from formatted action plans
 - **Fixed CS Plays display issue**: Resolved problem where CS Plays section showed "Play 1" instead of actual play names - updated rendering logic to handle plays stored as strings (most common format) rather than objects, now correctly displays full play names like "Advanced Roadmaps - Drive growth with detailed, strategic roadmaps aligned to your unique business goals."
+- **Fixed auto-save functionality in task details drawer**: Resolved issue where changing task properties (status, priority, due date, assignee) wasn't persisting to app database - fixed local state synchronization between DataService.actionPlans array and app.actionPlans Map, enhanced data structure compatibility for proper field updates, and added comprehensive debugging for save operations
 - Configured deployment settings for autoscale target
 
 ## Deployment
