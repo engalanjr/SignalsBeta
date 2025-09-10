@@ -37,6 +37,7 @@ The application runs on port 5000 using a Python HTTP server that:
 - Application gracefully falls back to sample data when Domo APIs are unavailable
 
 ## Recent Changes
+- **Optimistic CRUD with Instant UI Feedback (Sept 10, 2025)**: Implemented complete optimistic update system where user actions (like/dislike, comments, action plans) show changes immediately while persisting to API in background. Features deep snapshot rollback system that automatically reverts changes if API calls fail, providing seamless user experience with reliable data consistency
 - **Major Performance Optimization (Sept 10, 2025)**: Implemented parallel batch loading system with DataLoader.js and DataCache.js, reducing application load time by ~80% - from 6+ sequential API calls to 1 parallel batch load with in-memory data caching and filtering
 - **Updated master data source to new PDP dataset**: "View of SignalsAI _ CORE _ WIP _ PDP_1757418159244.csv" containing 295 comprehensive signal records with expanded field set
 - **Enhanced signals data model**: Added new fields including signal_id, call_id, call_date, and extended play metadata (play types, roles, documentation locations)

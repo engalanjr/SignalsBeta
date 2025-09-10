@@ -9,42 +9,79 @@ class CommentService {
             return;
         }
 
+        const operationId = `comment_${signalId}_${Date.now()}`;
+
         try {
-            // Call API to add comment
+            // 🔄 STEP 1: Create snapshot for rollback capability
+            DataCache.createSnapshot(operationId);
+
+            // 🚀 STEP 2: OPTIMISTIC UPDATE - Create comment and add to cache immediately
+            const newComment = {
+                id: `comment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                signalId: signalId,
+                text: commentText.trim(),
+                author: DataCache.userInfo.userName || 'Current User',
+                authorId: DataCache.userInfo.userId || 'user-1',
+                timestamp: new Date(),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            DataCache.addComment(newComment);
+
+            // ⚡ STEP 3: UI UPDATES IMMEDIATELY - clear inputs and refresh display
+            if (document.getElementById(`inlineCommentText-${signalId}`)) {
+                document.getElementById(`inlineCommentText-${signalId}`).value = '';
+            }
+            if (document.getElementById('newCommentText')) {
+                document.getElementById('newCommentText').value = '';
+            }
+
+            // Update app.signalComments for UI compatibility
+            this.syncCommentsWithCache(signalId, app);
+
+            // Re-render signal feed to show the new comment immediately
+            if (app.currentTab === 'signal-feed') {
+                SignalRenderer.renderSignalFeed(app);
+            }
+
+            // If we're in the signal drawer, refresh comments section
+            const signalDrawer = document.getElementById('signalDrawer');
+            if (signalDrawer && signalDrawer.classList.contains('open')) {
+                const commentsSection = document.getElementById('commentsList');
+                if (commentsSection) {
+                    commentsSection.innerHTML = this.renderCommentsForSignal(signalId, app);
+                }
+            }
+
+            app.showSuccessMessage('Comment added!');
+
+            // 🔄 STEP 4: Background persistence to API
             const result = await DataService.createComment(signalId, commentText.trim());
 
             if (result.success) {
-                if (!app.signalComments.has(signalId)) {
-                    app.signalComments.set(signalId, []);
+                // ✅ STEP 5: Success - update cache with server-generated ID if needed
+                const serverComment = result.comment.content || result.comment;
+                if (serverComment.id !== newComment.id) {
+                    // Update the cache with server's ID and data
+                    DataCache.removeComment(newComment.id);
+                    DataCache.addComment(serverComment);
+                    this.syncCommentsWithCache(signalId, app);
                 }
+                DataCache.commitSnapshot(operationId);
+                console.log(`✅ Comment persisted successfully for signal ${signalId}`);
+            } else {
+                // ❌ STEP 6: API Failed - rollback optimistic changes
+                console.error('API failed, rolling back optimistic comment:', result.error);
+                DataCache.rollback(operationId);
 
-                // Ensure we're using the flat comment structure
-                const flatComment = result.comment.content || result.comment;
-
-                // Check if comment already exists to prevent duplicates
-                const existingComments = app.signalComments.get(signalId);
-                const commentExists = existingComments.some(c => c.id === flatComment.id);
-
-                if (!commentExists) {
-                    app.signalComments.get(signalId).push(flatComment);
-                } else {
-                    console.log('Comment already exists, skipping duplicate:', flatComment.id);
-                }
-
-                // Clear input fields first
-                if (document.getElementById(`inlineCommentText-${signalId}`)) {
-                    document.getElementById(`inlineCommentText-${signalId}`).value = '';
-                }
-                if (document.getElementById('newCommentText')) {
-                    document.getElementById('newCommentText').value = '';
-                }
-
-                // Re-render signal feed to show the new comment
+                // Update UI to reflect rollback
+                this.syncCommentsWithCache(signalId, app);
+                
                 if (app.currentTab === 'signal-feed') {
                     SignalRenderer.renderSignalFeed(app);
                 }
 
-                // If we're in the signal drawer showing comments, refresh just the comments section
                 const signalDrawer = document.getElementById('signalDrawer');
                 if (signalDrawer && signalDrawer.classList.contains('open')) {
                     const commentsSection = document.getElementById('commentsList');
@@ -53,14 +90,26 @@ class CommentService {
                     }
                 }
 
-                app.showSuccessMessage('Comment added!');
-            } else {
-                app.showErrorMessage('Failed to add comment');
+                app.showErrorMessage('Failed to save comment - changes reverted');
             }
+
         } catch (error) {
-            console.error('Error adding comment:', error);
+            // ❌ Critical error - rollback and show error
+            console.error('Critical error in optimistic comment:', error);
+            DataCache.rollback(operationId);
+            
+            this.syncCommentsWithCache(signalId, app);
             app.showErrorMessage('Failed to add comment');
         }
+    }
+
+    // Helper method to sync app.signalComments with DataCache for UI compatibility
+    static syncCommentsWithCache(signalId, app) {
+        const cachedComments = DataCache.getCommentsForSignal(signalId);
+        if (!app.signalComments.has(signalId)) {
+            app.signalComments.set(signalId, []);
+        }
+        app.signalComments.set(signalId, [...cachedComments]);
     }
 
     static async updateComment(commentId, newText, app) {

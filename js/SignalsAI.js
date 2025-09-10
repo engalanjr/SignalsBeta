@@ -43,6 +43,9 @@ class SignalsAI {
                 }
             });
             
+            console.log('🎯 Setting up cache event listeners...');
+            this.setupCacheEventListeners();
+            
             console.log('🎯 Setting up event listeners...');
             this.setupEventListeners();
             
@@ -528,6 +531,117 @@ class SignalsAI {
 
     showErrorMessage(message) {
         NotificationService.showError(message);
+    }
+
+    setupCacheEventListeners() {
+        // ⚡ AUTOMATIC UI UPDATES - Listen for cache changes and re-render UI immediately
+        
+        // Listen for comment changes
+        DataCache.addEventListener('comment:added', (data) => {
+            console.log('🔄 Cache event: Comment added to signal', data.key);
+            this.syncCacheToApp();
+            if (this.currentTab === 'signal-feed') {
+                SignalRenderer.renderSignalFeed(this);
+            }
+        });
+
+        DataCache.addEventListener('comment:updated', (data) => {
+            console.log('🔄 Cache event: Comment updated', data.commentId);
+            this.syncCacheToApp();
+            if (this.currentTab === 'signal-feed') {
+                SignalRenderer.renderSignalFeed(this);
+            }
+        });
+
+        DataCache.addEventListener('comment:removed', (data) => {
+            console.log('🔄 Cache event: Comment removed', data.commentId);
+            this.syncCacheToApp();
+            if (this.currentTab === 'signal-feed') {
+                SignalRenderer.renderSignalFeed(this);
+            }
+        });
+
+        // Listen for feedback/interaction changes
+        DataCache.addEventListener('feedback:toggled', (data) => {
+            console.log('🔄 Cache event: Feedback toggled for signal', data.signalId);
+            this.syncCacheToApp();
+            this.renderCurrentTab();
+        });
+
+        DataCache.addEventListener('feedback:removed', (data) => {
+            console.log('🔄 Cache event: Feedback removed for signal', data.signalId);
+            this.syncCacheToApp();
+            this.renderCurrentTab();
+        });
+
+        // Listen for action plan changes
+        DataCache.addEventListener('actionplan:added', (data) => {
+            console.log('🔄 Cache event: Action plan added', data.planId);
+            this.syncCacheToApp();
+            if (this.currentTab === 'action-plans') {
+                ActionsRenderer.renderActionPlans(this);
+            }
+        });
+
+        DataCache.addEventListener('actionplan:updated', (data) => {
+            console.log('🔄 Cache event: Action plan updated', data.planId);
+            this.syncCacheToApp();
+            if (this.currentTab === 'action-plans') {
+                ActionsRenderer.renderActionPlans(this);
+            }
+        });
+
+        DataCache.addEventListener('actionplan:removed', (data) => {
+            console.log('🔄 Cache event: Action plan removed', data.planId);
+            this.syncCacheToApp();
+            if (this.currentTab === 'action-plans') {
+                ActionsRenderer.renderActionPlans(this);
+            }
+        });
+
+        // Listen for rollback events
+        DataCache.addEventListener('cache:rollback', (data) => {
+            console.log('🔄 Cache event: Rollback occurred', data.operationId);
+            this.syncCacheToApp();
+            this.renderCurrentTab();
+        });
+
+        console.log('✅ Cache event listeners set up for automatic UI updates');
+    }
+
+    // Helper method to sync app data structures with DataCache
+    syncCacheToApp() {
+        // Sync signal feedback counts from cache
+        this.data.forEach(signal => {
+            const counts = DataCache.getSignalCounts(signal.id);
+            const userFeedback = DataCache.getUserFeedbackForSignal(signal.id);
+            
+            signal.likeCount = counts.likes;
+            signal.notAccurateCount = counts.notAccurate;
+            signal.currentUserFeedback = userFeedback;
+        });
+
+        // Sync filteredData as well
+        this.filteredData.forEach(signal => {
+            const counts = DataCache.getSignalCounts(signal.id);
+            const userFeedback = DataCache.getUserFeedbackForSignal(signal.id);
+            
+            signal.likeCount = counts.likes;
+            signal.notAccurateCount = counts.notAccurate;
+            signal.currentUserFeedback = userFeedback;
+        });
+
+        // Sync comments
+        DataCache.signals.forEach(signal => {
+            const comments = DataCache.getCommentsForSignal(signal.id);
+            this.signalComments.set(signal.id, [...comments]);
+        });
+
+        // Sync action plans
+        this.actionPlans.clear();
+        DataCache.actionPlans.forEach((plan, planId) => {
+            this.actionPlans.set(planId, plan);
+        });
     }
 
     setupEventListeners() {

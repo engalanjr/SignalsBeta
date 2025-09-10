@@ -654,17 +654,16 @@ class DataService {
             };
 
             await domo.post(`/domo/datastores/v1/collections/SignalAI.Comments/documents`, appDbComment);
-            console.log('Saved comment to SignalAI.Comments AppDB:', appDbComment);
+            console.log('✅ Saved comment to SignalAI.Comments AppDB:', appDbComment);
 
             // Store flat structure locally
             this.comments.push(newComment);
 
             return { success: true, comment: newComment };
         } catch (error) {
-            console.error('Failed to save comment to SignalAI.Comments AppDB:', error);
-            // Add to local array as fallback
-            this.comments.push(newComment);
-            return { success: true, comment: newComment };
+            console.error('❌ Failed to save comment to SignalAI.Comments AppDB:', error);
+            // 🚨 CRITICAL FIX: Return actual failure to trigger rollback
+            return { success: false, error: error.message, comment: newComment };
         }
     }
 

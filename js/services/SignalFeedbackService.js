@@ -3,70 +3,90 @@
 class SignalFeedbackService {
     
     static async acknowledgeSignal(signalId, feedbackType, app) {
-        const signal = app.data.find(s => s.id === signalId);
-        if (!signal) return;
-
-        const isAlreadySelected = signal.currentUserFeedback === feedbackType;
-
+        const operationId = `feedback_${signalId}_${Date.now()}`;
+        
         try {
-            let result;
+            // 🔄 STEP 1: Create snapshot for rollback capability
+            DataCache.createSnapshot(operationId);
+            
+            // 🚀 STEP 2: OPTIMISTIC UPDATE - Update cache immediately 
+            const currentFeedback = DataCache.getUserFeedbackForSignal(signalId);
+            const isAlreadySelected = currentFeedback === feedbackType;
+            
             if (!isAlreadySelected) {
-                // Save/update feedback
-                result = await this.saveInteraction(signalId, feedbackType);
-                
-                // Update counts and user feedback
-                if (feedbackType === 'like') {
-                    signal.likeCount = (signal.likeCount || 0) + 1;
-                    if (signal.currentUserFeedback === 'not-accurate') {
-                        signal.notAccurateCount = Math.max(0, (signal.notAccurateCount || 0) - 1);
-                    }
-                } else if (feedbackType === 'not-accurate') {
-                    signal.notAccurateCount = (signal.notAccurateCount || 0) + 1;
-                    if (signal.currentUserFeedback === 'like') {
-                        signal.likeCount = Math.max(0, (signal.likeCount || 0) - 1);
-                    }
-                }
-                signal.currentUserFeedback = feedbackType;
-                
-                // Also update in filteredData if it exists
-                const filteredSignal = app.filteredData.find(s => s.id === signalId);
-                if (filteredSignal) {
-                    filteredSignal.likeCount = signal.likeCount;
-                    filteredSignal.notAccurateCount = signal.notAccurateCount;
-                    filteredSignal.currentUserFeedback = signal.currentUserFeedback;
-                }
-                
+                // Add/change feedback
+                DataCache.toggleUserFeedback(signalId, feedbackType);
                 app.showSuccessMessage(`Signal marked as ${feedbackType}`);
             } else {
-                // Remove feedback (unsave)
-                result = await this.saveInteraction(signalId, 'removed_' + feedbackType);
-                
-                // Update counts
-                if (feedbackType === 'like') {
-                    signal.likeCount = Math.max(0, (signal.likeCount || 0) - 1);
-                } else if (feedbackType === 'not-accurate') {
-                    signal.notAccurateCount = Math.max(0, (signal.notAccurateCount || 0) - 1);
-                }
-                signal.currentUserFeedback = null;
-                
-                // Also update in filteredData if it exists
-                const filteredSignal = app.filteredData.find(s => s.id === signalId);
-                if (filteredSignal) {
-                    filteredSignal.likeCount = signal.likeCount;
-                    filteredSignal.notAccurateCount = signal.notAccurateCount;
-                    filteredSignal.currentUserFeedback = null;
-                }
-                
+                // Remove feedback (toggle off)
+                DataCache.removeUserFeedback(signalId);
                 app.showSuccessMessage('Feedback removed');
             }
-
-            // Re-render the current tab to show updated button states
+            
+            // ⚡ STEP 3: UI UPDATES IMMEDIATELY - refresh with new cache data
+            this.updateSignalDisplayCounts(signalId, app);
+            
             if (app && typeof app.renderCurrentTab === 'function') {
                 app.renderCurrentTab();
             }
+
+            // 🔄 STEP 4: Background persistence to API
+            const interactionType = !isAlreadySelected ? feedbackType : 'removed_' + feedbackType;
+            const saveResult = await this.saveInteraction(signalId, interactionType);
+            
+            if (saveResult.success) {
+                // ✅ STEP 5: Success - commit the optimistic changes
+                DataCache.commitSnapshot(operationId);
+                console.log(`✅ Feedback persisted successfully: ${interactionType} for signal ${signalId}`);
+            } else {
+                // ❌ STEP 6: API Failed - rollback optimistic changes
+                console.error('API failed, rolling back optimistic changes:', saveResult.error);
+                DataCache.rollback(operationId);
+                
+                // Update UI to reflect rollback
+                this.updateSignalDisplayCounts(signalId, app);
+                if (app && typeof app.renderCurrentTab === 'function') {
+                    app.renderCurrentTab();
+                }
+                
+                app.showErrorMessage('Failed to save feedback - changes reverted');
+            }
+            
         } catch (error) {
-            console.error('Error updating signal feedback:', error);
+            // ❌ Critical error - rollback and show error
+            console.error('Critical error in optimistic feedback:', error);
+            DataCache.rollback(operationId);
+            
+            this.updateSignalDisplayCounts(signalId, app);
+            if (app && typeof app.renderCurrentTab === 'function') {
+                app.renderCurrentTab();
+            }
+            
             app.showErrorMessage('Failed to update signal feedback');
+        }
+    }
+
+    // Helper method to sync display data with cache
+    static updateSignalDisplayCounts(signalId, app) {
+        const signal = app.data.find(s => s.id === signalId);
+        const filteredSignal = app.filteredData.find(s => s.id === signalId);
+        
+        if (signal) {
+            const counts = DataCache.getSignalCounts(signalId);
+            const userFeedback = DataCache.getUserFeedbackForSignal(signalId);
+            
+            signal.likeCount = counts.likes;
+            signal.notAccurateCount = counts.notAccurate;
+            signal.currentUserFeedback = userFeedback;
+        }
+        
+        if (filteredSignal) {
+            const counts = DataCache.getSignalCounts(signalId);
+            const userFeedback = DataCache.getUserFeedbackForSignal(signalId);
+            
+            filteredSignal.likeCount = counts.likes;
+            filteredSignal.notAccurateCount = counts.notAccurate;
+            filteredSignal.currentUserFeedback = userFeedback;
         }
     }
 
@@ -133,11 +153,12 @@ class SignalFeedbackService {
             };
             
             const response = await domo.post('/domo/datastores/v1/collections/SignalAI.Interactions/documents', appDbInteraction);
-            console.log('Saved interaction to SignalAI.Interactions AppDB:', appDbInteraction);
+            console.log('✅ Saved interaction to SignalAI.Interactions AppDB:', appDbInteraction);
             return { success: true, interaction };
         } catch (error) {
-            console.error('Failed to save interaction to SignalAI.Interactions AppDB:', error);
-            return { success: true, interaction }; // Fallback to success for now
+            console.error('❌ Failed to save interaction to SignalAI.Interactions AppDB:', error);
+            // 🚨 CRITICAL FIX: Return actual failure to trigger rollback
+            return { success: false, error: error.message, interaction };
         }
     }
 
