@@ -4740,7 +4740,57 @@ body {
     transform: translateX(0);
 }
 
-/* Task Details functionality removed - to be reimplemented */
+/* Task Details Drawer Styles */
+.task-details-drawer {
+    width: 600px;
+    right: -600px;
+}
+
+.clickable-task {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clickable-task:hover {
+    background-color: var(--domo-blue-light);
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(0, 125, 186, 0.15);
+}
+
+.task-details-section {
+    margin-bottom: 2rem;
+}
+
+.task-details-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--neutral-gray-800);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--neutral-gray-200);
+    padding-bottom: 0.5rem;
+}
+
+.task-details-section h3 i {
+    color: var(--domo-blue);
+}
+
+.action-display-card {
+    background: var(--domo-blue-light);
+    border: 1px solid var(--domo-blue);
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.action-title {
+    font-weight: 600;
+    color: var(--domo-blue-dark);
+    font-size: 1.1rem;
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+}
 
 .action-id {
     color: var(--neutral-gray-600);

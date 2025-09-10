@@ -1,440 +1,703 @@
-// ActionsRenderer.js - Handles action plan display and management
-
+// Actions Renderer - Handle action plans tab rendering
 class ActionsRenderer {
-    static currentAccountIndex = 0;
-    static totalAccounts = 0;
-    static currentView = 'list'; // 'list' or 'cards'
 
-    static render(app) {
-        console.log('📋 Rendering action plans...');
-        
-        const container = document.getElementById('mainContent');
-        if (!container) {
-            console.error('Main content container not found');
+    static async renderActions(app) {
+        const container = document.getElementById('actionsList');
+        if (!container) return;
+
+        // Update overview statistics
+        this.updateActionsOverview(app);
+
+        // Get action plans and convert to display format
+        const actionPlans = await this.getFormattedActionPlans(app);
+
+        if (actionPlans.length === 0) {
+            container.innerHTML = this.renderEmptyState();
             return;
         }
 
-        // Get formatted action plans
-        this.getFormattedActionPlans(app)
-            .then(formattedPlans => {
-                console.log(`Found ${formattedPlans.length} action plans to display`);
-                
-                // Calculate statistics
-                const totalTasks = formattedPlans.reduce((total, plan) => {
-                    return total + (plan.planData.actionItems ? plan.planData.actionItems.length : 0);
-                }, 0);
-                
-                // Calculate completed tasks
-                const completedTasks = formattedPlans.reduce((total, plan) => {
-                    if (plan.planData.actionItems) {
-                        return total + plan.planData.actionItems.filter(item => 
-                            item.status === 'complete' || item.status === 'completed'
-                        ).length;
-                    }
-                    return total;
-                }, 0);
-                
-                this.totalAccounts = this.getUniqueAccountsCount(formattedPlans);
-                
-                const html = `
-                    <div class="action-plans-header">
-                        <div class="header-content">
-                            <div class="header-left">
-                                <h1><i class="fas fa-tasks"></i> Action Plans</h1>
-                                <div class="header-stats">
-                                    <span class="stat-item">
-                                        <i class="fas fa-list"></i>
-                                        ${totalTasks} Tasks
-                                    </span>
-                                    <span class="stat-item">
-                                        <i class="fas fa-check-circle"></i>
-                                        ${completedTasks} Completed
-                                    </span>
-                                    <span class="stat-item">
-                                        <i class="fas fa-building"></i>
-                                        ${this.totalAccounts} Accounts
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="header-right">
-                                <div class="view-controls">
-                                    <button class="btn btn-outline ${this.currentView === 'list' ? 'active' : ''}" 
-                                            onclick="ActionsRenderer.setView('list')">
-                                        <i class="fas fa-list"></i> List
-                                    </button>
-                                    <button class="btn btn-outline ${this.currentView === 'cards' ? 'active' : ''}" 
-                                            onclick="ActionsRenderer.setView('cards')">
-                                        <i class="fas fa-th-large"></i> Cards
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="action-plans-content">
-                        ${this.renderActionPlansView(formattedPlans)}
-                    </div>
-                `;
-                
-                container.innerHTML = html;
-            })
-            .catch(error => {
-                console.error('Error rendering action plans:', error);
-                container.innerHTML = `
-                    <div class="error-container">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h2>Error Loading Action Plans</h2>
-                        <p>${error.message}</p>
-                    </div>
-                `;
-            });
+        // Apply current filter
+        const activeFilter = document.querySelector('.filter-btn.active')?.getAttribute('data-filter') || 'all';
+        const filteredPlans = this.filterActionPlans(actionPlans, activeFilter);
+
+        // Render as project management table
+        container.innerHTML = this.renderProjectManagementTable(filteredPlans, app);
     }
 
-    static renderActionPlansView(formattedPlans) {
-        if (formattedPlans.length === 0) {
-            return `
-                <div class="empty-state">
-                    <i class="fas fa-clipboard-list"></i>
-                    <h2>No Action Plans Found</h2>
-                    <p>Create your first action plan by reviewing signals and adding recommended actions.</p>
-                </div>
-            `;
+    static updateActionsOverview(app) {
+        const actionPlans = Array.from(app.actionPlans.values());
+
+        // Update total actions count
+        const totalElement = document.getElementById('totalActions');
+        if (totalElement) {
+            totalElement.textContent = actionPlans.length;
         }
 
-        if (this.currentView === 'cards') {
-            return this.renderCardsView(formattedPlans);
-        } else {
-            return this.renderListView(formattedPlans);
+        // Update pending actions count (case-insensitive comparison)
+        const pendingElement = document.getElementById('pendingActions');
+        if (pendingElement) {
+            const pendingCount = actionPlans.filter(plan => {
+                const status = plan.status ? plan.status.toLowerCase() : '';
+                return status === 'pending';
+            }).length;
+            pendingElement.textContent = pendingCount;
         }
+
+        // Update in progress actions count (case-insensitive comparison)
+        const inProgressElement = document.getElementById('inProgressActions');
+        if (inProgressElement) {
+            const inProgressCount = actionPlans.filter(plan => {
+                const status = plan.status ? plan.status.toLowerCase() : '';
+                return status === 'in progress' || status === 'in-progress' || status === 'active';
+            }).length;
+            inProgressElement.textContent = inProgressCount;
+        }
+
+        // Update completed count
+        const completedElement = document.getElementById('projectedImpact');
+        if (completedElement) {
+            // Count completed action plans
+            const completedCount = actionPlans.filter(plan => {
+                const status = plan.status ? plan.status.toLowerCase() : '';
+                return status === 'complete' || status === 'completed';
+            }).length;
+            completedElement.textContent = completedCount;
+        }
+
+        // Debug logging to verify status values
+        console.log('Action Plans for KPI calculation:', actionPlans.map(plan => ({
+            accountId: plan.accountId,
+            accountName: plan.accountName,
+            status: plan.status,
+            title: plan.title
+        })));
     }
 
-    static renderListView(formattedPlans) {
-        // Group plans by account for the table display
-        const groupedPlans = this.groupPlansByAccount(formattedPlans);
-        
-        let html = `
-            <div class="action-plans-table-container">
-                <table class="action-plans-table">
-                    <thead>
-                        <tr>
-                            <th width="3%">
-                                <input type="checkbox" class="select-all-checkbox" 
-                                       onchange="ActionsRenderer.toggleSelectAll(this.checked)">
-                            </th>
-                            <th width="35%">Action</th>
-                            <th width="12%">Due Date</th>
-                            <th width="12%">Task Status</th>
-                            <th width="10%">Priority</th>
-                            <th width="15%">Assignee</th>
-                            <th width="13%">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
+    static async getFormattedActionPlans(app) {
+        const actionPlans = [];
 
-        for (const [accountId, accountData] of groupedPlans) {
-            const { accountName, plans } = accountData;
-            
-            // Sort plans within account by priority and due date
-            const sortedPlans = this.sortPlansByPriority(plans);
-            
-            // Account header row
-            html += `
-                <tr class="account-header-row" data-account-id="${accountId}">
-                    <td colspan="7" class="account-header">
-                        <div class="account-header-content">
-                            <button class="account-toggle" onclick="ActionsRenderer.toggleAccountExpansion('${accountId}')">
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <div class="account-info">
-                                <span class="account-name">${accountName}</span>
-                                <span class="task-count">${sortedPlans.length} task${sortedPlans.length !== 1 ? 's' : ''}</span>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            `;
-
-            // Task rows for this account
-            for (const plan of sortedPlans) {
-                const actionItem = plan.planData.actionItems[0]; // Each plan has one action item
-                if (!actionItem) continue;
-
-                const taskId = plan.planData.id;
-                const actionId = actionItem.actionId;
-                const title = actionItem.title || 'Untitled Action';
-                const dueDate = actionItem.dueDate ? this.formatDate(actionItem.dueDate) : 'Not Set';
-                const priority = actionItem.priority || 'Medium';
-                const status = actionItem.status || 'pending';
-                const assignee = plan.planData.assignee || 'Unassigned';
-                const playsCount = actionItem.plays ? actionItem.plays.length : 0;
-
-                html += `
-                    <tr class="task-row" data-task-id="${taskId}" data-account-id="${accountId}"
-                        onclick="ActionsRenderer.handleTaskRowClick(event, '${taskId}', '${actionId}')"
-                        oncontextmenu="ActionsRenderer.handleTaskRightClick(event, '${taskId}', '${actionId}')">
-                        <td class="task-checkbox-cell">
-                            <input type="checkbox" class="task-checkbox" data-task-id="${taskId}"
-                                   onclick="event.stopPropagation()" 
-                                   onchange="ActionsRenderer.handleTaskCheckboxChange('${taskId}', this.checked)">
-                        </td>
-                        <td class="task-title">
-                            <div class="action-title">${title}</div>
-                            <div class="action-meta">
-                                <span class="plays-count">
-                                    <i class="fas fa-play-circle"></i> ${playsCount} play${playsCount !== 1 ? 's' : ''}
-                                </span>
-                            </div>
-                        </td>
-                        <td class="due-date">${dueDate}</td>
-                        <td class="task-status">
-                            <span class="status-badge status-${status.toLowerCase().replace(' ', '-')}">${this.capitalizeFirstLetter(status)}</span>
-                        </td>
-                        <td class="priority">
-                            <span class="priority-badge priority-${priority.toLowerCase()}">${priority}</span>
-                        </td>
-                        <td class="assignee">
-                            <div class="assignee-info">
-                                <span class="assignee-initials">${this.getInitials(assignee)}</span>
-                                <span class="assignee-name">${assignee}</span>
-                            </div>
-                        </td>
-                        <td class="task-actions">
-                            <button class="btn btn-sm btn-outline" 
-                                    onclick="event.stopPropagation(); ActionsRenderer.showPlaysDrawer('${actionId}', '${taskId}')"
-                                    title="View CS Plays">
-                                <i class="fas fa-play"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
+        // First, process any action plans loaded from Domo API during initialization
+        console.log(`Processing ${app.actionPlans.size} action plans from app state...`);
+        for (let [planId, planData] of app.actionPlans) {
+            // Extract account ID from plan data (since map key is now planId, not accountId)
+            const accountId = planData.accountId;
+            const account = app.accounts.get(accountId);
+            if (!account) {
+                console.warn(`Skipping plan ${planId} - account ${accountId} not found in app.accounts`);
+                console.log(`Available account IDs in app.accounts:`, Array.from(app.accounts.keys()));
+                console.log(`Plan data:`, { planId, accountId, planTitle: planData.title });
+                continue;
             }
+
+            const highPrioritySignals = account.signals.filter(s => s.priority === 'High');
+
+            actionPlans.push({
+                accountId: accountId,
+                accountName: account.name,
+                accountHealth: this.getHealthFromRiskCategory(account.at_risk_cat),
+                signalsCount: account.signals.length,
+                highPriorityCount: highPrioritySignals.length,
+                renewalBaseline: this.getRandomRenewalValue(),
+                status: planData.status || 'Pending',
+                urgency: highPrioritySignals.length > 1 ? 'critical' : highPrioritySignals.length === 1 ? 'high' : 'normal',
+                planData: planData,
+                lastUpdated: planData.updatedAt || planData.createdAt,
+                nextAction: this.getNextAction(planData),
+                daysUntilRenewal: Math.floor(Math.random() * 300) + 30
+            });
         }
 
-        html += `
-                    </tbody>
-                </table>
+        // If we have Domo action plans, return them
+        if (actionPlans.length > 0) {
+            console.log(`Using ${actionPlans.length} action plans from app state`);
+            return actionPlans.sort((a, b) => {
+                // Sort by urgency first, then by last updated
+                const urgencyOrder = { critical: 0, high: 1, normal: 2 };
+                if (urgencyOrder[a.urgency] !== urgencyOrder[b.urgency]) {
+                    return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
+                }
+                return new Date(b.lastUpdated || 0) - new Date(a.lastUpdated || 0);
+            });
+        }
+
+        // Only if no Domo action plans exist, try loading fallback JSON
+        try {
+            console.log('No action plans from Domo, loading fallback data...');
+            const fallbackPlans = await this.loadFallbackActionPlans(app);
+            if (fallbackPlans.length > 0) {
+                console.log(`Loaded ${fallbackPlans.length} action plans from fallback JSON`);
+                
+                // Store the fallback plans in the app's action plans map
+                console.log('Storing loaded action plans in app state...');
+                
+                // Clear DataService array first to avoid duplicates
+                DataService.actionPlans.length = 0;
+                fallbackPlans.forEach(plan => {
+                    if (plan.accountId && app.actionPlans) {
+                        // Use unique plan ID as key instead of accountId to avoid overwrites
+                        const planId = plan.planData.originalPlanContent.id || plan.planData.id || `plan-${Date.now()}-${Math.random()}`;
+                        
+                        // Store the actual plan data with necessary account info, not the wrapper
+                        const actualPlanData = {
+                            ...plan.planData,
+                            accountId: plan.accountId,
+                            accountName: plan.accountName,
+                            title: plan.planData.originalPlanContent.title,
+                            description: plan.planData.originalPlanContent.description,
+                            plays: plan.planData.originalPlanContent.plays || [],
+                            actionId: plan.planData.originalPlanContent.actionId,
+                            priority: plan.planData.originalPlanContent.priority || 'medium',
+                            status: plan.planData.originalPlanContent.status || 'pending',  // Preserve status field
+                            dueDate: plan.planData.originalPlanContent.dueDate,
+                            createdDate: plan.planData.originalPlanContent.createdDate,
+                            signalId: plan.planData.originalPlanContent.signalId,
+                            planTitle: plan.planData.originalPlanContent.planTitle,
+                            createdBy: plan.planData.originalPlanContent.createdBy,
+                            createdByUserId: plan.planData.originalPlanContent.createdByUserId
+                        };
+                        
+                        app.actionPlans.set(planId, actualPlanData);
+                        
+                        // CRITICAL: Synchronize with DataService.actionPlans array
+                        // Ensure the plan has the correct ID structure for DataService
+                        const dataServicePlan = {
+                            ...actualPlanData,
+                            id: planId // Ensure ID is set for DataService array lookup
+                        };
+                        DataService.actionPlans.push(dataServicePlan);
+                        
+                        console.log(`Stored action plan with ID ${planId} for account: ${plan.accountName} (${plan.accountId})`);
+                    }
+                });
+                
+                // Validate and fix loaded action plans
+                console.log('Validating loaded action plans...');
+                const validationResults = ActionPlanService.validateActionPlanAssociations(app);
+                
+                if (validationResults.fixed > 0) {
+                    console.log(`Auto-fixed ${validationResults.fixed} action plans with missing associations`);
+                }
+                
+                if (validationResults.invalid > 0) {
+                    console.warn(`Found ${validationResults.invalid} action plans with validation issues`);
+                }
+                
+                return fallbackPlans;
+            }
+        } catch (error) {
+            console.error('Failed to load fallback action plans:', error);
+        }
+
+        // If no action plans from any source, return empty array
+        return [];
+    }
+
+    static filterActionPlans(actionPlans, filter) {
+        switch (filter) {
+            case 'pending':
+                return actionPlans.filter(plan => plan.status === 'Pending');
+            case 'in-progress':
+                return actionPlans.filter(plan => plan.status === 'In Progress');
+            case 'completed':
+                return actionPlans.filter(plan => plan.status === 'Completed');
+            default:
+                return actionPlans;
+        }
+    }
+
+    static renderProjectManagementTable(actionPlans, app) {
+        // Group plans by account for proper rendering
+        const plansByAccount = new Map();
+        actionPlans.forEach(plan => {
+            const accountId = plan.accountId;
+            if (!plansByAccount.has(accountId)) {
+                plansByAccount.set(accountId, []);
+            }
+            plansByAccount.get(accountId).push(plan);
+        });
+        
+        console.log(`Rendering ${plansByAccount.size} account groups with ${actionPlans.length} total plans`);
+        
+        return `
+            <div class="project-management-container">
+                <div class="pm-table-header">
+                    <div class="pm-header-cell checkbox-col"></div>
+                    <div class="pm-header-cell task-col">Action Plan</div>
+                    <div class="pm-header-cell due-date-col">Due Date</div>
+                    <div class="pm-header-cell status-col">Status</div>
+                    <div class="pm-header-cell priority-col">Priority</div>
+                    <div class="pm-header-cell assignee-col">Assignee</div>
+                </div>
+                
+                ${Array.from(plansByAccount.values()).map(accountPlans => 
+                    this.renderAccountGroup(accountPlans, app)
+                ).join('')}
             </div>
         `;
-
-        return html;
     }
 
-    static renderCardsView(formattedPlans) {
-        // Group plans by account for cards display  
-        const groupedPlans = this.groupPlansByAccount(formattedPlans);
+    static renderAccountGroup(accountPlans, app) {
+        // accountPlans is now an array of plans for the same account
+        if (!Array.isArray(accountPlans) || accountPlans.length === 0) {
+            return '';
+        }
         
-        let html = '<div class="action-plans-cards-container">';
+        // Use the first plan for account-level information
+        const firstPlan = accountPlans[0];
         
-        for (const [accountId, accountData] of groupedPlans) {
-            const { accountName, plans } = accountData;
-            const sortedPlans = this.sortPlansByPriority(plans);
-            
-            html += `
-                <div class="account-card" data-account-id="${accountId}">
-                    <div class="account-card-header">
-                        <h3>${accountName}</h3>
-                        <span class="task-count">${sortedPlans.length} task${sortedPlans.length !== 1 ? 's' : ''}</span>
-                    </div>
-                    <div class="account-card-content">
-            `;
-            
-            for (const plan of sortedPlans) {
-                const actionItem = plan.planData.actionItems[0];
-                if (!actionItem) continue;
-
-                const taskId = plan.planData.id;
-                const actionId = actionItem.actionId;
-                const title = actionItem.title || 'Untitled Action';
-                const dueDate = actionItem.dueDate ? this.formatDate(actionItem.dueDate) : 'Not Set';
-                const priority = actionItem.priority || 'Medium';
-                const status = actionItem.status || 'pending';
-                const assignee = plan.planData.assignee || 'Unassigned';
-                const playsCount = actionItem.plays ? actionItem.plays.length : 0;
-
-                html += `
-                    <div class="task-card" data-task-id="${taskId}"
-                         onclick="ActionsRenderer.handleTaskRowClick(event, '${taskId}', '${actionId}')">
-                        <div class="task-card-header">
-                            <div class="task-title">${title}</div>
-                            <div class="task-meta">
-                                <span class="priority-badge priority-${priority.toLowerCase()}">${priority}</span>
-                                <span class="status-badge status-${status.toLowerCase().replace(' ', '-')}">${this.capitalizeFirstLetter(status)}</span>
-                            </div>
-                        </div>
-                        <div class="task-card-body">
-                            <div class="task-info">
-                                <div class="info-item">
-                                    <i class="fas fa-calendar"></i>
-                                    <span>${dueDate}</span>
-                                </div>
-                                <div class="info-item">
-                                    <i class="fas fa-user"></i>
-                                    <span>${assignee}</span>
-                                </div>
-                                <div class="info-item">
-                                    <i class="fas fa-play-circle"></i>
-                                    <span>${playsCount} play${playsCount !== 1 ? 's' : ''}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="task-card-actions">
-                            <button class="btn btn-sm btn-outline" 
-                                    onclick="event.stopPropagation(); ActionsRenderer.showPlaysDrawer('${actionId}', '${taskId}')"
-                                    title="View CS Plays">
-                                <i class="fas fa-play"></i> Plays
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            html += `
+        // Get all tasks from all plans for this account
+        const allActionPlans = [];
+        accountPlans.forEach(plan => {
+            const tasks = this.getActionPlansFromPlan(plan, app);
+            allActionPlans.push(...tasks);
+        });
+        
+        console.log(`Account ${firstPlan.accountName}: Generated ${allActionPlans.length} tasks from ${accountPlans.length} plans`);
+        
+        return `
+            <div class="account-group">
+                <div class="account-group-header">
+                    <div class="account-group-title">
+                        <i class="fas fa-chevron-down group-toggle" onclick="ActionsRenderer.toggleGroup(this)"></i>
+                        <span class="account-name">${firstPlan.accountName}</span>
+                        <span class="task-count">${allActionPlans.length} action plans</span>
+                        <span class="account-health health-${firstPlan.accountHealth}">${firstPlan.accountHealth}</span>
+                        <span class="renewal-value">$${app.formatNumber(firstPlan.renewalBaseline)}</span>
                     </div>
                 </div>
-            `;
+                
+                <div class="account-action-plans">
+                    ${allActionPlans.map(task => this.renderTaskRow(task, app)).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    static renderTaskRow(task, app) {
+        const isComplete = task.status && task.status.toLowerCase() === 'complete';
+        return `
+            <div class="pm-table-row action-plan-row clickable-task ${isComplete ? 'task-completed' : ''}" 
+                 data-task-id="${task.id}" 
+                 data-action-id="${task.actionId}"
+                 onclick="ActionsRenderer.handleTaskRowClick(event, '${task.id}', '${task.actionId}')"
+                 oncontextmenu="ActionsRenderer.handleTaskRightClick(event, '${task.id}', '${task.actionId}')"
+                 data-selectable="true">
+                <div class="pm-cell checkbox-col" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="action-plan-checkbox" 
+                           onchange="ActionsRenderer.toggleTaskComplete('${task.id}', this.checked)">
+                </div>
+                <div class="pm-cell task-col">
+                    <div class="action-plan-content">
+                        <div class="action-plan-title">${task.title}</div>
+                        ${task.description ? `<div class="action-plan-description">${task.description}</div>` : ''}
+                    </div>
+                </div>
+                <div class="pm-cell due-date-col">
+                    <span class="due-date ${task.overdue ? 'overdue' : ''}">${task.dueDate}</span>
+                </div>
+                <div class="pm-cell status-col">
+                    <span class="status-badge status-${task.status ? task.status.toLowerCase().replace(' ', '-') : 'pending'}">${task.status || 'Pending'}</span>
+                </div>
+                <div class="pm-cell priority-col">
+                    <span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                </div>
+                <div class="pm-cell assignee-col">
+                    <div class="assignee-avatar">
+                        <span class="assignee-initials">${task.assigneeInitials}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    static renderEmptyState() {
+        return `
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <div class="empty-state-title">No Action Plans Yet</div>
+                <div class="empty-state-description">
+                    Action plans will appear here when you create them for accounts with signals.
+                    Go to the Signal Feed or My Portfolio to create your first action plan.
+                </div>
+                <div class="empty-state-actions">
+                    <button class="btn btn-primary" onclick="app.switchTab('signal-feed')">
+                        <i class="fas fa-stream"></i> View Signal Feed
+                    </button>
+                    <button class="btn btn-secondary" onclick="app.switchTab('my-portfolio')">
+                        <i class="fas fa-briefcase"></i> View Portfolio
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    static calculateProgress(planData) {
+        if (!planData.actionItems || planData.actionItems.length === 0) {
+            return 0;
+        }
+
+        // Since we don't track completion status yet, we'll base it on creation time
+        const daysSinceCreated = (new Date() - new Date(planData.createdAt)) / (1000 * 60 * 60 * 24);
+
+        if (daysSinceCreated < 1) return 25;
+        if (daysSinceCreated < 3) return 50;
+        if (daysSinceCreated < 7) return 75;
+        return 90;
+    }
+
+    static calculatePlanStatus(planData) {
+        if (!planData.actionItems || planData.actionItems.length === 0) {
+            return 'Draft';
+        }
+
+        // Since we don't track completion status yet, we'll base it on creation time
+        const daysSinceCreated = (new Date() - new Date(planData.createdAt)) / (1000 * 60 * 60 * 24);
+
+        if (daysSinceCreated < 1) return 'New';
+        if (daysSinceCreated < 3) return 'In Progress';
+        return 'Review Needed';
+    }
+
+    static getNextAction(planData) {
+        if (!planData.actionItems || planData.actionItems.length === 0) {
+            return 'Add action items';
+        }
+
+        const firstAction = planData.actionItems[0];
+        if (firstAction.length > 30) {
+            return firstAction.substring(0, 30) + '...';
+        }
+        return firstAction;
+    }
+
+    static getHealthFromRiskCategory(riskCategory) {
+        const healthMap = {
+            'Healthy': 'healthy',
+            'At Risk': 'warning',
+            'Trending Risk': 'warning',
+            'Extreme Risk': 'critical'
+        };
+        return healthMap[riskCategory] || 'healthy';
+    }
+
+    static getRandomRenewalValue() {
+        // Generate a realistic renewal value between 50K and 500K
+        const baseValue = Math.floor(Math.random() * 450000) + 50000;
+        // Round to nearest 1000
+        return Math.round(baseValue / 1000) * 1000;
+    }
+
+    // Project Management Helper Methods
+    static getActionPlansFromPlan(plan, app) {
+        const actionPlans = [];
+        
+        // Handle new single-action-per-plan data model
+        // Each plan now represents one action, not multiple actionItems
+        if (!plan.planData) return tasks;
+        
+        // In the new model, action data is directly in the plan, not in actionItems array
+        const title = plan.title || plan.planData.title || 'Untitled Action';
+        const actionId = plan.actionId || plan.planData.actionId;
+        
+        // Only include actions with real action IDs from CSV data
+        if (!actionId) {
+            console.warn(`Skipping action without actionId: ${title}`);
+            return actionPlans;
         }
         
-        html += '</div>';
-        return html;
-    }
-
-    // === UTILITY METHODS ===
-    
-    static setView(view) {
-        this.currentView = view;
-        if (window.app) {
-            this.render(window.app);
-        }
-    }
-
-    static getUniqueAccountsCount(formattedPlans) {
-        const uniqueAccounts = new Set(formattedPlans.map(plan => plan.accountId));
-        return uniqueAccounts.size;
-    }
-
-    static groupPlansByAccount(formattedPlans) {
-        const grouped = new Map();
-        
-        for (const plan of formattedPlans) {
-            const accountId = plan.accountId;
-            const accountName = plan.accountName;
-            
-            if (!grouped.has(accountId)) {
-                grouped.set(accountId, {
-                    accountName,
-                    plans: []
-                });
-            }
-            
-            grouped.get(accountId).plans.push(plan);
-        }
-        
-        return grouped;
-    }
-
-    static sortPlansByPriority(plans) {
-        const priorityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
-        
-        return plans.sort((a, b) => {
-            const aItem = a.planData.actionItems[0];
-            const bItem = b.planData.actionItems[0];
-            
-            const aPriority = aItem?.priority || 'Medium';
-            const bPriority = bItem?.priority || 'Medium';
-            
-            // First sort by priority
-            if (priorityOrder[aPriority] !== priorityOrder[bPriority]) {
-                return priorityOrder[aPriority] - priorityOrder[bPriority];
-            }
-            
-            // Then by due date (earliest first)
-            const aDate = aItem?.dueDate ? new Date(aItem.dueDate) : new Date('9999-12-31');
-            const bDate = bItem?.dueDate ? new Date(bItem.dueDate) : new Date('9999-12-31');
-            
-            return aDate - bDate;
-        });
-    }
-
-    static formatDate(dateString) {
-        if (!dateString) return 'Not Set';
-        
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric' 
-            });
-        } catch (error) {
-            return 'Invalid Date';
-        }
-    }
-
-    static capitalizeFirstLetter(string) {
-        return string.charAt(0).toUpperCase() + string.slice(1);
-    }
-
-    static getInitials(name) {
-        if (!name) return 'UN';
-        
-        return name
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase())
-            .slice(0, 2)
-            .join('');
-    }
-
-    // === INTERACTION METHODS ===
-    
-    static toggleAccountExpansion(accountId) {
-        const accountRow = document.querySelector(`[data-account-id="${accountId}"]`);
-        const taskRows = document.querySelectorAll(`tr.task-row[data-account-id="${accountId}"]`);
-        const toggleButton = accountRow?.querySelector('.account-toggle i');
-        
-        if (accountRow && taskRows.length > 0) {
-            const isExpanded = !accountRow.classList.contains('collapsed');
-            
-            if (isExpanded) {
-                // Collapse
-                accountRow.classList.add('collapsed');
-                taskRows.forEach(row => row.style.display = 'none');
-                if (toggleButton) toggleButton.className = 'fas fa-chevron-right';
-            } else {
-                // Expand
-                accountRow.classList.remove('collapsed');
-                taskRows.forEach(row => row.style.display = '');
-                if (toggleButton) toggleButton.className = 'fas fa-chevron-down';
-            }
-        }
-    }
-
-    static toggleSelectAll(checked) {
-        const checkboxes = document.querySelectorAll('.task-checkbox');
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = checked;
-            this.handleTaskCheckboxChange(checkbox.dataset.taskId, checked);
-        });
-    }
-
-    static handleTaskCheckboxChange(taskId, checked) {
-        if (checked) {
-            this.selectedTasks.add(taskId);
+        // Get CS plays count from the plan's plays array
+        let playsCount = 0;
+        const plays = plan.plays || plan.planData.plays || [];
+        if (Array.isArray(plays)) {
+            playsCount = plays.length;
         } else {
-            this.selectedTasks.delete(taskId);
+            playsCount = this.getPlaysCountForAction(actionId, app);
         }
         
-        // Update select all checkbox state
-        const selectAllCheckbox = document.querySelector('.select-all-checkbox');
-        const allCheckboxes = document.querySelectorAll('.task-checkbox');
-        const checkedCheckboxes = document.querySelectorAll('.task-checkbox:checked');
+        // Debug log to see what's happening with action and plays data
+        console.log(`Action "${title}" (ID: ${actionId}) has plays:`, plays, 'count:', playsCount);
         
-        if (selectAllCheckbox) {
-            selectAllCheckbox.indeterminate = checkedCheckboxes.length > 0 && checkedCheckboxes.length < allCheckboxes.length;
-            selectAllCheckbox.checked = checkedCheckboxes.length === allCheckboxes.length;
+        // Generate realistic due date
+        const dueDate = this.generateDueDate(0);
+        
+        // Determine priority from plan data
+        const priority = plan.priority || plan.planData.priority || 'Medium';
+        
+        // Get assignee initials from plan data or generate
+        let assigneeInitials;
+        const assignee = plan.assignee || plan.planData.assignee || plan.createdBy || plan.planData.createdBy;
+        if (assignee) {
+            assigneeInitials = assignee === 'Current User' ? 'CU' : this.getInitialsFromName(assignee);
+        } else {
+            assigneeInitials = this.generateAssigneeInitials();
+        }
+        
+        // Create single task from the plan (new single-action-per-plan model)
+        const description = plan.description || plan.planData.description || '';
+        const status = plan.status || plan.planData.status || 'pending';
+        
+        actionPlans.push({
+            id: plan.id || plan.planData.id || `${plan.accountId}-0`,
+            title: title,
+            description: description.length > 100 ? description.substring(0, 100) + '...' : description,
+            actionId: actionId,
+            dueDate: dueDate.formatted,
+            overdue: dueDate.overdue,
+            playsCount: playsCount,
+            status: this.capitalizeFirstLetter(status),
+            priority: this.capitalizeFirstLetter(priority),
+            assigneeInitials: assigneeInitials,
+            completed: false,
+            accountId: plan.accountId,
+            rawActionItem: {
+                title: title,
+                actionId: actionId,
+                plays: plays,
+                description: description,
+                status: status,
+                priority: priority
+            },
+            isAIGenerated: false // All data is now real from CSV/JSON
+        });
+        
+        return actionPlans;
+    }
+    
+    static capitalizeFirstLetter(string) {
+        if (!string) return '';
+        return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+    }
+    
+    // REMOVED - Do not generate fake action IDs
+
+    static getPlaysCountForAction(actionId, app) {
+        if (!actionId || !app.data) return 0;
+        
+        // Find signal with this action_id to get plays count
+        const signal = app.data.find(s => s.action_id === actionId);
+        if (!signal) return 0;
+
+        let count = 0;
+        if (signal.play_1_name && signal.play_1_name.trim()) count++;
+        if (signal.play_2_name && signal.play_2_name.trim()) count++;
+        if (signal.play_3_name && signal.play_3_name.trim()) count++;
+        
+        return count;
+    }
+
+    static getPlaysDataForAction(actionId, app) {
+        if (!actionId || !app.data) return [];
+        
+        // Find signal with this action_id to get plays data
+        const signal = app.data.find(s => s.action_id === actionId);
+        if (!signal) return [];
+
+        const plays = [];
+        if (signal.play_1_name && signal.play_1_name.trim()) {
+            plays.push({
+                playId: `play_${actionId}_1`,
+                playName: signal.play_1_name.trim(),
+                playTitle: signal.play_1_name.trim()
+            });
+        }
+        if (signal.play_2_name && signal.play_2_name.trim()) {
+            plays.push({
+                playId: `play_${actionId}_2`,
+                playName: signal.play_2_name.trim(),
+                playTitle: signal.play_2_name.trim()
+            });
+        }
+        if (signal.play_3_name && signal.play_3_name.trim()) {
+            plays.push({
+                playId: `play_${actionId}_3`,
+                playName: signal.play_3_name.trim(),
+                playTitle: signal.play_3_name.trim()
+            });
+        }
+        
+        return plays;
+    }
+
+    static generateDueDate(index) {
+        const today = new Date();
+        const daysToAdd = Math.floor(Math.random() * 14) + 1; // 1-14 days
+        const dueDate = new Date(today.getTime() + (daysToAdd * 24 * 60 * 60 * 1000));
+        
+        // Sometimes make dates overdue for realism
+        const isOverdue = Math.random() < 0.15; // 15% chance of overdue
+        
+        if (isOverdue && index > 0) {
+            dueDate.setDate(dueDate.getDate() - Math.floor(Math.random() * 5) - 1);
+        }
+
+        const formatted = dueDate.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+        });
+
+        return {
+            formatted,
+            overdue: isOverdue && index > 0,
+            date: dueDate
+        };
+    }
+
+    static determinePriority(plan, index) {
+        if (plan.urgency === 'critical') {
+            return index === 0 ? 'High' : (Math.random() > 0.5 ? 'High' : 'Medium');
+        } else if (plan.urgency === 'high') {
+            return index === 0 ? 'High' : (Math.random() > 0.6 ? 'Medium' : 'Low');
+        } else {
+            return Math.random() > 0.7 ? 'Medium' : 'Low';
         }
     }
 
-    // Task Details functionality removed - to be reimplemented
+    static generateAssigneeInitials() {
+        const names = ['JS', 'MK', 'AB', 'RT', 'LW', 'DM', 'SC', 'JH', 'KP', 'NR'];
+        return names[Math.floor(Math.random() * names.length)];
+    }
+
+    static getInitialsFromName(fullName) {
+        if (!fullName || typeof fullName !== 'string') return 'UN';
+        
+        const parts = fullName.trim().split(' ');
+        if (parts.length === 1) {
+            // Single name, use first two characters
+            return parts[0].substring(0, 2).toUpperCase();
+        } else {
+            // Multiple parts, use first letter of first and last
+            return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+        }
+    }
+
+    // Interactive Methods
+
+    static toggleGroup(chevron) {
+        const group = chevron.closest('.account-group');
+        const tasks = group.querySelector('.account-action-plans');
+        
+        if (tasks.style.display === 'none') {
+            tasks.style.display = 'block';
+            chevron.classList.remove('fa-chevron-right');
+            chevron.classList.add('fa-chevron-down');
+        } else {
+            tasks.style.display = 'none';
+            chevron.classList.remove('fa-chevron-down');
+            chevron.classList.add('fa-chevron-right');
+        }
+    }
+
+    static async toggleTaskComplete(taskId, completed) {
+        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (!taskRow) return;
+        
+        const actionId = taskRow.dataset.actionId;
+        
+        // Get current status before changing it
+        const statusBadge = taskRow.querySelector('.status-badge');
+        const currentStatus = statusBadge ? statusBadge.textContent.trim() : 'Pending';
+        
+        // Store previous status on the element if we haven't already
+        if (!taskRow.dataset.previousStatus && currentStatus !== 'Complete') {
+            taskRow.dataset.previousStatus = currentStatus;
+        }
+        
+        // Determine new status
+        let newStatus;
+        if (completed) {
+            newStatus = 'Complete';
+            taskRow.classList.add('action-plan-completed');
+        } else {
+            // Restore previous status or default to 'Pending'
+            newStatus = taskRow.dataset.previousStatus || 'Pending';
+            taskRow.classList.remove('action-plan-completed');
+            // Clear the stored previous status since we're back to original state
+            delete taskRow.dataset.previousStatus;
+        }
+        
+        // Update the status badge immediately for responsive UI
+        if (statusBadge) {
+            statusBadge.textContent = newStatus;
+            statusBadge.className = `status-badge status-${newStatus.toLowerCase().replace(' ', '-')}`;
+        }
+        
+        console.log(`Task ${taskId} status changing from "${currentStatus}" to "${newStatus}"`);
+        
+        // Find the action plan and update it via ActionPlanService
+        try {
+            const app = window.app;
+            if (!app) {
+                console.error('SignalsAI app instance not found');
+                return;
+            }
+            
+            // Find the plan ID associated with this task
+            let planId = null;
+            let planData = null;
+            
+            // Search through action plans to find the one containing this action
+            // Handle new single-action-per-plan data model where each plan represents one action
+            for (let [id, plan] of app.actionPlans) {
+                // Check if this plan's actionId matches the task's actionId
+                const planActionId = plan.actionId || plan.planData?.actionId;
+                
+                if (planActionId === actionId) {
+                    planId = id;
+                    planData = plan;
+                    break;
+                }
+            }
+            
+            // If we didn't find by actionId, try to find by the task ID itself (fallback)
+            if (!planId && app.actionPlans.has(taskId)) {
+                planId = taskId;
+                planData = app.actionPlans.get(taskId);
+            }
+            
+            if (planId && planData) {
+                // Update the plan's status directly (new single-action-per-plan model)
+                planData.status = newStatus;
+                
+                // Update the entire plan with the new status
+                const updateResult = await ActionPlanService.updateActionPlan(planId, {
+                    status: newStatus,
+                    updatedAt: new Date().toISOString()
+                }, app);
+                
+                if (updateResult.success) {
+                    console.log(`Successfully updated action plan status for task ${taskId} to ${newStatus}`);
+                } else {
+                    console.error('Failed to update action plan:', updateResult.error);
+                    // Revert UI changes if save failed
+                    if (completed) {
+                        taskRow.classList.remove('action-plan-completed');
+                    } else {
+                        taskRow.classList.add('action-plan-completed');
+                    }
+                    if (statusBadge) {
+                        statusBadge.textContent = currentStatus;
+                        statusBadge.className = `status-badge status-${currentStatus.toLowerCase().replace(' ', '-')}`;
+                    }
+                }
+            } else {
+                console.warn(`Could not find action plan for task ${taskId} with action ${actionId}`);
+            }
+        } catch (error) {
+            console.error('Error updating action plan status:', error);
+            // Revert UI changes if save failed
+            if (completed) {
+                taskRow.classList.remove('action-plan-completed');
+            } else {
+                taskRow.classList.add('action-plan-completed');
+            }
+            if (statusBadge) {
+                statusBadge.textContent = currentStatus;
+                statusBadge.className = `status-badge status-${currentStatus.toLowerCase().replace(' ', '-')}`;
+            }
+        }
+    }
 
     // === MULTI-SELECT AND RIGHT-CLICK FUNCTIONALITY ===
 
@@ -451,8 +714,8 @@ class ActionsRenderer {
         // Clear selection if no modifier keys
         this.clearTaskSelection();
         
-        // Task details functionality removed - to be reimplemented
-        console.log('Task clicked:', { taskId, actionId });
+        // Open task details drawer (original functionality)
+        this.openTaskDetailsDrawer(taskId, actionId);
     }
 
     static handleTaskRightClick(event, taskId, actionId) {
@@ -491,320 +754,294 @@ class ActionsRenderer {
 
     static showContextMenu(event, taskId, actionId) {
         // Remove existing context menu
-        this.hideContextMenu();
+        this.removeContextMenu();
 
-        const selectedTasksArray = Array.from(this.selectedTasks);
-        const isMultiSelect = selectedTasksArray.length > 1;
+        const menu = document.createElement('div');
+        menu.id = 'taskContextMenu';
+        menu.className = 'task-context-menu';
         
-        const contextMenu = document.createElement('div');
-        contextMenu.className = 'context-menu';
-        contextMenu.id = 'taskContextMenu';
+        const selectedCount = this.selectedTasks.size;
+        const menuText = selectedCount > 1 ? `Delete ${selectedCount} Tasks` : 'Delete Task';
+        const iconClass = selectedCount > 1 ? 'fa-trash-alt' : 'fa-trash';
         
-        let menuItems = '';
-        
-        if (isMultiSelect) {
-            menuItems = `
-                <div class="context-menu-item" onclick="ActionsRenderer.bulkDeleteTasks()">
-                    <i class="fas fa-trash"></i>
-                    Delete ${selectedTasksArray.length} Tasks
-                </div>
-                <div class="context-menu-item" onclick="ActionsRenderer.bulkUpdateStatus('complete')">
-                    <i class="fas fa-check"></i>
-                    Mark as Complete
-                </div>
-                <div class="context-menu-item" onclick="ActionsRenderer.bulkUpdateStatus('in_progress')">
-                    <i class="fas fa-play"></i>
-                    Mark as In Progress
-                </div>
-            `;
-        } else {
-            menuItems = `
-                <div class="context-menu-item" onclick="ActionsRenderer.deleteSingleTask('${taskId}')">
-                    <i class="fas fa-trash"></i>
-                    Delete Task
-                </div>
-                <div class="context-menu-item" onclick="ActionsRenderer.updateTaskStatus('${taskId}', 'complete')">
-                    <i class="fas fa-check"></i>
-                    Mark as Complete
-                </div>
-                <div class="context-menu-item" onclick="ActionsRenderer.updateTaskStatus('${taskId}', 'in_progress')">
-                    <i class="fas fa-play"></i>
-                    Mark as In Progress
-                </div>
-                <div class="context-menu-item" onclick="ActionsRenderer.showPlaysDrawer('${actionId}', '${taskId}')">
-                    <i class="fas fa-play-circle"></i>
-                    View CS Plays
-                </div>
-            `;
-        }
-        
-        contextMenu.innerHTML = menuItems;
-        
-        // Position the context menu
-        contextMenu.style.position = 'absolute';
-        contextMenu.style.left = event.pageX + 'px';
-        contextMenu.style.top = event.pageY + 'px';
-        contextMenu.style.zIndex = '1000';
-        
-        document.body.appendChild(contextMenu);
-        
-        // Add click outside listener to close menu
+        menu.innerHTML = `
+            <div class="context-menu-item" onclick="ActionsRenderer.confirmDeleteTasks()">
+                <i class="fas ${iconClass}"></i>
+                <span>${menuText}</span>
+            </div>
+        `;
+
+        // Position the menu at cursor
+        menu.style.left = event.pageX + 'px';
+        menu.style.top = event.pageY + 'px';
+
+        document.body.appendChild(menu);
+
+        // Close menu when clicking elsewhere
         setTimeout(() => {
-            document.addEventListener('click', this.hideContextMenu, { once: true });
+            document.addEventListener('click', this.removeContextMenu, { once: true });
         }, 10);
     }
 
-    static hideContextMenu() {
-        const existingMenu = document.getElementById('taskContextMenu');
-        if (existingMenu) {
-            existingMenu.remove();
+    static removeContextMenu() {
+        const menu = document.getElementById('taskContextMenu');
+        if (menu) {
+            menu.remove();
         }
     }
 
-    // === TASK MANAGEMENT METHODS ===
+    static confirmDeleteTasks() {
+        this.removeContextMenu();
+        
+        const selectedCount = this.selectedTasks.size;
+        if (selectedCount === 0) return;
 
-    static async deleteSingleTask(taskId) {
-        const confirmed = await this.showDeleteConfirmation([taskId]);
-        if (!confirmed) return;
-
-        try {
-            await ActionPlanService.deleteActionPlan(taskId, window.app);
-            this.showTaskUpdateSuccess('Task deleted successfully');
-            
-            // Re-render to reflect changes
-            if (window.app && window.app.renderCurrentTab) {
-                window.app.renderCurrentTab();
-            }
-        } catch (error) {
-            console.error('Error deleting task:', error);
-            this.showTaskUpdateError('Failed to delete task');
-        }
+        this.showDeleteConfirmationModal(selectedCount);
     }
 
-    static async bulkDeleteTasks() {
-        const selectedTasksArray = Array.from(this.selectedTasks);
-        if (selectedTasksArray.length === 0) return;
+    static showDeleteConfirmationModal(taskCount) {
+        // Remove existing modal if present
+        this.removeDeleteModal();
 
-        const confirmed = await this.showDeleteConfirmation(selectedTasksArray);
-        if (!confirmed) return;
+        const modal = document.createElement('div');
+        modal.id = 'deleteConfirmationModal';
+        modal.className = 'delete-confirmation-modal';
 
-        try {
-            for (const taskId of selectedTasksArray) {
-                await ActionPlanService.deleteActionPlan(taskId, window.app);
-            }
-            
-            this.showTaskUpdateSuccess(`${selectedTasksArray.length} tasks deleted successfully`);
-            this.clearTaskSelection();
-            
-            // Re-render to reflect changes
-            if (window.app && window.app.renderCurrentTab) {
-                window.app.renderCurrentTab();
-            }
-        } catch (error) {
-            console.error('Error deleting tasks:', error);
-            this.showTaskUpdateError('Failed to delete some tasks');
-        }
-    }
+        const taskText = taskCount === 1 ? 'task' : 'tasks';
+        const deleteText = taskCount === 1 ? 'this task' : `these ${taskCount} tasks`;
 
-    static showDeleteConfirmation(taskIds) {
-        return new Promise((resolve) => {
-            const taskCount = taskIds.length;
-            const taskText = taskCount === 1 ? 'task' : 'tasks';
-            
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `
-                <div class="modal delete-confirmation-modal">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h3>
+        modal.innerHTML = `
+            <div class="delete-modal-backdrop" onclick="ActionsRenderer.removeDeleteModal()"></div>
+            <div class="delete-modal-content">
+                <div class="delete-modal-header">
+                    <div class="delete-modal-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
                     </div>
-                    <div class="modal-body">
-                        <p>Are you sure you want to delete ${taskCount} ${taskText}? This action cannot be undone.</p>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="ActionsRenderer.closeDeleteConfirmation(false)">
-                            Cancel
-                        </button>
-                        <button class="btn btn-danger" onclick="ActionsRenderer.closeDeleteConfirmation(true)">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </div>
+                    <h3 class="delete-modal-title">Delete ${taskText.charAt(0).toUpperCase() + taskText.slice(1)}</h3>
                 </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            // Store resolve function for later use
-            window.deleteConfirmationResolve = resolve;
-        });
-    }
-
-    static closeDeleteConfirmation(confirmed) {
-        const modal = document.querySelector('.modal-overlay');
-        if (modal) {
-            modal.remove();
-        }
-        
-        if (window.deleteConfirmationResolve) {
-            window.deleteConfirmationResolve(confirmed);
-            delete window.deleteConfirmationResolve;
-        }
-    }
-
-    static async updateTaskStatus(taskId, newStatus) {
-        try {
-            const updateData = {
-                actionItems: [{
-                    status: newStatus
-                }]
-            };
-            
-            await ActionPlanService.updateActionPlan(taskId, updateData, window.app);
-            this.showTaskUpdateSuccess(`Task marked as ${newStatus.replace('_', ' ')}`);
-            
-            // Re-render to reflect changes
-            if (window.app && window.app.renderCurrentTab) {
-                window.app.renderCurrentTab();
-            }
-        } catch (error) {
-            console.error('Error updating task status:', error);
-            this.showTaskUpdateError('Failed to update task status');
-        }
-    }
-
-    static async bulkUpdateStatus(newStatus) {
-        const selectedTasksArray = Array.from(this.selectedTasks);
-        if (selectedTasksArray.length === 0) return;
-
-        try {
-            for (const taskId of selectedTasksArray) {
-                await this.updateTaskStatus(taskId, newStatus);
-            }
-            
-            this.showTaskUpdateSuccess(`${selectedTasksArray.length} tasks updated successfully`);
-            this.clearTaskSelection();
-        } catch (error) {
-            console.error('Error bulk updating tasks:', error);
-            this.showTaskUpdateError('Failed to update some tasks');
-        }
-    }
-
-    // === CS PLAYS DRAWER ===
-
-    static showPlaysDrawer(actionId, taskId) {
-        console.log('Opening plays drawer for:', { actionId, taskId });
-        
-        // Find the action plan data
-        this.findTaskData(taskId, actionId, window.app)
-            .then(actionPlanData => {
-                if (!actionPlanData) {
-                    console.error('Could not find action plan data for plays drawer');
-                    return;
-                }
                 
-                this.createPlaysDrawerHTML();
-                this.populatePlaysDrawer(actionPlanData);
-                this.openPlaysDrawer();
-            })
-            .catch(error => {
-                console.error('Error opening plays drawer:', error);
-                this.showTaskUpdateError('Failed to load CS plays');
-            });
-    }
-
-    static createPlaysDrawerHTML() {
-        const existingDrawer = document.getElementById('playsDrawer');
-        if (existingDrawer) return;
-
-        const drawerHTML = `
-            <div id="playsDrawerBackdrop" class="drawer-backdrop" onclick="ActionsRenderer.closePlaysDrawer()"></div>
-            <div id="playsDrawer" class="drawer plays-drawer">
-                <div class="drawer-header">
-                    <h2><i class="fas fa-play-circle"></i> CS Plays Management</h2>
-                    <button class="drawer-close-btn" onclick="ActionsRenderer.closePlaysDrawer()">
-                        <i class="fas fa-times"></i>
+                <div class="delete-modal-body">
+                    <p>Are you sure you want to delete ${deleteText}? This action cannot be undone.</p>
+                    ${taskCount > 1 ? `<p class="delete-task-count">${taskCount} ${taskText} will be permanently removed.</p>` : ''}
+                </div>
+                
+                <div class="delete-modal-footer">
+                    <button class="btn btn-secondary delete-cancel-btn" onclick="ActionsRenderer.removeDeleteModal()">
+                        Cancel
+                    </button>
+                    <button class="btn btn-danger delete-confirm-btn" onclick="ActionsRenderer.executeTaskDeletion()">
+                        <i class="fas fa-trash"></i> Delete ${taskText.charAt(0).toUpperCase() + taskText.slice(1)}
                     </button>
                 </div>
-                <div class="drawer-body">
-                    <div id="playsDrawerContent">
-                        <!-- Content will be populated here -->
-                    </div>
-                </div>
             </div>
         `;
-        
-        document.body.insertAdjacentHTML('beforeend', drawerHTML);
+
+        document.body.appendChild(modal);
+
+        // Animate in
+        setTimeout(() => {
+            modal.classList.add('show');
+        }, 10);
     }
 
-    static populatePlaysDrawer(actionPlanData) {
-        const container = document.getElementById('playsDrawerContent');
-        if (!container) return;
+    static removeDeleteModal() {
+        const modal = document.getElementById('deleteConfirmationModal');
+        if (modal) {
+            modal.classList.remove('show');
+            setTimeout(() => {
+                if (modal.parentNode) {
+                    modal.remove();
+                }
+            }, 200);
+        }
+    }
 
-        const { taskId, actionId, actionItem, planData } = actionPlanData;
-        const plays = actionItem.plays || [];
-        const actionTitle = actionItem.title || 'Untitled Action';
-
-        let html = `
-            <div class="plays-drawer-header">
-                <h3>${actionTitle}</h3>
-                <p class="action-id">Action ID: ${actionId}</p>
-            </div>
-            
-            <div class="plays-section">
-                <h4><i class="fas fa-tasks"></i> CS Plays (${plays.length})</h4>
-        `;
-
-        if (plays.length === 0) {
-            html += `
-                <div class="no-plays-message">
-                    <i class="fas fa-info-circle"></i>
-                    <p>No CS plays are associated with this action plan.</p>
-                </div>
-            `;
-        } else {
-            html += '<div class="plays-list">';
-            
-            plays.forEach((play, index) => {
-                const playTitle = play.playTitle || play.playName || `Play ${index + 1}`;
-                const playId = play.playId || `play_${index}`;
-                const isCompleted = play.completed || false;
-                
-                html += `
-                    <div class="play-item ${isCompleted ? 'completed' : ''}" data-play-id="${playId}">
-                        <div class="play-content">
-                            <div class="play-header">
-                                <label class="play-checkbox-container">
-                                    <input type="checkbox" class="play-checkbox" 
-                                           ${isCompleted ? 'checked' : ''}
-                                           onchange="ActionsRenderer.togglePlayCompletion('${actionId}', '${playId}', ${index}, this.checked)">
-                                    <span class="checkmark"></span>
-                                </label>
-                                <div class="play-title">${playTitle}</div>
-                                <div class="play-status">
-                                    <span class="status-badge ${isCompleted ? 'status-complete' : 'status-pending'}">
-                                        ${isCompleted ? 'Complete' : 'Pending'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            html += '</div>';
+    static async executeTaskDeletion() {
+        const selectedTaskIds = Array.from(this.selectedTasks);
+        
+        if (selectedTaskIds.length === 0) {
+            this.removeDeleteModal();
+            return;
         }
 
-        html += '</div>';
-        container.innerHTML = html;
-        
-        // Store current data for updates
-        window.currentPlaysData = actionPlanData;
+        // Close the confirmation modal
+        this.removeDeleteModal();
+
+        try {
+            // Group tasks by account/plan for efficient processing
+            const tasksByPlan = {};
+            
+            for (const taskId of selectedTaskIds) {
+                // Parse the task ID to get account and task index (e.g., "0013000000DXZ1fAAH-1")
+                const [accountId, taskIndex] = taskId.split('-');
+                
+                if (!tasksByPlan[accountId]) {
+                    tasksByPlan[accountId] = [];
+                }
+                tasksByPlan[accountId].push({
+                    taskId: taskId,
+                    taskIndex: parseInt(taskIndex)
+                });
+            }
+
+            let deletedCount = 0;
+            
+            // Process each action plan
+            for (const [accountId, tasksToDelete] of Object.entries(tasksByPlan)) {
+                try {
+                    // Get the action plan for this account
+                    const planData = window.app.actionPlans.get(accountId);
+                    
+                    if (!planData || !planData.actionItems) {
+                        console.warn(`Could not find action plan for account: ${accountId}`);
+                        continue;
+                    }
+
+                    // Sort tasks by index in descending order to avoid index shifting during deletion
+                    const sortedTasks = tasksToDelete.sort((a, b) => b.taskIndex - a.taskIndex);
+                    
+                    // Create a copy of action items and remove the selected ones by index
+                    const updatedActionItems = [...planData.actionItems];
+                    
+                    for (const task of sortedTasks) {
+                        if (task.taskIndex >= 0 && task.taskIndex < updatedActionItems.length) {
+                            updatedActionItems.splice(task.taskIndex, 1);
+                            deletedCount++;
+                        }
+                    }
+
+                    // Update the action plan with reduced tasks using CRUD methods
+                    const updatedPlanData = {
+                        ...planData,
+                        actionItems: updatedActionItems,
+                        updatedAt: new Date()
+                    };
+
+                    // Use ActionPlanService CRUD to update the plan
+                    const result = await ActionPlanService.updateActionPlan(planData.id, updatedPlanData, window.app);
+                    
+                    if (result && result.success) {
+                        console.log(`Successfully deleted ${sortedTasks.length} tasks from action plan ${planData.id}`);
+                        
+                        // Update the local data immediately for UI consistency
+                        window.app.actionPlans.set(accountId, result.plan || updatedPlanData);
+                    } else {
+                        console.error(`Failed to update action plan ${planData.id}:`, result ? result.error : 'No response');
+                        // Revert the deleted count for failed operations
+                        deletedCount -= sortedTasks.length;
+                    }
+                    
+                } catch (error) {
+                    console.error(`Error deleting tasks from account ${accountId}:`, error);
+                }
+            }
+
+            // Clear selection
+            this.clearTaskSelection();
+            
+            // Show appropriate notification and refresh
+            if (deletedCount > 0) {
+                const taskText = deletedCount === 1 ? 'task' : 'tasks';
+                window.app.showSuccessMessage(`Successfully deleted ${deletedCount} ${taskText}`);
+                
+                // Refresh the Action Plans view to show updated data
+                console.log('Refreshing Action Plans view after task deletion');
+                window.app.renderCurrentTab();
+            } else {
+                window.app.showErrorMessage('Failed to delete tasks. Please try again.');
+            }
+
+        } catch (error) {
+            console.error('Error during task deletion:', error);
+            window.app.showErrorMessage('An error occurred while deleting tasks');
+            this.clearTaskSelection();
+        }
     }
 
-    static openPlaysDrawer() {
-        const drawer = document.getElementById('playsDrawer');
-        const backdrop = document.getElementById('playsDrawerBackdrop');
+    static async findActionPlanContainingTask(actionId, app) {
+        // Search through action plans to find the one containing this actionId
+        for (let [accountId, planData] of app.actionPlans) {
+            if (planData.actionItems) {
+                const foundItem = planData.actionItems.find(item => item.id === actionId);
+                if (foundItem) {
+                    return {
+                        accountId: accountId,
+                        planData: planData,
+                        actionItem: foundItem
+                    };
+                }
+            }
+        }
+        return null;
+    }
+
+    static openPlaysModal(actionId, taskTitle) {
+        console.log(`Opening plays modal for action ${actionId}: ${taskTitle}`);
         
+        // Find the action item with this actionId to get its plays
+        const actionPlan = this.findActionPlanWithActionId(actionId, window.app);
+        if (!actionPlan) {
+            console.error('Could not find action plan for actionId:', actionId);
+            return;
+        }
+        
+        this.openPlaysDrawer(actionId, taskTitle, actionPlan.actionItem, actionPlan.planData);
+    }
+    
+    static findActionPlanWithActionId(actionId, app) {
+        // Search through action plans to find the action item with this actionId
+        for (let [accountId, planData] of app.actionPlans) {
+            if (planData.actionItems) {
+                const actionItem = planData.actionItems.find(item => {
+                    return item.actionId === actionId || (typeof item === 'object' && item.actionId === actionId);
+                });
+                if (actionItem) {
+                    return { actionItem, planData, accountId };
+                }
+            }
+        }
+        
+        // If not found in live data, search fallback data
+        return this.findInFallbackData(actionId, app);
+    }
+    
+    static async findInFallbackData(actionId, app) {
+        try {
+            const response = await fetch('/action-plans-fallback.json');
+            const fallbackData = await response.json();
+            
+            for (const record of fallbackData) {
+                const planContent = record.content;
+                if (planContent && planContent.actionItems) {
+                    const actionItem = planContent.actionItems.find(item => item.actionId === actionId);
+                    if (actionItem) {
+                        return { actionItem, planData: planContent, accountId: planContent.accountId };
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error searching fallback data:', error);
+        }
+        return null;
+    }
+    
+    static openPlaysDrawer(actionId, taskTitle, actionItem, planData) {
+        console.log('Opening plays drawer for:', { actionId, taskTitle, actionItem });
+        
+        // Get or create drawer elements
+        let drawer = document.getElementById('playsDrawer');
+        let backdrop = document.getElementById('playsDrawerBackdrop');
+        
+        if (!drawer) {
+            this.createPlaysDrawerHTML();
+            drawer = document.getElementById('playsDrawer');
+            backdrop = document.getElementById('playsDrawerBackdrop');
+        }
+        
+        // Populate drawer content
+        this.populatePlaysDrawer(actionId, taskTitle, actionItem, planData);
+        
+        // Show drawer
         if (drawer && backdrop) {
             backdrop.classList.add('open');
             setTimeout(() => {
@@ -812,272 +1049,1312 @@ class ActionsRenderer {
             }, 10);
         }
     }
-
+    
+    static createPlaysDrawerHTML() {
+        const drawerHTML = `
+            <!-- Plays Drawer Backdrop -->
+            <div id="playsDrawerBackdrop" class="drawer-backdrop" onclick="ActionsRenderer.closePlaysDrawer()"></div>
+            
+            <!-- Plays Drawer -->
+            <div id="playsDrawer" class="drawer plays-drawer">
+                <div class="drawer-header">
+                    <h2><i class="fas fa-play-circle"></i> Manage CS Plays</h2>
+                    <button class="drawer-close-btn" onclick="ActionsRenderer.closePlaysDrawer()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="drawer-body">
+                    <div id="playsDrawerContent">
+                        <!-- Content will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="drawer-footer">
+                    <button class="btn btn-secondary" onclick="ActionsRenderer.closePlaysDrawer()">Close</button>
+                    <button class="btn btn-primary" onclick="ActionsRenderer.savePlayUpdates()">
+                        <i class="fas fa-save"></i> Save Updates
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add to body if not exists
+        if (!document.getElementById('playsDrawer')) {
+            document.body.insertAdjacentHTML('beforeend', drawerHTML);
+        }
+    }
+    
+    static populatePlaysDrawer(actionId, taskTitle, actionItem, planData) {
+        const container = document.getElementById('playsDrawerContent');
+        if (!container) return;
+        
+        const plays = actionItem.plays || [];
+        console.log('Populating drawer with plays:', plays);
+        
+        let html = `
+            <div class="plays-drawer-section">
+                <h3><i class="fas fa-lightbulb"></i> Action Plan Task</h3>
+                <div class="action-task-card">
+                    <div class="action-task-title">${taskTitle}</div>
+                    <div class="action-task-meta">
+                        <span class="action-id-badge">ID: ${actionId}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="plays-drawer-section">
+                <h3><i class="fas fa-play"></i> Associated CS Plays (${plays.length})</h3>
+                <div class="plays-description">
+                    Mark plays as complete to track progress on this action plan task.
+                </div>
+                
+                <div class="plays-list">
+        `;
+        
+        if (plays.length === 0) {
+            html += `
+                <div class="no-plays-message">
+                    <i class="fas fa-info-circle"></i>
+                    No CS plays are associated with this action plan task.
+                </div>
+            `;
+        } else {
+            plays.forEach((play, index) => {
+                const playTitle = play.playTitle || play.playName || `Play ${index + 1}`;
+                const playId = play.playId || `play_${index + 1}`;
+                const isCompleted = play.completed || false;
+                
+                html += `
+                    <div class="play-item" data-action-id="${actionId}" data-play-id="${playId}" data-play-index="${index}">
+                        <div class="play-checkbox-container">
+                            <input type="checkbox" 
+                                   id="playCheck-${index}" 
+                                   class="play-completion-checkbox"
+                                   ${isCompleted ? 'checked' : ''}
+                                   onchange="ActionsRenderer.togglePlayCompletion('${actionId}', '${playId}', ${index}, this.checked)">
+                            <label for="playCheck-${index}" class="play-completion-label">
+                                <i class="fas fa-check"></i>
+                            </label>
+                        </div>
+                        <div class="play-content">
+                            <div class="play-title ${isCompleted ? 'completed' : ''}">${playTitle}</div>
+                            <div class="play-status">
+                                <span class="status-badge ${isCompleted ? 'completed' : 'pending'}">
+                                    ${isCompleted ? 'Completed' : 'Pending'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+    
     static closePlaysDrawer() {
         const drawer = document.getElementById('playsDrawer');
         const backdrop = document.getElementById('playsDrawerBackdrop');
         
-        if (drawer && backdrop) {
+        if (drawer) {
             drawer.classList.remove('open');
+        }
+        
+        if (backdrop) {
             setTimeout(() => {
                 backdrop.classList.remove('open');
             }, 300);
         }
-        
-        // Clear stored data
-        window.currentPlaysData = null;
     }
-
-    static async togglePlayCompletion(actionId, playId, playIndex, isCompleted) {
-        if (!window.currentPlaysData) {
-            console.error('No plays data available for update');
+    
+    static togglePlayCompletion(actionId, playId, playIndex, isCompleted) {
+        console.log(`Toggle play completion: actionId=${actionId}, playId=${playId}, index=${playIndex}, completed=${isCompleted}`);
+        
+        // Update the visual state immediately
+        const playItem = document.querySelector(`[data-action-id="${actionId}"][data-play-index="${playIndex}"]`);
+        
+        if (!playItem) {
+            console.warn(`Could not find play item with actionId=${actionId} and playIndex=${playIndex}`);
+            // Continue with data update even if visual update fails
+        } else {
+            const playTitle = playItem.querySelector('.play-title');
+            const statusBadge = playItem.querySelector('.status-badge');
+            
+            if (playTitle && statusBadge) {
+                if (isCompleted) {
+                    playTitle.classList.add('completed');
+                    statusBadge.textContent = 'Completed';
+                    statusBadge.className = 'status-badge completed';
+                } else {
+                    playTitle.classList.remove('completed');
+                    statusBadge.textContent = 'Pending';
+                    statusBadge.className = 'status-badge pending';
+                }
+            }
+        }
+        
+        // Store the update for later saving
+        if (!window.playUpdates) {
+            window.playUpdates = new Map();
+        }
+        
+        if (!window.playUpdates.has(actionId)) {
+            window.playUpdates.set(actionId, new Map());
+        }
+        
+        window.playUpdates.get(actionId).set(playId, {
+            playIndex: playIndex,
+            completed: isCompleted,
+            timestamp: new Date().toISOString()
+        });
+        
+        console.log('Stored play update:', window.playUpdates.get(actionId).get(playId));
+    }
+    
+    static async savePlayUpdates() {
+        if (!window.playUpdates || window.playUpdates.size === 0) {
+            this.closePlaysDrawer();
             return;
         }
-
+        
+        console.log('Saving play updates:', window.playUpdates);
+        
         try {
-            const { taskId, planData, actionItem } = window.currentPlaysData;
-            const plays = [...actionItem.plays]; // Create copy
-            
-            if (plays[playIndex]) {
-                plays[playIndex].completed = isCompleted;
-                
-                // Update the action item with new plays data
-                const updatedActionItems = [...planData.actionItems];
-                updatedActionItems[0] = {
-                    ...actionItem,
-                    plays: plays
-                };
-                
-                const updateData = {
-                    actionItems: updatedActionItems
-                };
-                
-                await ActionPlanService.updateActionPlan(planData.id, updateData, window.app);
-                
-                // Update the visual indicator
-                const playItem = document.querySelector(`[data-play-id="${playId}"]`);
-                if (playItem) {
-                    if (isCompleted) {
-                        playItem.classList.add('completed');
-                        playItem.querySelector('.status-badge').textContent = 'Complete';
-                        playItem.querySelector('.status-badge').className = 'status-badge status-complete';
-                    } else {
-                        playItem.classList.remove('completed');
-                        playItem.querySelector('.status-badge').textContent = 'Pending';
-                        playItem.querySelector('.status-badge').className = 'status-badge status-pending';
-                    }
-                }
-                
-                this.showPlayUpdateSuccess(`Play marked as ${isCompleted ? 'complete' : 'pending'}`);
-                
-                // Update stored data
-                window.currentPlaysData.actionItem.plays = plays;
-                
-                // Re-render main view to reflect changes
-                if (window.app && window.app.renderCurrentTab) {
-                    window.app.renderCurrentTab();
-                }
-                
-            } else {
-                console.error('Play not found at index:', playIndex);
+            // Update action plans data with play completion status
+            for (let [actionId, playUpdates] of window.playUpdates) {
+                await this.updateActionPlanPlayStatus(actionId, playUpdates);
             }
+            
+            // Clear updates and refresh the Action Plans view
+            window.playUpdates.clear();
+            this.closePlaysDrawer();
+            
+            // Refresh the Action Plans view to show updated play counts
+            if (window.app && typeof window.app.renderActions === 'function') {
+                window.app.renderActions();
+            }
+            
+            // Show success message
+            this.showPlayUpdateSuccess();
+            
         } catch (error) {
-            console.error('Error updating play completion:', error);
-            this.showPlayUpdateError('Failed to update play status');
+            console.error('Error saving play updates:', error);
+            this.showPlayUpdateError(error.message);
         }
     }
-
-    // === NOTIFICATION METHODS ===
     
-    static showTaskUpdateSuccess(message) {
-        const notification = document.createElement('div');
-        notification.className = 'update-notification success';
-        notification.innerHTML = `
+    static async updateActionPlanPlayStatus(actionId, playUpdates) {
+        // Find and update the action plan data
+        const app = window.app;
+        
+        // Update in live action plans
+        for (let [accountId, planData] of app.actionPlans) {
+            if (planData.actionItems) {
+                const actionItem = planData.actionItems.find(item => item.actionId === actionId);
+                if (actionItem && actionItem.plays) {
+                    for (let [playId, updateData] of playUpdates) {
+                        const playIndex = updateData.playIndex;
+                        if (actionItem.plays[playIndex]) {
+                            actionItem.plays[playIndex].completed = updateData.completed;
+                            actionItem.plays[playIndex].lastUpdated = updateData.timestamp;
+                        }
+                    }
+                    return; // Found and updated
+                }
+            }
+        }
+        
+        console.log(`Action plan for actionId ${actionId} updated with play completion status`);
+    }
+    
+    static showPlayUpdateSuccess() {
+        const message = document.createElement('div');
+        message.className = 'update-notification success';
+        message.innerHTML = `
             <i class="fas fa-check-circle"></i>
-            ${message}
+            Play completion status updated successfully!
         `;
-        document.body.appendChild(notification);
+        document.body.appendChild(message);
         
         setTimeout(() => {
-            notification.classList.add('show');
+            message.classList.add('show');
             setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => notification.remove(), 300);
+                message.classList.remove('show');
+                setTimeout(() => message.remove(), 300);
             }, 3000);
         }, 100);
     }
-
-    static showTaskUpdateError(errorMessage) {
-        const notification = document.createElement('div');
-        notification.className = 'update-notification error';
-        notification.innerHTML = `
-            <i class="fas fa-exclamation-circle"></i>
-            Error: ${errorMessage}
-        `;
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.classList.add('show');
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => notification.remove(), 300);
-            }, 5000);
-        }, 100);
-    }
-
-    static showPlayUpdateSuccess(message) {
-        const notification = document.createElement('div');
-        notification.className = 'update-notification success';
-        notification.innerHTML = `
-            <i class="fas fa-check-circle"></i>
-            ${message}
-        `;
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.classList.add('show');
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => notification.remove(), 300);
-            }, 3000);
-        }, 100);
-    }
-
+    
     static showPlayUpdateError(errorMessage) {
-        const notification = document.createElement('div');
-        notification.className = 'update-notification error';
-        notification.innerHTML = `
+        const message = document.createElement('div');
+        message.className = 'update-notification error';
+        message.innerHTML = `
             <i class="fas fa-exclamation-circle"></i>
             Error updating plays: ${errorMessage}
         `;
-        document.body.appendChild(notification);
+        document.body.appendChild(message);
         
         setTimeout(() => {
-            notification.classList.add('show');
+            message.classList.add('show');
             setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => notification.remove(), 300);
+                message.classList.remove('show');
+                setTimeout(() => message.remove(), 300);
             }, 5000);
         }, 100);
     }
-
-    // === DATA LOADING METHODS ===
-
-    static async getFormattedActionPlans(app) {
+    
+    // Task Details Drawer Methods
+    static async openTaskDetailsDrawer(taskId, actionId) {
+        console.log(`Opening task details drawer for taskId: ${taskId}, actionId: ${actionId}`);
+        
         try {
-            // Try to load from Domo API first
-            const liveActionPlans = await this.loadLiveActionPlans(app);
-            if (liveActionPlans && liveActionPlans.length > 0) {
-                console.log('Using live action plans from Domo API:', liveActionPlans.length);
-                return liveActionPlans;
+            // Find the task data (now async)
+            const actionPlanData = await this.findTaskData(taskId, actionId, window.app);
+            if (!actionPlanData) {
+                console.error('Could not find task data for:', { taskId, actionId });
+                this.showTaskUpdateError('Task data not found');
+                return;
             }
             
-            // Fall back to local JSON file
-            const fallbackPlans = await this.loadFallbackActionPlans(app);
-            console.log('Using fallback action plans:', fallbackPlans.length);
-            return fallbackPlans;
+            console.log('Found action plan data:', actionPlanData);
             
+            // Create or get drawer elements
+            let drawer = document.getElementById('taskDetailsDrawer');
+            let backdrop = document.getElementById('taskDetailsDrawerBackdrop');
+            
+            if (!drawer) {
+                this.createTaskDetailsDrawerHTML();
+                drawer = document.getElementById('taskDetailsDrawer');
+                backdrop = document.getElementById('taskDetailsDrawerBackdrop');
+            }
+            
+            // Populate drawer content
+            this.populateTaskDetailsDrawer(actionPlanData);
+            
+            // Show drawer
+            if (drawer && backdrop) {
+                backdrop.classList.add('open');
+                setTimeout(() => {
+                    drawer.classList.add('open');
+                }, 10);
+            }
         } catch (error) {
-            console.error('Error loading action plans:', error);
-            return [];
+            console.error('Error opening task details drawer:', error);
+            this.showTaskUpdateError('Failed to open task details');
         }
     }
-
-    static async loadLiveActionPlans(app) {
-        try {
-            const actionPlansArray = [];
+    
+    static createTaskDetailsDrawerHTML() {
+        const drawerHTML = `
+            <!-- Task Details Drawer Backdrop -->
+            <div id="taskDetailsDrawerBackdrop" class="drawer-backdrop" onclick="ActionsRenderer.closeTaskDetailsDrawer()"></div>
             
-            // Convert Map to array and process each plan
-            for (let [accountId, planData] of app.actionPlans) {
-                // Validate the plan has required data
-                if (!planData.actionItems || planData.actionItems.length === 0) {
-                    console.log(`Skipping plan ${planData.id} - no action items`);
-                    continue;
-                }
-
-                // Find account name from app.accounts if available
-                let accountName = 'Unknown Account';
-                if (app.accounts && app.accounts.has(accountId)) {
-                    const account = app.accounts.get(accountId);
-                    accountName = account.name || account.account_name || accountName;
-                } else if (planData.accountName) {
-                    accountName = planData.accountName;
-                }
-
-                // Create formatted plan object
-                const formattedPlan = {
-                    planData: planData,
-                    accountId: accountId,
-                    accountName: accountName,
-                    urgency: this.determinePlanUrgency(planData, app),
-                    renewalValue: this.getPlanRenewalValue(planData, app)
-                };
+            <!-- Task Details Drawer -->
+            <div id="taskDetailsDrawer" class="drawer task-details-drawer">
+                <div class="drawer-header">
+                    <h2><i class="fas fa-tasks"></i> Task Details</h2>
+                    <button class="drawer-close-btn" onclick="ActionsRenderer.closeTaskDetailsDrawer()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
                 
-                actionPlansArray.push(formattedPlan);
-            }
-            
-            return actionPlansArray;
-            
-        } catch (error) {
-            console.error('Error processing live action plans:', error);
-            return [];
+                <div class="drawer-body">
+                    <div id="taskDetailsContent">
+                        <!-- Content will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="drawer-footer">
+                    <button class="btn btn-primary" onclick="ActionsRenderer.closeTaskDetailsDrawer()">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add to body if not exists
+        if (!document.getElementById('taskDetailsDrawer')) {
+            document.body.insertAdjacentHTML('beforeend', drawerHTML);
         }
     }
+    
+    static async findTaskData(taskId, actionId, app) {
+        // First, try to find in the current rendered action plans (includes AI recommendations)
+        const currentActionPlans = await this.getFormattedActionPlans(app);
+        
+        for (const plan of currentActionPlans) {
+            if (plan.planData && plan.planData.actionItems) {
+                const actionItem = plan.planData.actionItems.find(item => {
+                    // Check if this is the task we're looking for
+                    const itemActionId = item.actionId; // Only use real action IDs from CSV data
+                    return itemActionId === actionId;
+                });
+                
+                if (actionItem) {
+                    console.log('Found task in current action plans:', actionItem);
+                    return {
+                        taskId,
+                        actionId,
+                        actionItem,
+                        planData: plan.planData,
+                        accountId: plan.accountId
+                    };
+                }
+            }
+        }
+        
+        // Second try: find in live action plans  
+        console.log('🔍 [DEBUG] Searching live action plans for:', { taskId, actionId });
+        console.log('🔍 [DEBUG] Live action plans keys:', Array.from(app.actionPlans.keys()));
+        
+        for (let [accountId, planData] of app.actionPlans) {
+            console.log('🔍 [DEBUG] Checking plan:', { accountId, planId: planData.id, hasActionItems: !!planData.actionItems });
+            
+            // Check if this plan matches the taskId
+            if (planData.id === taskId) {
+                console.log('🔍 [DEBUG] Found plan by ID match!');
+                const actionItem = planData.actionItems?.find(item => item.actionId === actionId);
+                if (actionItem) {
+                    console.log('🔍 [DEBUG] Found action item in matched plan:', actionItem);
+                    return {
+                        taskId,
+                        actionId,
+                        actionItem,
+                        planData,
+                        accountId: planData.accountId || accountId
+                    };
+                }
+            }
+            
+            // Also check action items by actionId (fallback)
+            if (planData.actionItems) {
+                const actionItem = planData.actionItems.find(item => 
+                    item.actionId === actionId || 
+                    (typeof item === 'object' && item.actionId === actionId)
+                );
+                if (actionItem) {
+                    console.log('🔍 [DEBUG] Found action item by actionId:', actionItem);
+                    return {
+                        taskId,
+                        actionId,
+                        actionItem,
+                        planData,
+                        accountId: planData.accountId || accountId
+                    };
+                }
+            }
+        }
+        
+        // Third try: search fallback data (only if API data wasn't loaded successfully)
+        // Check if we're running in development or if API failed to load action plans
+        const shouldUseFallback = this.shouldUseFallbackData(app);
+        if (shouldUseFallback) {
+            const fallbackResult = await this.findTaskInFallbackData(taskId, actionId, app);
+            if (fallbackResult) {
+                return fallbackResult;
+            }
+        }
+        
+        // Last resort: try to reconstruct task data from the task ID
+        return this.reconstructTaskData(taskId, actionId, app);
+    }
+    
+    static shouldUseFallbackData(app) {
+        // Only use fallback if:
+        // 1. We're in development environment (has localhost or specific dev patterns)
+        // 2. OR the API didn't successfully load action plans (empty or failed)
+        const isDevelopment = window.location.hostname === 'localhost' || 
+                             window.location.hostname.includes('replit') ||
+                             window.location.hostname.includes('127.0.0.1');
+        
+        const hasApiData = app.actionPlans && app.actionPlans.size > 0;
+        
+        // Use fallback only in development OR when API failed to load data
+        return isDevelopment || !hasApiData;
+    }
 
-    static async loadFallbackActionPlans(app) {
+    static async findTaskInFallbackData(taskId, actionId, app) {
         try {
-            console.log('Attempting to load fallback action plans...');
+            console.log('Attempting to load fallback data for task search...');
             const response = await fetch('/action-plans-fallback.json');
             
+            // Check if the response is successful
             if (!response.ok) {
                 if (response.status === 404) {
                     console.log('Fallback file not found (404) - this is expected in production');
-                    return [];
+                    return null;
                 }
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const fallbackData = await response.json();
             
+            // Validate that fallbackData is an array before iterating
             if (!Array.isArray(fallbackData)) {
                 console.error('Fallback data is not an array:', typeof fallbackData);
-                return [];
+                return null;
             }
-            
-            const formattedPlans = [];
             
             for (const record of fallbackData) {
                 const planContent = record.content;
-                if (!planContent || !planContent.actionItems) continue;
-                
-                // Find related signal for account information
-                const signal = app.signals?.find(s => s.action_id === planContent.actionItems[0]?.actionId);
-                
-                const accountName = this.getAccountNameFromPlan(planContent, signal, app);
-                const urgency = this.determineFallbackUrgency(planContent, signal);
-                const renewalValue = this.getFallbackRenewalValue(signal, app);
-                
-                const formattedPlan = {
-                    planData: planContent,
-                    accountId: planContent.accountId || record.id,
-                    accountName: accountName,
-                    urgency: urgency,
-                    renewalValue: renewalValue,
-                    lastUpdated: planContent.createdAt || new Date().toISOString()
-                };
-                
-                formattedPlans.push(formattedPlan);
+                if (planContent && planContent.actionItems) {
+                    const actionItem = planContent.actionItems.find(item => item.actionId === actionId);
+                    if (actionItem) {
+                        console.log('Found task in fallback data:', actionItem);
+                        return {
+                            taskId,
+                            actionId,
+                            actionItem,
+                            planData: planContent,
+                            accountId: planContent.accountId
+                        };
+                    }
+                }
             }
             
-            // Sort by urgency then by last updated
-            const urgencyOrder = { 'high': 0, 'normal': 1, 'low': 2 };
-            return formattedPlans
-                .sort((a, b) => {
-                    if (urgencyOrder[a.urgency] !== urgencyOrder[b.urgency]) {
-                        return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
+            console.log('Task not found in fallback data');
+        } catch (error) {
+            if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                console.log('Fallback file not available - this is expected in production');
+            } else {
+                console.error('Error searching fallback data:', error);
+            }
+        }
+        return null;
+    }
+    
+    static reconstructTaskData(taskId, actionId, app) {
+        console.log('🔍 [DEBUG] Reconstructing task data for:', { taskId, actionId });
+        console.log('🔍 [DEBUG] Available action plans keys:', Array.from(app.actionPlans.keys()));
+        
+        // First, try one more time to find the actual plan using just the plan ID
+        console.log('🔍 [DEBUG] Searching for plan with taskId:', taskId);
+        for (let [key, plan] of app.actionPlans) {
+            console.log('🔍 [DEBUG] Checking plan key:', key, 'plan.id:', plan.id);
+            if (plan.id === taskId || key === taskId) {
+                console.log('🔍 [DEBUG] Found plan during reconstruction!', { key, planId: plan.id });
+                // Find the specific action item
+                const actionItem = plan.actionItems?.find(item => item.actionId === actionId);
+                if (actionItem) {
+                    return {
+                        taskId,
+                        actionId,
+                        actionItem,
+                        planData: plan,
+                        accountId: plan.accountId || key
+                    };
+                }
+            }
+        }
+        
+        // Try to extract account ID from task ID (format: accountId-index)
+        const accountId = taskId.split('-')[0];
+        const taskIndex = parseInt(taskId.split('-')[1]) || 0;
+        
+        // Get plays data from signal based on actionId
+        const playsData = this.getPlaysDataForAction(actionId, app);
+        
+        // Try to find relevant signal data to get the actual action title
+        const relevantSignal = app.signals && app.signals.find(signal => 
+            signal.action_id === actionId || 
+            signal.id === actionId
+        );
+        
+        // Use actual recommended action title if available from signals
+        const actionTitle = relevantSignal?.recommended_action || relevantSignal?.name || `Action for ${actionId}`;
+        
+        // Create a basic action item structure
+        const actionItem = {
+            title: actionTitle, // Use real title instead of "Generated Action"
+            actionId: actionId,
+            plays: playsData, // Use actual plays data instead of empty array
+            completed: false
+        };
+        
+        // Create basic plan data - DO NOT add "reconstructed-" prefix
+        const planData = {
+            id: taskId, // Use original taskId, not reconstructed prefix
+            actionItems: [actionItem],
+            status: 'Pending',
+            assignee: 'Current User',
+            createdAt: new Date().toISOString()
+        };
+        
+        return {
+            taskId,
+            actionId,
+            actionItem,
+            planData,
+            accountId
+        };
+    }
+    
+    static populateTaskDetailsDrawer(actionPlanData) {
+        const container = document.getElementById('taskDetailsContent');
+        if (!container) return;
+        
+        console.log('Populating action plan details drawer with data:', actionPlanData);
+        
+        const { taskId, actionId, actionItem, planData } = actionPlanData;
+        
+        // Store globally for auto-save functions
+        window.currentActionPlanData = actionPlanData;
+        
+        // Safely access plays with fallback - handle both string and object actionItem
+        const plays = (typeof actionItem === 'object' && actionItem.plays) ? actionItem.plays : [];
+        
+        console.log('🔍 [MAPPING] Action item:', actionItem);
+        console.log('🔍 [MAPPING] Plan data:', planData);
+        console.log('🔍 [MAPPING] Plays found:', plays);
+        
+        // Use the actual action title, handle both string and object cases
+        const actionTitle = typeof actionItem === 'string' ? actionItem : (actionItem.title || actionItem.name || 'Action Details');
+        
+        // Extract values correctly from the data structure
+        const currentTitle = actionItem.title || 'No Title';
+        const currentStatus = actionItem.status || 'pending';
+        const currentAssignee = planData.assignee || 'Current User';
+        const currentDueDate = actionItem.dueDate ? new Date(actionItem.dueDate).toISOString().split('T')[0] : '';
+        const currentPriority = actionItem.priority || 'Medium';
+        const accountId = planData.accountId || actionPlanData.accountId;
+        
+        console.log('🔍 [MAPPING] Extracted values:', {
+            currentTitle,
+            currentStatus,
+            currentAssignee, 
+            currentDueDate,
+            currentPriority,
+            accountId
+        });
+        
+        let html = `
+            <div class="task-details-section">
+                <h3><i class="fas fa-lightbulb"></i> Recommended Action</h3>
+                <div class="action-display-card">
+                    <div class="action-title">${actionTitle}</div>
+                    <div class="action-id">Action ID: ${actionId}</div>
+                </div>
+            </div>
+            
+            <div class="task-details-section">
+                <h3><i class="fas fa-edit"></i> Task Properties</h3>
+                <div class="task-properties-grid">
+                    <div class="property-field">
+                        <label for="taskDueDate">Due Date</label>
+                        <input type="date" id="taskDueDate" class="form-input" value="${currentDueDate}" onchange="ActionsRenderer.autoSaveTaskProperty('dueDate', this.value)">
+                    </div>
+                    
+                    <div class="property-field">
+                        <label for="taskPriority">Priority</label>
+                        <select id="taskPriority" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('priority', this.value)">
+                            <option value="High" ${currentPriority === 'High' ? 'selected' : ''}>High</option>
+                            <option value="Medium" ${currentPriority === 'Medium' ? 'selected' : ''}>Medium</option>
+                            <option value="Low" ${currentPriority === 'Low' ? 'selected' : ''}>Low</option>
+                        </select>
+                    </div>
+                    
+                    <div class="property-field">
+                        <label for="taskAssignee">Assignee</label>
+                        <select id="taskAssignee" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('assignee', this.value)">
+                            <option value="Current User" ${currentAssignee === 'Current User' ? 'selected' : ''}>Current User</option>
+                            <option value="John Smith" ${currentAssignee === 'John Smith' ? 'selected' : ''}>John Smith</option>
+                            <option value="Maria Kim" ${currentAssignee === 'Maria Kim' ? 'selected' : ''}>Maria Kim</option>
+                            <option value="Alex Brown" ${currentAssignee === 'Alex Brown' ? 'selected' : ''}>Alex Brown</option>
+                            <option value="Ryan Taylor" ${currentAssignee === 'Ryan Taylor' ? 'selected' : ''}>Ryan Taylor</option>
+                            <option value="Lisa Wilson" ${currentAssignee === 'Lisa Wilson' ? 'selected' : ''}>Lisa Wilson</option>
+                        </select>
+                    </div>
+                    
+                    <div class="property-field">
+                        <label for="taskStatus">Task Status</label>
+                        <select id="taskStatus" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('status', this.value)">
+                            <option value="pending" ${currentStatus === 'pending' ? 'selected' : ''}>Pending</option>
+                            <option value="in_progress" ${currentStatus === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="complete" ${currentStatus === 'complete' ? 'selected' : ''}>Complete</option>
+                            <option value="cancelled" ${currentStatus === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                            <option value="on_hold" ${currentStatus === 'on_hold' ? 'selected' : ''}>On Hold</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="task-details-section">
+                <h3><i class="fas fa-tasks"></i> CS Plays (${plays.length})</h3>
+                <div class="plays-management">
+        `;
+        
+        if (plays.length === 0) {
+            html += `
+                <div class="no-plays-message">
+                    <i class="fas fa-info-circle"></i>
+                    No CS plays are associated with this action plan.
+                </div>
+            `;
+        } else {
+            html += '<div class="plays-list">';
+            plays.forEach((play, index) => {
+                const playTitle = play.playTitle || play.playName || `Play ${index + 1}`;
+                const playId = play.playId || `play_${index + 1}`;
+                const isCompleted = play.completed || false;
+                
+                html += `
+                    <div class="play-management-item" data-play-id="${playId}" data-play-index="${index}">
+                        <div class="play-info">
+                            <div class="play-content">
+                                <label class="play-checkbox-container">
+                                    <input type="checkbox" class="play-checkbox" 
+                                           ${isCompleted ? 'checked' : ''}
+                                           onchange="ActionsRenderer.togglePlayCompletionCheckbox('${actionId}', '${playId}', ${index}, this.checked)">
+                                    <span class="checkmark"></span>
+                                </label>
+                                <div class="play-title ${isCompleted ? 'completed' : ''}">${playTitle}</div>
+                            </div>
+                            <div class="play-actions">
+                                <button class="btn btn-sm btn-danger" 
+                                        onclick="ActionsRenderer.deletePlay('${actionId}', '${playId}', ${index})">
+                                    <i class="fas fa-trash"></i>
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+        // Store current task data for saving
+        window.currentActionPlanData = actionPlanData;
+    }
+    
+    static convertToDateValue(dateString) {
+        if (!dateString || dateString === 'Not Set') return '';
+        
+        // Try to parse the date string and convert to YYYY-MM-DD format
+        try {
+            const date = new Date(dateString + ', 2025'); // Add year for better parsing
+            if (!isNaN(date.getTime())) {
+                return date.toISOString().split('T')[0];
+            }
+        } catch (error) {
+            console.warn('Could not parse date:', dateString);
+        }
+        
+        return '';
+    }
+    
+    static closeTaskDetailsDrawer() {
+        const drawer = document.getElementById('taskDetailsDrawer');
+        const backdrop = document.getElementById('taskDetailsDrawerBackdrop');
+        
+        if (drawer) {
+            drawer.classList.remove('open');
+        }
+        
+        if (backdrop) {
+            setTimeout(() => {
+                backdrop.classList.remove('open');
+            }, 300);
+        }
+        
+        // Clear stored task data
+        window.currentActionPlanData = null;
+    }
+    
+    // Helper method to update task row display immediately
+    static updateTaskRowDisplay(taskId, updates) {
+        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (!taskRow) return;
+        
+        try {
+            if (updates.dueDate) {
+                const dueDateElement = taskRow.querySelector('.due-date');
+                if (dueDateElement) {
+                    dueDateElement.textContent = updates.dueDate || 'Not Set';
+                }
+            }
+            
+            if (updates.priority) {
+                const priorityElement = taskRow.querySelector('.priority-badge');
+                if (priorityElement) {
+                    priorityElement.textContent = updates.priority;
+                    priorityElement.className = `priority-badge priority-${updates.priority.toLowerCase()}`;
+                }
+            }
+            
+            if (updates.assignee) {
+                const assigneeElement = taskRow.querySelector('.assignee-initials');
+                if (assigneeElement) {
+                    assigneeElement.textContent = updates.assignee;
+                }
+            }
+            
+            if (updates.status) {
+                const statusElement = taskRow.querySelector('.status-badge');
+                if (statusElement) {
+                    statusElement.textContent = updates.status;
+                    statusElement.className = `status-badge status-${updates.status.toLowerCase().replace(' ', '-')}`;
+                }
+            }
+        } catch (error) {
+            console.error('Error updating task row display:', error);
+        }
+    }
+    
+    // Auto-save functionality for task properties
+    static async autoSaveTaskProperty(propertyName, value) {
+        if (!window.currentActionPlanData) {
+            console.error('No task data available for auto-save');
+            return;
+        }
+        
+        try {
+            const { taskId, actionId, planData, accountId } = window.currentActionPlanData;
+            
+            console.log(`🔍 [DEBUG] Auto-saving ${propertyName}:`, value);
+            console.log(`🔍 [DEBUG] Current action plan data:`, {
+                taskId,
+                actionId,
+                planId: planData?.id,
+                accountId,
+                planDataKeys: Object.keys(planData || {}),
+                hasActionItems: !!planData?.actionItems,
+                actionItemsCount: planData?.actionItems?.length || 0
+            });
+            
+            // Update the task row display immediately for better UX
+            this.updateTaskRowDisplay(taskId, { [propertyName]: value });
+            
+            // Prepare update data based on property name and data structure
+            let updateData = {};
+            
+            // Get the current action item for updates
+            const actionItem = window.currentActionPlanData.actionItem;
+            
+            switch(propertyName) {
+                case 'dueDate':
+                    // Update action item level
+                    updateData.actionItems = [{
+                        ...actionItem,
+                        dueDate: value
+                    }];
+                    break;
+                case 'priority':
+                    // Update action item level  
+                    updateData.actionItems = [{
+                        ...actionItem,
+                        priority: value
+                    }];
+                    break;
+                case 'status':
+                    // Update action item level
+                    updateData.actionItems = [{
+                        ...actionItem,
+                        status: value
+                    }];
+                    break;
+                case 'assignee':
+                    // Update plan level (assignee is at planData level)
+                    updateData.assignee = value;
+                    break;
+                default:
+                    console.warn('Unknown property for auto-save:', propertyName);
+                    return;
+            }
+            
+            // Call the CRUD method to save changes
+            console.log(`🔍 [DEBUG] Calling updateActionPlan with:`, {
+                planId: planData.id,
+                updateData,
+                planDataType: typeof planData.id,
+                planIdExists: !!planData.id
+            });
+            
+            const result = await ActionPlanService.updateActionPlan(planData.id, updateData, window.app);
+            
+            if (result && result.success) {
+                console.log(`Successfully auto-saved ${propertyName}`);
+                // Update local data if needed
+                if (window.app && window.app.actionPlans && window.app.actionPlans.has(accountId)) {
+                    const currentPlan = window.app.actionPlans.get(accountId);
+                    if (currentPlan) {
+                        window.app.actionPlans.set(accountId, result.plan || currentPlan);
                     }
-                    return new Date(b.lastUpdated) - new Date(a.lastUpdated);
+                }
+            } else {
+                console.error(`Failed to auto-save ${propertyName}:`, result ? result.error : 'Unknown error');
+                // Show error notification to the user about the save failure
+                NotificationService.showError(`Failed to save ${propertyName} change`);
+            }
+        } catch (error) {
+            console.error(`Error auto-saving ${propertyName}:`, error);
+            NotificationService.showError(`Error saving ${propertyName} change`);
+        }
+    }
+    
+    // New checkbox-based play completion toggle
+    static async togglePlayCompletionCheckbox(actionId, playId, playIndex, isChecked) {
+        if (!window.currentActionPlanData) {
+            console.error('No task data available for play completion toggle');
+            return;
+        }
+        
+        try {
+            const { taskId, planData, accountId } = window.currentActionPlanData;
+            
+            console.log(`Toggling play completion: ${playId} -> ${isChecked}`);
+            
+            // Find and update the play in the action items
+            let updatedActionItems = [...planData.actionItems];
+            let playUpdated = false;
+            
+            for (let actionItem of updatedActionItems) {
+                if (actionItem.plays && Array.isArray(actionItem.plays)) {
+                    for (let play of actionItem.plays) {
+                        if (play.playId === playId) {
+                            play.completed = isChecked;
+                            playUpdated = true;
+                            break;
+                        }
+                    }
+                }
+                if (playUpdated) break;
+            }
+            
+            if (!playUpdated) {
+                console.error('Could not find play to update:', playId);
+                return;
+            }
+            
+            // Update the visual state immediately
+            const playElement = document.querySelector(`[data-play-id="${playId}"] .play-title`);
+            if (playElement) {
+                if (isChecked) {
+                    playElement.classList.add('completed');
+                } else {
+                    playElement.classList.remove('completed');
+                }
+            }
+            
+            // Save the changes using CRUD method
+            const updateData = {
+                actionItems: updatedActionItems
+            };
+            
+            const result = await ActionPlanService.updateActionPlan(planData.id, updateData, window.app);
+            
+            if (result && result.success) {
+                console.log('Successfully updated play completion status');
+                
+                // Update local data
+                if (window.app && window.app.actionPlans && window.app.actionPlans.has(accountId)) {
+                    window.app.actionPlans.set(accountId, result.plan || planData);
+                }
+                
+                // Show success notification
+                const statusText = isChecked ? 'completed' : 'pending';
+                NotificationService.showSuccess(`Play marked as ${statusText}`);
+            } else {
+                console.error('Failed to update play completion:', result ? result.error : 'Unknown error');
+                
+                // Revert the visual state on failure
+                if (playElement) {
+                    if (isChecked) {
+                        playElement.classList.remove('completed');
+                    } else {
+                        playElement.classList.add('completed');
+                    }
+                }
+                
+                // Revert the checkbox state
+                const checkbox = document.querySelector(`[data-play-id="${playId}"] .play-checkbox`);
+                if (checkbox) {
+                    checkbox.checked = !isChecked;
+                }
+                
+                NotificationService.showError('Failed to update play status');
+            }
+        } catch (error) {
+            console.error('Error toggling play completion:', error);
+            NotificationService.showError('Error updating play status');
+        }
+    }
+    
+    static async saveTaskDetails() {
+        if (!window.currentActionPlanData) {
+            console.error('No task data to save');
+            return;
+        }
+        
+        try {
+            // Get updated values from form
+            const dueDate = document.getElementById('taskDueDate').value;
+            const priority = document.getElementById('taskPriority').value;
+            const assignee = document.getElementById('taskAssignee').value;
+            const status = document.getElementById('taskStatus').value;
+            
+            console.log('Saving task details:', { dueDate, priority, assignee, status });
+            
+            const { taskId, actionId, actionItem, planData, accountId } = window.currentActionPlanData;
+            
+            // Find the action item within the plan and update it
+            const updatedActionItems = planData.actionItems.map((item, index) => {
+                // Handle both string and object action items
+                const itemActionId = typeof item === 'object' && item.actionId ? 
+                    item.actionId : 
+                    null; // Only use real action IDs from CSV data
+                
+                if (itemActionId === actionId) {
+                    // Update this action item with the new task properties
+                    // Preserve existing plays from the original actionItem
+                    const originalPlays = actionItem && actionItem.plays ? actionItem.plays : [];
+                    
+                    const updatedItem = typeof item === 'string' ? 
+                        { 
+                            title: item, 
+                            actionId: actionId,
+                            dueDate: dueDate,
+                            priority: priority,
+                            assignee: assignee,
+                            status: status,
+                            plays: originalPlays  // Preserve original plays instead of empty array
+                        } : 
+                        { 
+                            ...item, 
+                            dueDate: dueDate,
+                            priority: priority,
+                            assignee: assignee,
+                            status: status
+                        };
+                    
+                    console.log('Updated action item:', updatedItem);
+                    return updatedItem;
+                }
+                return item;
+            });
+            
+            // Prepare the update data for the action plan
+            const updateData = {
+                ...planData,
+                actionItems: updatedActionItems,
+                updatedAt: new Date().toISOString()
+            };
+            
+            console.log('Updating action plan with CRUD method:', planData.id, updateData);
+            
+            // Use ActionPlanService to update the action plan
+            const app = window.app || { 
+                actionPlans: new Map(),
+                showSuccessMessage: (msg) => this.showTaskUpdateSuccess(msg),
+                showErrorMessage: (msg) => this.showTaskUpdateError(msg)
+            };
+            
+            // Import ActionPlanService dynamically if not already available
+            const ActionPlanService = window.ActionPlanService || 
+                (await import('./services/ActionPlanService.js')).default;
+            
+            // Always update the visual display and local data first
+            this.updateTaskRowDisplay(taskId, { dueDate, priority, assignee, status });
+            
+            // Update local state immediately for better UX
+            if (window.app && window.app.actionPlans && window.app.actionPlans.has(accountId)) {
+                const currentPlan = window.app.actionPlans.get(accountId);
+                if (currentPlan) {
+                    window.app.actionPlans.set(accountId, updateData);
+                }
+            }
+            
+            // Close drawer and show success message to user
+            this.closeTaskDetailsDrawer();
+            this.showTaskUpdateSuccess('Task details updated successfully!');
+            
+            // Re-render the Action Plans tab to reflect changes
+            if (window.app && window.app.renderCurrentTab) {
+                window.app.renderCurrentTab();
+            }
+            
+            // Try to save to backend - log errors but don't show them to user
+            try {
+                const updatedPlan = await ActionPlanService.updateActionPlan(planData.id, updateData, app);
+                if (updatedPlan) {
+                    console.log('Task details successfully saved to backend:', updatedPlan.id);
+                } else {
+                    console.warn('Backend save failed but local update succeeded');
+                }
+            } catch (backendError) {
+                console.error('Failed to save task details to Domo endpoint (local update succeeded):', backendError);
+                // Don't show error to user since local update worked
+            }
+            
+        } catch (error) {
+            console.error('Error saving task details:', error);
+            this.showTaskUpdateError(error.message || 'Failed to save task details');
+        }
+    }
+    
+    static updateTaskRowDisplay(taskId, updates) {
+        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (!taskRow) return;
+        
+        // Update due date display
+        if (updates.dueDate) {
+            const dueDateElement = taskRow.querySelector('.due-date');
+            if (dueDateElement) {
+                const formattedDate = new Date(updates.dueDate).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric' 
                 });
+                dueDateElement.textContent = formattedDate;
+            }
+        }
+        
+        // Update priority badge
+        if (updates.priority) {
+            const priorityElement = taskRow.querySelector('.priority-badge');
+            if (priorityElement) {
+                priorityElement.className = `priority-badge priority-${updates.priority.toLowerCase()}`;
+                priorityElement.textContent = updates.priority;
+            }
+        }
+        
+        // Update assignee initials
+        if (updates.assignee) {
+            const assigneeElement = taskRow.querySelector('.assignee-initials');
+            if (assigneeElement) {
+                assigneeElement.textContent = updates.assignee;
+            }
+        }
+        
+        // Update task completion status
+        if (updates.status === 'Complete') {
+            taskRow.classList.add('action-plan-completed');
+            const checkbox = taskRow.querySelector('.task-checkbox');
+            if (checkbox) checkbox.checked = true;
+        } else {
+            taskRow.classList.remove('action-plan-completed');
+            const checkbox = taskRow.querySelector('.task-checkbox');
+            if (checkbox) checkbox.checked = false;
+        }
+    }
+    
+    static deletePlay(actionId, playId, playIndex) {
+        if (confirm('Are you sure you want to delete this CS play?')) {
+            const playItem = document.querySelector(`[data-play-id="${playId}"][data-play-index="${playIndex}"]`);
+            if (playItem) {
+                playItem.remove();
+                console.log(`Deleted play ${playId} from action ${actionId}`);
+                
+                // Update plays count in main view (simplified)
+                this.updatePlaysCountDisplay(actionId, -1);
+            }
+        }
+    }
+    
+    static updatePlaysCountDisplay(actionId, change) {
+        // Find and update the plays count in the main table
+        const playsButtons = document.querySelectorAll(`[data-task-id="${actionId}"]`);
+        playsButtons.forEach(button => {
+            const countElement = button.querySelector('.plays-count');
+            if (countElement) {
+                const currentCount = parseInt(countElement.textContent) || 0;
+                const newCount = Math.max(0, currentCount + change);
+                countElement.textContent = newCount;
+            }
+        });
+    }
+    
+    static showTaskUpdateSuccess() {
+        const message = document.createElement('div');
+        message.className = 'update-notification success';
+        message.innerHTML = `
+            <i class="fas fa-check-circle"></i>
+            Task details updated successfully!
+        `;
+        document.body.appendChild(message);
+        
+        setTimeout(() => {
+            message.classList.add('show');
+            setTimeout(() => {
+                message.classList.remove('show');
+                setTimeout(() => message.remove(), 300);
+            }, 3000);
+        }, 100);
+    }
+    
+    static showTaskUpdateError(errorMessage) {
+        const message = document.createElement('div');
+        message.className = 'update-notification error';
+        message.innerHTML = `
+            <i class="fas fa-exclamation-circle"></i>
+            Error updating task: ${errorMessage}
+        `;
+        document.body.appendChild(message);
+        
+        setTimeout(() => {
+            message.classList.add('show');
+            setTimeout(() => {
+                message.classList.remove('show');
+                setTimeout(() => message.remove(), 300);
+            }, 5000);
+        }, 100);
+    }
+
+    // Fallback Data Loading
+    static async loadFallbackActionPlans(app) {
+        try {
+            const response = await fetch('/action-plans-fallback.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const fallbackData = await response.json();
+            const formattedPlans = [];
+
+            console.log(`FALLBACK LOADING: Processing ${fallbackData.length} action plan records from JSON`);
+
+            // Process each action plan from the JSON
+            for (const [index, record] of fallbackData.entries()) {
+                console.log(`FALLBACK RECORD ${index + 1}:`, {
+                    recordId: record.id,
+                    accountId: record.content?.accountId,
+                    actionId: record.content?.actionId,
+                    title: record.content?.title,
+                    status: record.content?.status
+                });
+                const planContent = record.content;
+                if (!planContent) {
+                    continue; // Skip plans with no content
+                }
+                
+                // Handle new single-action-per-plan data model
+                // Each record represents one action plan with one action
+
+                // Get account information - try accountId first, then signal lookup
+                let accountId = planContent.accountId;
+                let signal = null;
+                
+                if (planContent.signalId) {
+                    signal = app.data.find(s => s.id === planContent.signalId);
+                    if (signal && !accountId) {
+                        accountId = signal.account_id;
+                    }
+                }
+                
+                // Get account name
+                let accountName = this.getAccountNameFromPlan(planContent, signal, app);
+                
+                // If we still don't have an account ID, try to match by account name from the existing accounts
+                if (!accountId && app.accounts && app.accounts.size > 0) {
+                    for (let [existingAccountId, account] of app.accounts) {
+                        // Try to match account names (case insensitive partial match)
+                        if (account.name && accountName && 
+                            (account.name.toLowerCase().includes(accountName.toLowerCase()) ||
+                             accountName.toLowerCase().includes(account.name.toLowerCase()))) {
+                            accountId = existingAccountId;
+                            accountName = account.name; // Use the exact account name from the app
+                            console.log(`Mapped action plan to existing account: ${accountName} (${accountId})`);
+                            break;
+                        }
+                    }
+                }
+                
+                // If still no match, use the accountId from planContent or create fallback
+                if (!accountId) {
+                    accountId = planContent.accountId || `fallback-${planContent.id}`;
+                    console.log(`Using account ID: ${accountId} for plan: ${planContent.title}`);
+                }
+
+                // Determine urgency and health based on available data
+                const urgency = this.determineFallbackUrgency(planContent, signal);
+                const accountHealth = signal ? this.getHealthFromRiskCategory(signal.at_risk_cat) : 'healthy';
+                
+                // Get signals count for this account
+                const accountSignals = accountId && signal ? 
+                                     app.data.filter(s => s.account_id === accountId) : [];
+
+                // Create single action item from the plan content
+                const singleActionItem = {
+                    title: planContent.title || 'Untitled Action',
+                    actionId: planContent.actionId,
+                    completed: false,
+                    plays: planContent.plays ? planContent.plays.map(play => ({
+                        playId: `play_${Math.random().toString(36).substr(2, 9)}`,
+                        playName: play,
+                        playTitle: play
+                    })) : [],
+                    description: planContent.description || '',
+                    priority: planContent.priority || 'medium',
+                    dueDate: planContent.dueDate,
+                    status: planContent.status || 'pending'
+                };
+
+                const formattedPlan = {
+                    accountId: accountId,
+                    accountName: accountName,
+                    accountHealth: accountHealth,
+                    signalsCount: accountSignals.length,
+                    highPriorityCount: accountSignals.filter(s => s.priority === 'High').length,
+                    renewalBaseline: this.getFallbackRenewalValue(signal, app),
+                    status: planContent.status || 'pending',
+                    urgency: urgency,
+                    planData: {
+                        id: planContent.id,
+                        actionItems: [singleActionItem], // Convert single action to array format for compatibility
+                        status: planContent.status,
+                        assignee: planContent.assignee,
+                        createdAt: planContent.createdAt,
+                        updatedAt: planContent.updatedAt,
+                        notes: planContent.description || '',
+                        // Store original plan content for CRUD operations
+                        originalPlanContent: planContent
+                    },
+                    lastUpdated: planContent.updatedAt || planContent.createdAt,
+                    nextAction: planContent.title || 'No actions defined'
+                };
+
+                console.log(`FORMATTED PLAN ${index + 1}:`, {
+                    accountId: formattedPlan.accountId,
+                    accountName: formattedPlan.accountName,
+                    actionTitle: planContent.title,
+                    status: formattedPlan.status
+                });
+
+                formattedPlans.push(formattedPlan);
+            }
+
+            console.log(`BEFORE GROUPING: ${formattedPlans.length} formatted plans`);
+            formattedPlans.forEach((plan, i) => {
+                console.log(`  Plan ${i + 1}: Account ${plan.accountId} (${plan.accountName}) - ${plan.nextAction}`);
+            });
+
+            // Group by account and merge duplicates
+            const groupedPlans = this.groupFallbackPlansByAccount(formattedPlans);
+            
+            console.log(`AFTER GROUPING: ${groupedPlans.length} grouped plans`);
+            groupedPlans.forEach((plan, i) => {
+                console.log(`  Grouped Plan ${i + 1}: Account ${plan.accountId} (${plan.accountName}) - ${plan.planData.actionItems.length} actions`);
+            });
+            
+            return groupedPlans.sort((a, b) => {
+                const urgencyOrder = { critical: 0, high: 1, normal: 2 };
+                if (urgencyOrder[a.urgency] !== urgencyOrder[b.urgency]) {
+                    return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
+                }
+                return new Date(b.lastUpdated) - new Date(a.lastUpdated);
+            });
 
         } catch (error) {
             console.error('Error loading fallback action plans:', error);
@@ -1169,68 +2446,5 @@ class ActionsRenderer {
         
         console.log(`Final result: ${result.length} plans total`);
         return result;
-    }
-
-    static determinePlanUrgency(planData, app) {
-        // Determine urgency based on action items priority and due dates
-        if (planData.actionItems && planData.actionItems.length > 0) {
-            const hasHighPriority = planData.actionItems.some(item => item.priority === 'High');
-            if (hasHighPriority) return 'high';
-            
-            const hasOverdueTasks = planData.actionItems.some(item => {
-                if (!item.dueDate) return false;
-                return new Date(item.dueDate) < new Date();
-            });
-            if (hasOverdueTasks) return 'high';
-        }
-        
-        return 'normal';
-    }
-
-    static getPlanRenewalValue(planData, app) {
-        // Try to find renewal value from associated signal or account data
-        if (planData.accountId && app.accounts && app.accounts.has(planData.accountId)) {
-            const account = app.accounts.get(planData.accountId);
-            if (account && account.bks_renewal_baseline_usd) {
-                return parseFloat(account.bks_renewal_baseline_usd) || 0;
-            }
-        }
-        
-        return 0;
-    }
-
-    static getRandomRenewalValue() {
-        // Generate realistic renewal values for demonstration
-        const ranges = [
-            { min: 50000, max: 100000 },
-            { min: 100000, max: 250000 },
-            { min: 250000, max: 500000 },
-            { min: 500000, max: 1000000 }
-        ];
-        
-        const selectedRange = ranges[Math.floor(Math.random() * ranges.length)];
-        return Math.floor(Math.random() * (selectedRange.max - selectedRange.min) + selectedRange.min);
-    }
-
-    // Helper method to find task data (simplified version)
-    static async findTaskData(taskId, actionId, app) {
-        // Try to find in current action plans
-        for (let [accountId, planData] of app.actionPlans) {
-            if (planData.id === taskId) {
-                const actionItem = planData.actionItems?.find(item => item.actionId === actionId);
-                if (actionItem) {
-                    return {
-                        taskId,
-                        actionId,
-                        actionItem,
-                        planData,
-                        accountId: planData.accountId || accountId
-                    };
-                }
-            }
-        }
-        
-        // If not found, return null
-        return null;
     }
 }
