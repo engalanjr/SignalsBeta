@@ -1704,12 +1704,31 @@ class ActionsRenderer {
         
         // Try to parse the date string and convert to YYYY-MM-DD format
         try {
-            const date = new Date(dateString + ', 2025'); // Add year for better parsing
+            // Handle various date formats
+            let date;
+            
+            // If it's already in ISO format
+            if (dateString.includes('T') || dateString.match(/^\d{4}-\d{2}-\d{2}/)) {
+                date = new Date(dateString);
+            }
+            // Handle formats like "Sep 13", "Sept 13", etc.
+            else if (dateString.match(/^[A-Za-z]{3,4}\s+\d{1,2}$/)) {
+                date = new Date(dateString + ', 2025');
+            }
+            // Handle MM/DD/YYYY format
+            else if (dateString.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+                date = new Date(dateString);
+            }
+            // Default case
+            else {
+                date = new Date(dateString);
+            }
+            
             if (!isNaN(date.getTime())) {
                 return date.toISOString().split('T')[0];
             }
         } catch (error) {
-            console.warn('Could not parse date:', dateString);
+            console.warn('Could not parse date:', dateString, error);
         }
         
         return '';
