@@ -1148,8 +1148,9 @@ class ActionsRenderer {
             `;
         } else {
             plays.forEach((play, index) => {
-                const playTitle = play.playTitle || play.playName || `Play ${index + 1}`;
-                const playId = play.playId || `play_${index + 1}`;
+                // Handle both string plays and object plays
+                const playTitle = typeof play === 'string' ? play : (play.playTitle || play.playName || `Play ${index + 1}`);
+                const playId = typeof play === 'string' ? `play_${index + 1}` : (play.playId || `play_${index + 1}`);
                 const isCompleted = play.completed || false;
                 
                 html += `
@@ -1579,8 +1580,9 @@ class ActionsRenderer {
         } else {
             html += '<div class="plays-list">';
             plays.forEach((play, index) => {
-                const playTitle = play.playTitle || play.playName || `Play ${index + 1}`;
-                const playId = play.playId || `play_${index + 1}`;
+                // Handle both string plays and object plays
+                const playTitle = typeof play === 'string' ? play : (play.playTitle || play.playName || `Play ${index + 1}`);
+                const playId = typeof play === 'string' ? `play_${index + 1}` : (play.playId || `play_${index + 1}`);
                 const isCompleted = play.completed || false;
                 
                 html += `
