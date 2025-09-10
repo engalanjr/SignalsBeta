@@ -1603,22 +1603,35 @@ class ActionsRenderer {
         
         const { taskId, actionId, actionItem, planData } = actionPlanData;
         
+        // Store globally for auto-save functions
+        window.currentActionPlanData = actionPlanData;
+        
         // Safely access plays with fallback - handle both string and object actionItem
         const plays = (typeof actionItem === 'object' && actionItem.plays) ? actionItem.plays : [];
         
-        console.log('Action item:', actionItem);
-        console.log('Plays found:', plays);
+        console.log('🔍 [MAPPING] Action item:', actionItem);
+        console.log('🔍 [MAPPING] Plan data:', planData);
+        console.log('🔍 [MAPPING] Plays found:', plays);
         
         // Use the actual action title, handle both string and object cases
         const actionTitle = typeof actionItem === 'string' ? actionItem : (actionItem.title || actionItem.name || 'Action Details');
         
-        // Use data directly from action plan object, not from rendered table
+        // Extract values correctly from the data structure
         const currentTitle = actionItem.title || 'No Title';
         const currentStatus = actionItem.status || 'pending';
         const currentAssignee = planData.assignee || 'Current User';
         const currentDueDate = actionItem.dueDate ? new Date(actionItem.dueDate).toISOString().split('T')[0] : '';
         const currentPriority = actionItem.priority || 'Medium';
         const accountId = planData.accountId || actionPlanData.accountId;
+        
+        console.log('🔍 [MAPPING] Extracted values:', {
+            currentTitle,
+            currentStatus,
+            currentAssignee, 
+            currentDueDate,
+            currentPriority,
+            accountId
+        });
         
         let html = `
             <div class="task-details-section">
@@ -1825,20 +1838,37 @@ class ActionsRenderer {
             // Update the task row display immediately for better UX
             this.updateTaskRowDisplay(taskId, { [propertyName]: value });
             
-            // Prepare update data based on property name
+            // Prepare update data based on property name and data structure
             let updateData = {};
+            
+            // Get the current action item for updates
+            const actionItem = window.currentActionPlanData.actionItem;
+            
             switch(propertyName) {
                 case 'dueDate':
-                    updateData.dueDate = value;
+                    // Update action item level
+                    updateData.actionItems = [{
+                        ...actionItem,
+                        dueDate: value
+                    }];
                     break;
                 case 'priority':
-                    updateData.priority = value;
-                    break;
-                case 'assignee':
-                    updateData.assignee = value;
+                    // Update action item level  
+                    updateData.actionItems = [{
+                        ...actionItem,
+                        priority: value
+                    }];
                     break;
                 case 'status':
-                    updateData.status = value;
+                    // Update action item level
+                    updateData.actionItems = [{
+                        ...actionItem,
+                        status: value
+                    }];
+                    break;
+                case 'assignee':
+                    // Update plan level (assignee is at planData level)
+                    updateData.assignee = value;
                     break;
                 default:
                     console.warn('Unknown property for auto-save:', propertyName);
