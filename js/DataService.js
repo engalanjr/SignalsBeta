@@ -807,110 +807,35 @@ class DataService {
     }
 
     static async loadInteractions() {
-        try {
-            // Load all interactions from AppDB
-            const response = await domo.get(`/domo/datastores/v1/collections/SignalAI.Interactions/documents`);
-            console.log('Retrieved all interactions from SignalAI.Interactions AppDB:', response);
-
-            // Get current user info for user-specific feedback
-            let currentUserId = 'user-1';
-            try {
-                const user = await domo.get(`/domo/environment/v1/`);
-                currentUserId = user.userId;
-            } catch (error) {
-                console.warn('Could not get current user info, using default:', error);
+        // ⚡ OPTIMIZED: Use cached data instead of API call
+        console.log('📋 Loading interactions from cache (no API call needed)');
+        
+        const currentUserId = DataCache.userInfo.userId || 'user-1';
+        
+        // Apply cached feedback to signals
+        this.signals.forEach(signal => {
+            const signalCounts = DataCache.getSignalCounts(signal.id);
+            const userFeedback = DataCache.getUserFeedbackForSignal(signal.id, currentUserId);
+            
+            signal.likeCount = signalCounts.likes;
+            signal.notAccurateCount = signalCounts.notAccurate;
+            signal.currentUserFeedback = userFeedback;
+            
+            if (signal.likeCount > 0 || signal.notAccurateCount > 0 || userFeedback) {
+                console.log(`✅ Updated signal ${signal.id}: ${signal.likeCount} likes, ${signal.notAccurateCount} not accurate, user feedback: ${userFeedback}`);
             }
+        });
 
-            // Process interactions to track counts and user-specific state
-            const signalInteractions = new Map(); // signalId -> { likes: Set, notAccurate: Set, currentUserFeedback: string }
-
-            response.forEach(interaction => {
-                const interactionData = interaction.content || interaction;
-                const signalId = interactionData.signalId;
-                const interactionType = interactionData.interactionType;
-                const userId = interactionData.userId || 'unknown';
-
-                if (signalId && interactionType && interactionType !== 'signal_removed') {
-                    if (!signalInteractions.has(signalId)) {
-                        signalInteractions.set(signalId, {
-                            likes: new Set(),
-                            notAccurate: new Set(),
-                            currentUserFeedback: null
-                        });
-                    }
-
-                    const signalData = signalInteractions.get(signalId);
-
-                    if (interactionType === 'like') {
-                        signalData.likes.add(userId);
-                        signalData.notAccurate.delete(userId); // Remove from opposite if exists
-                        if (userId === currentUserId) {
-                            signalData.currentUserFeedback = 'like';
-                        }
-                    } else if (interactionType === 'not-accurate') {
-                        signalData.notAccurate.add(userId);
-                        signalData.likes.delete(userId); // Remove from opposite if exists
-                        if (userId === currentUserId) {
-                            signalData.currentUserFeedback = 'not-accurate';
-                        }
-                    } else if (interactionType === 'removed_like') {
-                        signalData.likes.delete(userId);
-                        if (userId === currentUserId) {
-                            signalData.currentUserFeedback = null;
-                        }
-                    } else if (interactionType === 'removed_not-accurate') {
-                        signalData.notAccurate.delete(userId);
-                        if (userId === currentUserId) {
-                            signalData.currentUserFeedback = null;
-                        }
-                    }
-                }
-            });
-
-            // Apply interaction data to signals
-            this.signals.forEach(signal => {
-                const interactions = signalInteractions.get(signal.id);
-                if (interactions) {
-                    signal.likeCount = interactions.likes.size;
-                    signal.notAccurateCount = interactions.notAccurate.size;
-                    signal.currentUserFeedback = interactions.currentUserFeedback;
-                    console.log(`Updated signal ${signal.id}: ${signal.likeCount} likes, ${signal.notAccurateCount} not accurate, user feedback: ${signal.currentUserFeedback}`);
-                } else {
-                    signal.likeCount = 0;
-                    signal.notAccurateCount = 0;
-                    signal.currentUserFeedback = null;
-                }
-            });
-
-            console.log(`Processed interactions for ${signalInteractions.size} signals`);
-            return signalInteractions;
-
-        } catch (error) {
-            console.error('Failed to load interactions from SignalAI.Interactions AppDB:', error);
-            // Initialize signals with zero counts
-            this.signals.forEach(signal => {
-                signal.likeCount = 0;
-                signal.notAccurateCount = 0;
-                signal.currentUserFeedback = null;
-            });
-            return new Map();
-        }
+        console.log(`✅ Processed interactions for ${this.signals.length} signals from cache`);
+        return new Map(); // Return empty map since we're using cache directly
     }
 
     static async loadViewedSignals() {
-        try {
-            // Get current user info
-            let currentUserId = 'user-1';
-            try {
-                const user = await domo.get(`/domo/environment/v1/`);
-                currentUserId = user.userId;
-            } catch (error) {
-                console.warn('Could not get current user info, using default:', error);
-            }
-
-            // Load all interactions from AppDB
-            const response = await domo.get(`/domo/datastores/v1/collections/SignalAI.Interactions/documents`);
-            console.log('Retrieved interactions for viewed signals processing:', response.length);
+        // ⚡ OPTIMIZED: Use cached data instead of API calls
+        console.log('📋 Loading viewed signals from cache (no API calls needed)');
+        
+        const currentUserId = DataCache.userInfo.userId || 'user-1';
+        const viewedSignalIds = DataCache.getViewedSignalsForUser(currentUserId);
 
             const viewedSignalIds = new Set();
 

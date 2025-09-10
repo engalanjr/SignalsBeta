@@ -169,44 +169,21 @@ class SignalFeedbackService {
     }
 
     static async getViewedSignals(app) {
-        try {
-            // Call the "me" endpoint to get current user info
-            let userId = 'user-1';
-            
-            try {
-                const user = await domo.get(`/domo/environment/v1/`);
-                userId = user.userId;
-            } catch (error) {
-                console.warn('Could not get user info, using defaults:', error);
-            }
+        // ⚡ OPTIMIZED: Use cached data instead of API calls
+        console.log('📋 Getting viewed signals from cache (no API calls needed)');
+        
+        const userId = DataCache.userInfo.userId || 'user-1';
+        const viewedSignalIds = DataCache.getViewedSignalsForUser(userId);
 
-            // Get all interactions from AppDB
-            const response = await domo.get(`/domo/datastores/v1/collections/SignalAI.Interactions/documents`);
-            
-            const viewedSignalIds = new Set();
-            
-            // Filter for viewed interactions by current user
-            response.forEach(interaction => {
-                const interactionData = interaction.content || interaction;
-                if (interactionData.interactionType === 'signal_viewed' && 
-                    interactionData.userId === userId) {
-                    viewedSignalIds.add(interactionData.signalId);
-                }
+        // Update app's viewedSignals set if app is provided
+        if (app && app.viewedSignals) {
+            viewedSignalIds.forEach(signalId => {
+                app.viewedSignals.add(signalId);
             });
-
-            // Update app's viewedSignals set if app is provided
-            if (app && app.viewedSignals) {
-                viewedSignalIds.forEach(signalId => {
-                    app.viewedSignals.add(signalId);
-                });
-            }
-
-            console.log(`Loaded ${viewedSignalIds.size} viewed signals for user ${userId}`);
-            return { success: true, viewedSignals: viewedSignalIds };
-        } catch (error) {
-            console.error('Error loading viewed signals:', error);
-            return { success: false, error, viewedSignals: new Set() };
         }
+
+        console.log(`✅ Retrieved ${viewedSignalIds.size} viewed signals for user ${userId} from cache`);
+        return { success: true, viewedSignals: viewedSignalIds };
     }
 
     static async unmarkSignalAsViewed(signalId, app) {
@@ -246,39 +223,14 @@ class SignalFeedbackService {
     }
 
     static async getViewedSignalsCount(userId = null) {
-        try {
-            // Get current user if not provided
-            if (!userId) {
-                try {
-                    const user = await domo.get(`/domo/environment/v1/`);
-                    userId = user.userId;
-                } catch (error) {
-                    userId = 'user-1';
-                }
-            }
-
-            // Get all interactions from AppDB
-            const response = await domo.get(`/domo/datastores/v1/collections/SignalAI.Interactions/documents`);
-            
-            let viewedCount = 0;
-            const viewedSignals = new Set();
-            
-            // Count unique viewed signals by user
-            response.forEach(interaction => {
-                const interactionData = interaction.content || interaction;
-                if (interactionData.interactionType === 'signal_viewed' && 
-                    interactionData.userId === userId) {
-                    viewedSignals.add(interactionData.signalId);
-                }
-            });
-
-            viewedCount = viewedSignals.size;
-            
-            console.log(`User ${userId} has viewed ${viewedCount} unique signals`);
-            return { success: true, count: viewedCount };
-        } catch (error) {
-            console.error('Error getting viewed signals count:', error);
-            return { success: false, error, count: 0 };
-        }
+        // ⚡ OPTIMIZED: Use cached data instead of API calls
+        console.log('📋 Getting viewed signals count from cache (no API calls needed)');
+        
+        userId = userId || DataCache.userInfo.userId || 'user-1';
+        const viewedSignals = DataCache.getViewedSignalsForUser(userId);
+        const viewedCount = viewedSignals.size;
+        
+        console.log(`✅ User ${userId} has viewed ${viewedCount} unique signals (from cache)`);
+        return { success: true, count: viewedCount };
     }
 }
