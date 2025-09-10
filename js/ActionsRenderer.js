@@ -1517,13 +1517,31 @@ class ActionsRenderer {
         const playsData = this.getPlaysDataForAction(actionId, app);
         
         // Get actual action title from signal data
-        let actionTitle = `Generated Action ${taskIndex + 1}`; // fallback
+        let actionTitle = 'Action Details'; // fallback
+        
+        console.log('🔍 Looking for signal with actionId:', actionId);
+        console.log('📊 Available signals count:', app?.allSignals?.length || 0);
         
         if (app && app.allSignals) {
             const signal = app.allSignals.find(s => s.id === actionId);
+            console.log('🎯 Found signal:', signal);
+            
             if (signal) {
-                actionTitle = signal.recommended_action || signal.action_context || signal.name || actionTitle;
+                // Try multiple fields to get the real action title from CSV data
+                actionTitle = signal.recommended_action || 
+                             signal.action_context || 
+                             signal.name || 
+                             signal.title ||
+                             signal.summary ||
+                             signal.action_title ||
+                             actionTitle;
+                console.log('✅ Using action title from signal:', actionTitle);
+            } else {
+                console.warn('❌ No signal found with actionId:', actionId);
+                console.log('📋 Available signal IDs:', app.allSignals.map(s => s.id).slice(0, 5));
             }
+        } else {
+            console.warn('❌ No app.allSignals available');
         }
         
         // Create a basic action item structure
