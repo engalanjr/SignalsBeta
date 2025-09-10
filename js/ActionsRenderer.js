@@ -1567,7 +1567,14 @@ class ActionsRenderer {
         console.log('Plays found:', plays);
         
         // Use the actual action title from action item data (not DOM)
-        const actionTitle = typeof actionItem === 'string' ? actionItem : (actionItem.title || actionItem.name || 'Action Details');
+        let actionTitle = 'Action Details';
+        if (typeof actionItem === 'string') {
+            actionTitle = actionItem;
+        } else if (actionItem && actionItem.title) {
+            actionTitle = actionItem.title;
+        } else if (actionItem && actionItem.name) {
+            actionTitle = actionItem.name;
+        }
         
         // Get current task properties from action item data (not DOM) with fallbacks
         const currentDueDate = (actionItem && actionItem.dueDate) ? this.formatDateForDisplay(actionItem.dueDate) : 'Not Set';
