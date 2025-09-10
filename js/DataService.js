@@ -779,67 +779,31 @@ class DataService {
     }
 
     static async getCommentsBySignal(signalId) {
-        try {
-            const response = await domo.get(`/domo/datastores/v1/collections/SignalAI.Comments/documents?filter=signalId:${signalId}`);
-            console.log('Retrieved comments from Domo AppDB for signal:', signalId);
-            return { success: true, comments: response };
-        } catch (error) {
-            console.error('Failed to get comments from Domo AppDB:', error);
-            // Fallback to local storage
-            const signalComments = this.comments.filter(comment => comment.signalId === signalId);
-            return { success: true, comments: signalComments };
-        }
+        // ⚡ OPTIMIZED: Use cached data instead of API call
+        console.log('📋 Getting comments from cache for signal:', signalId);
+        
+        const signalComments = DataCache.getCommentsForSignal(signalId);
+        console.log(`✅ Retrieved ${signalComments.length} comments for signal ${signalId} from cache`);
+        
+        return { success: true, comments: signalComments };
     }
 
     static async getComments() {
-        try {
-            // Load all comments from AppDB
-            const response = await domo.get(`/domo/datastores/v1/collections/SignalAI.Comments/documents`);
-            console.log('Retrieved all comments from SignalAI.Comments AppDB:', response);
-
-            // Clear local comments array and repopulate with AppDB data
-            this.comments = response || [];
-
-            // Return all comments organized by signalId
-            const commentsBySignal = new Map();
-
-            this.comments.forEach(comment => {
-                const signalId = comment.content?.signalId || comment.signalId;
-                if (signalId) {
-                    if (!commentsBySignal.has(signalId)) {
-                        commentsBySignal.set(signalId, []);
-                    }
-                    // Flatten the comment structure if needed
-                    const flatComment = comment.content || comment;
-                    commentsBySignal.get(signalId).push(flatComment);
-                    console.log(`Added comment for signal ${signalId}:`, flatComment.text?.substring(0, 50) + '...');
-                }
-            });
-
-            console.log(`Loaded ${this.comments.length} comments from AppDB, organized into ${commentsBySignal.size} signal groups`);
-            console.log('Comment groups by signal:', Array.from(commentsBySignal.keys()));
-            return commentsBySignal;
-
-        } catch (error) {
-            console.error('Failed to load comments from SignalAI.Comments AppDB:', error);
-
-            // Fallback to local mock data
-            const commentsBySignal = new Map();
-
-            // Initialize with some mock comments for demonstration
-            if (this.comments.length === 0) {
-                this.initializeMockComments();
+        // ⚡ OPTIMIZED: Use cached data instead of API call
+        console.log('📋 Getting comments from cache (no API call needed)');
+        
+        const commentsBySignal = new Map();
+        
+        // Get all signals and collect their comments from cache
+        DataCache.signals.forEach(signal => {
+            const signalComments = DataCache.getCommentsForSignal(signal.id);
+            if (signalComments.length > 0) {
+                commentsBySignal.set(signal.id, signalComments);
             }
+        });
 
-            this.comments.forEach(comment => {
-                if (!commentsBySignal.has(comment.signalId)) {
-                    commentsBySignal.set(comment.signalId, []);
-                }
-                commentsBySignal.get(comment.signalId).push(comment);
-            });
-
-            return commentsBySignal;
-        }
+        console.log(`✅ Retrieved ${commentsBySignal.size} signal groups with comments from cache`);
+        return commentsBySignal;
     }
 
     static async loadInteractions() {
@@ -1121,27 +1085,13 @@ class DataService {
     }
 
     static async getAccountComments(accountId) {
-        console.log('Getting account comments for:', accountId);
-
-        try {
-            // Get all comments and filter client-side for now since AppDB filtering may not work as expected
-            const response = await domo.get(`/domo/datastores/v1/collections/SignalAI.Comments/documents`);
-            console.log('Retrieved all comments from Domo AppDB:', response?.length || 0, 'total comments');
-
-            // Filter comments by accountId on the client side
-            const accountComments = (response || []).filter(doc => {
-                const comment = doc.content || doc;
-                return comment.accountId === accountId;
-            });
-
-            console.log('Filtered account comments for', accountId, ':', accountComments.length, 'comments');
-            return { success: true, comments: accountComments };
-        } catch (error) {
-            console.error('Failed to get account comments from Domo AppDB:', error);
-
-            // Return empty comments instead of mock data
-            return { success: true, comments: [] };
-        }
+        // ⚡ OPTIMIZED: Use cached data instead of API call  
+        console.log('📋 Getting account comments from cache for:', accountId);
+        
+        const accountComments = DataCache.getCommentsForAccount(accountId);
+        console.log(`✅ Retrieved ${accountComments.length} comments for account ${accountId} from cache`);
+        
+        return { success: true, comments: accountComments };
     }
 
     // DO NOT GENERATE FAKE ACTION PLANS - only use real data from CSV
