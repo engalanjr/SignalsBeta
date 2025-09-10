@@ -1726,27 +1726,37 @@ class ActionsRenderer {
             // Get the current action item for updates
             const actionItem = window.currentActionPlanData.actionItem;
             
+            console.log(`🔍 [DEBUG] Updating property ${propertyName} with value:`, value);
+            console.log(`🔍 [DEBUG] Current action item:`, actionItem);
+            console.log(`🔍 [DEBUG] Current plan data structure:`, planData);
+            
             switch(propertyName) {
                 case 'dueDate':
-                    // Update action item level
-                    updateData.actionItems = [{
-                        ...actionItem,
-                        dueDate: value
-                    }];
+                    // Update both at plan level and action item level for compatibility
+                    updateData.dueDate = value;
+                    if (actionItem && planData.actionItems) {
+                        updateData.actionItems = planData.actionItems.map(item => 
+                            item.actionId === actionItem.actionId ? { ...item, dueDate: value } : item
+                        );
+                    }
                     break;
                 case 'priority':
-                    // Update action item level  
-                    updateData.actionItems = [{
-                        ...actionItem,
-                        priority: value
-                    }];
+                    // Update both at plan level and action item level for compatibility
+                    updateData.priority = value;
+                    if (actionItem && planData.actionItems) {
+                        updateData.actionItems = planData.actionItems.map(item => 
+                            item.actionId === actionItem.actionId ? { ...item, priority: value } : item
+                        );
+                    }
                     break;
                 case 'status':
-                    // Update action item level
-                    updateData.actionItems = [{
-                        ...actionItem,
-                        status: value
-                    }];
+                    // Update both at plan level and action item level for compatibility
+                    updateData.status = value;
+                    if (actionItem && planData.actionItems) {
+                        updateData.actionItems = planData.actionItems.map(item => 
+                            item.actionId === actionItem.actionId ? { ...item, status: value } : item
+                        );
+                    }
                     break;
                 case 'assignee':
                     // Update plan level (assignee is at planData level)
@@ -1756,6 +1766,8 @@ class ActionsRenderer {
                     console.warn('Unknown property for auto-save:', propertyName);
                     return;
             }
+            
+            console.log(`🔍 [DEBUG] Prepared update data:`, updateData);
             
             // Call the CRUD method to save changes
             console.log(`🔍 [DEBUG] Calling updateActionPlan with:`, {
@@ -1768,12 +1780,33 @@ class ActionsRenderer {
             const result = await ActionPlanService.updateActionPlan(planData.id, updateData, window.app);
             
             if (result && result.success) {
-                console.log(`Successfully auto-saved ${propertyName}`);
-                // Update local data if needed
-                if (window.app && window.app.actionPlans && window.app.actionPlans.has(accountId)) {
-                    const currentPlan = window.app.actionPlans.get(accountId);
-                    if (currentPlan) {
-                        window.app.actionPlans.set(accountId, result.plan || currentPlan);
+                console.log(`Successfully auto-saved ${propertyName}:`, result);
+                
+                // 🔧 FIXED: Update local app.actionPlans Map using the correct plan ID as key
+                if (window.app && window.app.actionPlans && result.plan) {
+                    const planId = result.plan.id;
+                    console.log(`🔍 [DEBUG] Updating app.actionPlans with plan ID: ${planId}`);
+                    
+                    // Find the correct key in the Map (should be planId, not accountId)
+                    let foundKey = null;
+                    for (let [key, plan] of window.app.actionPlans) {
+                        if (plan.id === planId || key === planId) {
+                            foundKey = key;
+                            break;
+                        }
+                    }
+                    
+                    if (foundKey) {
+                        window.app.actionPlans.set(foundKey, result.plan);
+                        console.log(`🔍 [DEBUG] Successfully updated app.actionPlans for key: ${foundKey}`);
+                        
+                        // Also update the current action plan data for immediate UI updates
+                        if (window.currentActionPlanData) {
+                            window.currentActionPlanData.planData = result.plan;
+                        }
+                    } else {
+                        console.warn(`🔍 [DEBUG] Could not find plan in app.actionPlans to update. Plan ID: ${planId}`);
+                        console.log(`🔍 [DEBUG] Available plan keys:`, Array.from(window.app.actionPlans.keys()));
                     }
                 }
             } else {
