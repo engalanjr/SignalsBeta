@@ -199,7 +199,46 @@ class ActionsRenderer {
                     console.warn(`Found ${validationResults.invalid} action plans with validation issues`);
                 }
                 
-                return fallbackPlans;
+                // 🔧 CRITICAL FIX: Return same wrapper structure as Domo path
+                // Instead of returning raw fallbackPlans, rebuild from app.actionPlans for consistency
+                console.log('Rebuilding formatted plans from app.actionPlans for consistent structure...');
+                
+                const formattedFallbackPlans = [];
+                for (let [planId, planData] of app.actionPlans) {
+                    const accountId = planData.accountId;
+                    const account = app.accounts.get(accountId);
+                    if (!account) {
+                        console.warn(`Skipping plan ${planId} - account ${accountId} not found`);
+                        continue;
+                    }
+                    
+                    const highPrioritySignals = account.signals.filter(s => s.priority === 'High');
+                    
+                    formattedFallbackPlans.push({
+                        accountId: accountId,
+                        accountName: account.name,
+                        accountHealth: this.getHealthFromRiskCategory(account.at_risk_cat),
+                        signalsCount: account.signals.length,
+                        highPriorityCount: highPrioritySignals.length,
+                        renewalBaseline: this.getRandomRenewalValue(),
+                        status: planData.status || 'Pending',
+                        urgency: highPrioritySignals.length > 1 ? 'critical' : highPrioritySignals.length === 1 ? 'high' : 'normal',
+                        planData: { ...planData, id: planId }, // Ensure consistent ID
+                        lastUpdated: planData.updatedAt || planData.createdAt,
+                        nextAction: this.getNextAction(planData),
+                        daysUntilRenewal: Math.floor(Math.random() * 300) + 30
+                    });
+                }
+                
+                console.log(`🔧 [CRITICAL FIX] Built ${formattedFallbackPlans.length} formatted fallback plans with consistent structure`);
+                return formattedFallbackPlans.sort((a, b) => {
+                    // Same sorting as Domo path
+                    const urgencyOrder = { critical: 0, high: 1, normal: 2 };
+                    if (urgencyOrder[a.urgency] !== urgencyOrder[b.urgency]) {
+                        return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
+                    }
+                    return new Date(b.lastUpdated || 0) - new Date(a.lastUpdated || 0);
+                });
             }
         } catch (error) {
             console.error('Failed to load fallback action plans:', error);
@@ -1644,12 +1683,12 @@ class ActionsRenderer {
                 <div class="task-properties-grid">
                     <div class="property-field">
                         <label for="taskDueDate">Due Date</label>
-                        <input type="date" id="taskDueDate" class="form-input" value="${currentDueDate}" onchange="ActionsRenderer.autoSaveTaskProperty('dueDate', this.value)">
+                        <input type="date" id="taskDueDate" class="form-input" value="${currentDueDate}" onchange="ActionsRenderer.debouncedAutoSave('dueDate', this.value)">
                     </div>
                     
                     <div class="property-field">
                         <label for="taskPriority">Priority</label>
-                        <select id="taskPriority" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('priority', this.value)">
+                        <select id="taskPriority" class="form-select" onchange="ActionsRenderer.debouncedAutoSave('priority', this.value)">
                             <option value="High" ${currentPriority === 'High' ? 'selected' : ''}>High</option>
                             <option value="Medium" ${currentPriority === 'Medium' ? 'selected' : ''}>Medium</option>
                             <option value="Low" ${currentPriority === 'Low' ? 'selected' : ''}>Low</option>
@@ -1658,7 +1697,7 @@ class ActionsRenderer {
                     
                     <div class="property-field">
                         <label for="taskStatus">Task Status</label>
-                        <select id="taskStatus" class="form-select" onchange="ActionsRenderer.autoSaveTaskProperty('status', this.value)">
+                        <select id="taskStatus" class="form-select" onchange="ActionsRenderer.debouncedAutoSave('status', this.value)">
                             <option value="pending" ${currentStatus === 'pending' ? 'selected' : ''}>Pending</option>
                             <option value="in_progress" ${currentStatus === 'in_progress' ? 'selected' : ''}>In Progress</option>
                             <option value="complete" ${currentStatus === 'complete' ? 'selected' : ''}>Complete</option>
@@ -1739,8 +1778,11 @@ class ActionsRenderer {
             planDetailsTextarea.value = currentPlanDetails;
         }
         
-        // Store current task data for saving
-        window.currentActionPlanData = actionPlanData;
+        // Store current task data for saving with canonical planId (CRITICAL: preserve planId)
+        window.currentActionPlanData = {
+            ...actionPlanData,
+            planId: actionPlanData.planData.id // CRITICAL: Don't overwrite the planId!
+        };
     }
     
     static convertToDateValue(dateString) {
@@ -1932,39 +1974,33 @@ class ActionsRenderer {
             const result = await ActionPlanService.updateActionPlan(planId, updateData, window.app);
             
             if (result && result.success) {
-                console.log(`Successfully auto-saved ${propertyName}:`, result);
+                console.log(`✅ Successfully auto-saved ${propertyName}:`, result);
                 
-                // 🔧 FIXED: Update local app.actionPlans Map using the correct plan ID as key
-                if (window.app && window.app.actionPlans && result.plan) {
-                    const planId = result.plan.id;
-                    console.log(`🔍 [DEBUG] Updating app.actionPlans with plan ID: ${planId}`);
-                    
-                    // Find the correct key in the Map (should be planId, not accountId)
-                    let foundKey = null;
-                    for (let [key, plan] of window.app.actionPlans) {
-                        if (plan.id === planId || key === planId) {
-                            foundKey = key;
-                            break;
-                        }
-                    }
-                    
-                    if (foundKey) {
-                        window.app.actionPlans.set(foundKey, result.plan);
-                        console.log(`🔍 [DEBUG] Successfully updated app.actionPlans for key: ${foundKey}`);
-                        
-                        // Also update the current action plan data for immediate UI updates
-                        if (window.currentActionPlanData) {
-                            window.currentActionPlanData.planData = result.plan;
-                        }
-                    } else {
-                        console.warn(`🔍 [DEBUG] Could not find plan in app.actionPlans to update. Plan ID: ${planId}`);
-                        console.log(`🔍 [DEBUG] Available plan keys:`, Array.from(window.app.actionPlans.keys()));
-                    }
+                // Update the current modal data immediately
+                if (window.currentActionPlanData && result.plan) {
+                    window.currentActionPlanData.planData = result.plan;
+                }
+                
+                // 🎉 IMMEDIATE UI FEEDBACK: Re-render the Action Plans table to show changes
+                if (window.app && typeof window.app.renderCurrentTab === 'function') {
+                    // Debounce UI refresh to avoid thrashing during rapid changes
+                    if (this.uiRefreshTimeout) clearTimeout(this.uiRefreshTimeout);
+                    this.uiRefreshTimeout = setTimeout(() => {
+                        window.app.renderCurrentTab();
+                        console.log(`🎉 [AUTO-SAVE] Refreshed UI to show ${propertyName} change`);
+                    }, 100);
+                }
+                
+                // Show success feedback to user
+                if (typeof NotificationService !== 'undefined') {
+                    NotificationService.showSuccess(`${propertyName} updated successfully`);
                 }
             } else {
                 console.error(`Failed to auto-save ${propertyName}:`, result ? result.error : 'Unknown error');
                 // Show error notification to the user about the save failure
-                NotificationService.showError(`Failed to save ${propertyName} change`);
+                if (typeof NotificationService !== 'undefined') {
+                    NotificationService.showError(`Failed to save ${propertyName} change`);
+                }
             }
         } catch (error) {
             console.error(`Error auto-saving ${propertyName}:`, error);

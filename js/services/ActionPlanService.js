@@ -48,8 +48,17 @@ class ActionPlanService {
         const signal = signalId ? app.data.find(s => s.id === signalId) : null;
         app.selectedSignal = signal;
 
-        // Determine if we are editing an existing plan
-        const existingPlan = signalId ? app.actionPlans.get(signalId) : null;
+        // 🔧 CRITICAL FIX: Find existing plan by searching for matching signalId
+        // (app.actionPlans is keyed by planId, not signalId)
+        let existingPlan = null;
+        if (signalId) {
+            for (let [planId, planData] of app.actionPlans) {
+                if (planData.signalId === signalId) {
+                    existingPlan = planData;
+                    break;
+                }
+            }
+        }
         const isEditMode = !!existingPlan;
 
         // Populate the drawer content
