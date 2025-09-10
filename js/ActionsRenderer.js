@@ -33,22 +33,22 @@ class ActionsRenderer {
             totalElement.textContent = actionPlans.length;
         }
 
-        // Update pending actions count (case-insensitive comparison)
+        // Update pending actions count (using normalized status)
         const pendingElement = document.getElementById('pendingActions');
         if (pendingElement) {
             const pendingCount = actionPlans.filter(plan => {
-                const status = plan.status ? plan.status.toLowerCase() : '';
-                return status === 'pending';
+                const normalizedStatus = StatusUtils.normalizeStatusToCanonical(plan.status);
+                return normalizedStatus === 'pending';
             }).length;
             pendingElement.textContent = pendingCount;
         }
 
-        // Update in progress actions count (case-insensitive comparison)
+        // Update in progress actions count (using normalized status)
         const inProgressElement = document.getElementById('inProgressActions');
         if (inProgressElement) {
             const inProgressCount = actionPlans.filter(plan => {
-                const status = plan.status ? plan.status.toLowerCase() : '';
-                return status === 'in progress' || status === 'in-progress' || status === 'active';
+                const normalizedStatus = StatusUtils.normalizeStatusToCanonical(plan.status);
+                return normalizedStatus === 'in_progress';
             }).length;
             inProgressElement.textContent = inProgressCount;
         }
@@ -56,10 +56,10 @@ class ActionsRenderer {
         // Update completed count
         const completedElement = document.getElementById('projectedImpact');
         if (completedElement) {
-            // Count completed action plans
+            // Count completed action plans (using normalized status)
             const completedCount = actionPlans.filter(plan => {
-                const status = plan.status ? plan.status.toLowerCase() : '';
-                return status === 'complete' || status === 'completed';
+                const normalizedStatus = StatusUtils.normalizeStatusToCanonical(plan.status);
+                return normalizedStatus === 'complete';
             }).length;
             completedElement.textContent = completedCount;
         }
@@ -195,11 +195,11 @@ class ActionsRenderer {
     static filterActionPlans(actionPlans, filter) {
         switch (filter) {
             case 'pending':
-                return actionPlans.filter(plan => plan.status === 'Pending');
+                return actionPlans.filter(plan => StatusUtils.normalizeStatusToCanonical(plan.status) === 'pending');
             case 'in-progress':
-                return actionPlans.filter(plan => plan.status === 'In Progress');
+                return actionPlans.filter(plan => StatusUtils.normalizeStatusToCanonical(plan.status) === 'in_progress');
             case 'completed':
-                return actionPlans.filter(plan => plan.status === 'Completed');
+                return actionPlans.filter(plan => StatusUtils.normalizeStatusToCanonical(plan.status) === 'complete');
             default:
                 return actionPlans;
         }
@@ -274,7 +274,7 @@ class ActionsRenderer {
     }
 
     static renderTaskRow(task, app) {
-        const isComplete = task.status && task.status.toLowerCase() === 'complete';
+        const isComplete = StatusUtils.normalizeStatusToCanonical(task.status) === 'complete';
         return `
             <div class="pm-table-row action-plan-row clickable-task ${isComplete ? 'task-completed' : ''}" 
                  data-task-id="${task.id}" 
@@ -296,7 +296,7 @@ class ActionsRenderer {
                     <span class="due-date ${task.overdue ? 'overdue' : ''}">${task.dueDate}</span>
                 </div>
                 <div class="pm-cell status-col">
-                    <span class="status-badge status-${task.status ? task.status.toLowerCase().replace(' ', '-') : 'pending'}">${task.status || 'Pending'}</span>
+                    <span class="status-badge ${task.status ? StatusUtils.getStatusCSSClass(StatusUtils.normalizeStatusToCanonical(task.status)) : 'status-pending'}">${task.status || 'Pending'}</span>
                 </div>
                 <div class="pm-cell priority-col">
                     <span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>
@@ -395,7 +395,7 @@ class ActionsRenderer {
         
         // Handle new single-action-per-plan data model
         // Each plan now represents one action, not multiple actionItems
-        if (!plan.planData) return tasks;
+        if (!plan.planData) return actionPlans;
         
         // In the new model, action data is directly in the plan, not in actionItems array
         const title = plan.title || plan.planData.title || 'Untitled Action';
@@ -470,6 +470,15 @@ class ActionsRenderer {
     static capitalizeFirstLetter(string) {
         if (!string) return '';
         return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+    }
+
+    // ⚡ Use centralized status utilities
+    static normalizeStatusToCanonical(status) {
+        return StatusUtils.normalizeStatusToCanonical(status);
+    }
+
+    static getStatusDisplayLabel(canonicalStatus) {
+        return StatusUtils.getStatusDisplayLabel(canonicalStatus);
     }
     
     // REMOVED - Do not generate fake action IDs
@@ -647,7 +656,7 @@ class ActionsRenderer {
         // Update the status badge immediately for responsive UI
         if (statusBadge) {
             statusBadge.textContent = newStatus;
-            statusBadge.className = `status-badge status-${newStatus.toLowerCase().replace(' ', '-')}`;
+            statusBadge.className = `status-badge ${StatusUtils.getStatusCSSClass(StatusUtils.normalizeStatusToCanonical(newStatus))}`;
         }
         
         console.log(`Task ${taskId} status changing from "${currentStatus}" to "${newStatus}"`);
@@ -705,7 +714,7 @@ class ActionsRenderer {
                     }
                     if (statusBadge) {
                         statusBadge.textContent = currentStatus;
-                        statusBadge.className = `status-badge status-${currentStatus.toLowerCase().replace(' ', '-')}`;
+                        statusBadge.className = `status-badge ${StatusUtils.getStatusCSSClass(StatusUtils.normalizeStatusToCanonical(currentStatus))}`;
                     }
                 }
             } else {
@@ -721,7 +730,7 @@ class ActionsRenderer {
             }
             if (statusBadge) {
                 statusBadge.textContent = currentStatus;
-                statusBadge.className = `status-badge status-${currentStatus.toLowerCase().replace(' ', '-')}`;
+                statusBadge.className = `status-badge ${StatusUtils.getStatusCSSClass(StatusUtils.normalizeStatusToCanonical(currentStatus))}`;
             }
         }
     }
@@ -1492,7 +1501,7 @@ class ActionsRenderer {
         
         // 🔧 FIXED: Apply consistent field mapping like the table view
         const currentTitle = actionItem.title || 'No Title';
-        const currentStatus = this.capitalizeFirstLetter(actionItem.status || 'pending');
+        const currentStatus = this.normalizeStatusToCanonical(actionItem.status || 'pending');
         
         // 🔧 FIXED: Resolve assignee using same logic as table view
         const rawAssignee = planData.assignee || planData.createdBy || 'Current User';
@@ -1688,7 +1697,7 @@ class ActionsRenderer {
                 const statusElement = taskRow.querySelector('.status-badge');
                 if (statusElement) {
                     statusElement.textContent = updates.status;
-                    statusElement.className = `status-badge status-${updates.status.toLowerCase().replace(' ', '-')}`;
+                    statusElement.className = `status-badge ${StatusUtils.getStatusCSSClass(StatusUtils.normalizeStatusToCanonical(updates.status))}`;
                 }
             }
         } catch (error) {
