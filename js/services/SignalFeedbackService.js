@@ -60,8 +60,10 @@ class SignalFeedbackService {
                 app.showSuccessMessage('Feedback removed');
             }
 
-            // Don't re-render immediately - let the signal stay in place
-            // The interaction will be reflected on next refresh/load
+            // Re-render the current tab to show updated button states
+            if (app && typeof app.renderCurrentTab === 'function') {
+                app.renderCurrentTab();
+            }
         } catch (error) {
             console.error('Error updating signal feedback:', error);
             app.showErrorMessage('Failed to update signal feedback');
