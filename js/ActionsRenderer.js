@@ -1720,7 +1720,7 @@ class ActionsRenderer {
             </div>
             
             <div class="task-details-section">
-                <h3><i class="fas fa-tasks"></i> CS Plays (${plays.length})</h3>
+                <h3><i class="fas fa-toolbox"></i> Toolbox Plays (${plays.length})</h3>
                 <div class="plays-management">
         `;
         
@@ -1728,7 +1728,7 @@ class ActionsRenderer {
             html += `
                 <div class="no-plays-message">
                     <i class="fas fa-info-circle"></i>
-                    No CS plays are associated with this action plan.
+                    No toolbox plays are associated with this action plan.
                 </div>
             `;
         } else {
@@ -1739,23 +1739,45 @@ class ActionsRenderer {
                 const playId = typeof play === 'string' ? `play_${index + 1}` : (play.playId || `play_${index + 1}`);
                 const isCompleted = play.completed || false;
                 
+                // Extract play details - handle both string and object formats
+                const playDescription = typeof play === 'object' && play.description ? play.description : 
+                    (typeof play === 'string' && play.includes(' - ') ? play.split(' - ').slice(1).join(' - ') : 
+                    'Non-Billed, Hours-Based Consulting Offering: This play focuses on implementing best practices and strategic approaches to drive business value.');
+                
+                const playOwner = typeof play === 'object' && play.owner ? play.owner : 'Adoption Consulting';
+                
+                // Clean title - remove description if it was concatenated
+                const cleanTitle = typeof play === 'string' && play.includes(' - ') ? play.split(' - ')[0] : playTitle;
+                
+                // 🔒 SECURITY FIX: HTML escape function to prevent XSS
+                const escapeHtml = (text) => {
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                };
+                
                 html += `
-                    <div class="play-management-item" data-play-id="${playId}" data-play-index="${index}">
-                        <div class="play-info">
-                            <div class="play-content">
-                                <label class="play-checkbox-container">
-                                    <input type="checkbox" class="play-checkbox" 
-                                           ${isCompleted ? 'checked' : ''}
-                                           onchange="ActionsRenderer.togglePlayCompletionCheckbox('${actionId}', '${playId}', ${index}, this.checked)">
-                                    <span class="checkmark"></span>
-                                </label>
-                                <div class="play-title ${isCompleted ? 'completed' : ''}">${playTitle}</div>
+                    <div class="toolbox-play-item" data-play-id="${playId}" data-play-index="${index}">
+                        <div class="play-checkbox-section">
+                            <input type="checkbox" class="toolbox-play-checkbox" 
+                                   ${isCompleted ? 'checked' : ''}
+                                   onchange="ActionsRenderer.togglePlayCompletionCheckbox('${actionId}', '${playId}', ${index}, this.checked)">
+                        </div>
+                        <div class="play-content-section">
+                            <div class="play-title-section">
+                                <h4 class="toolbox-play-title ${isCompleted ? 'completed' : ''}">${escapeHtml(cleanTitle)}</h4>
                             </div>
-                            <div class="play-actions">
-                                <button class="btn btn-sm btn-danger" 
-                                        onclick="ActionsRenderer.deletePlay('${actionId}', '${playId}', ${index})">
+                            <div class="play-description-section">
+                                <p class="toolbox-play-description">${escapeHtml(playDescription)}</p>
+                            </div>
+                            <div class="play-owner-section">
+                                <span class="play-owner-label">Play Owner: <span class="play-owner-name">${escapeHtml(playOwner)}</span></span>
+                            </div>
+                            <div class="play-actions-section">
+                                <button class="btn btn-sm btn-danger play-delete-btn" 
+                                        onclick="ActionsRenderer.deletePlay('${actionId}', '${playId}', ${index})"
+                                        title="Delete play">
                                     <i class="fas fa-trash"></i>
-                                    Delete
                                 </button>
                             </div>
                         </div>
