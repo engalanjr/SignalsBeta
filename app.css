@@ -754,6 +754,26 @@ body {
     color: var(--neutral-gray-500);
 }
 
+/* Portfolio Sections */
+.portfolio-section {
+    margin-bottom: 32px;
+}
+
+.portfolio-section-header {
+    color: var(--neutral-gray-800);
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--domo-blue);
+    display: flex;
+    align-items: center;
+}
+
+.portfolio-section-content {
+    margin-left: 0;
+}
+
 /* Portfolio Account Cards */
 .accounts-list {
     display: flex;
