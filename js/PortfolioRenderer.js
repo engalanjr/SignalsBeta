@@ -64,8 +64,18 @@ class PortfolioRenderer {
         const highPrioritySignals = allSignals.filter(s => s.priority === 'High');
         const accountsWithSignals = Array.from(app.accounts.values()).filter(account => account.signals.length > 0);
 
-        // Update Requires Attention count (high priority signals without acknowledged status)
-        const requiresAttentionCount = highPrioritySignals.filter(s => !s.acknowledged).length;
+        // Update Requires Attention count (accounts without action plans)
+        // Create a Set of account IDs that have action plans for efficient lookup
+        const planAccountIds = new Set(
+            Array.from(app.actionPlans?.values() || [])
+                .map(plan => plan.accountId)
+                .filter(accountId => accountId) // Remove any undefined/null accountIds
+        );
+        
+        const accountsWithoutPlans = Array.from(app.accounts.values()).filter(account => 
+            !planAccountIds.has(account.id)
+        );
+        const requiresAttentionCount = accountsWithoutPlans.length;
         const requiresAttentionElement = document.getElementById('requiresAttentionCount');
         if (requiresAttentionElement) {
             requiresAttentionElement.textContent = requiresAttentionCount;
