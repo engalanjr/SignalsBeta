@@ -26,6 +26,19 @@ class SignalsStore extends Store {
             loading: false,
             message: null,
             
+            // View state with filters
+            viewState: {
+                filters: {
+                    priority: 'all',
+                    category: 'all',
+                    searchText: ''
+                },
+                pagination: {
+                    page: 1,
+                    pageSize: 20
+                }
+            },
+            
             // Modal/Drawer state
             modal: { isOpen: false, type: null, data: null },
             drawer: { isOpen: false, type: null, data: null }
@@ -237,8 +250,17 @@ class SignalsStore extends Store {
     }
     
     handleSignalsFiltered(payload) {
+        // Update the viewState filters
+        const newViewState = {
+            ...this.state.viewState,
+            filters: payload.filters || this.state.viewState.filters
+        };
+        
         const filteredSignals = this.applyFilters(payload.filters);
-        this.setState({ filteredSignals });
+        this.setState({ 
+            filteredSignals,
+            viewState: newViewState
+        });
         this.emitChange('signals:filtered', filteredSignals);
     }
     
