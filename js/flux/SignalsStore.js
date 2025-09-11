@@ -236,8 +236,10 @@ class SignalsStore extends Store {
     }
     
     handleDataLoadSuccess(payload) {
+        console.log('📦 SignalsStore: handleDataLoadSuccess called');
         this.initializeWithData(payload.data);
         this.setState({ loading: false });
+        console.log('🔔 SignalsStore: Emitting data:loaded event');
         this.emitChange('data:loaded');
     }
     

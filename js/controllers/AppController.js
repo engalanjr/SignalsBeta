@@ -148,6 +148,8 @@ class AppController {
     }
     
     subscribeToStore() {
+        console.log('🔌 AppController: Setting up store subscriptions');
+        
         // Subscribe to store changes for app-level updates
         signalsStore.subscribe('app-controller', () => {
             this.updateSummaryStats();
@@ -155,20 +157,20 @@ class AppController {
         
         // Subscribe to data loading states
         signalsStore.subscribe('data:loaded', () => {
-            console.log('📊 Data loaded successfully, hiding loading spinner');
+            console.log('📊 AppController received data:loaded event, hiding loading spinner');
             this.hideLoading();
             this.updateSummaryStats();
             this.renderCurrentTab();
         });
         
         signalsStore.subscribe('data:load_failed', () => {
-            console.log('❌ Data load failed, hiding loading spinner');
+            console.log('❌ AppController received data:load_failed event, hiding loading spinner');
             this.hideLoading();
             this.showErrorMessage('Failed to load data. Please refresh the page.');
         });
         
         signalsStore.subscribe('loading:started', () => {
-            console.log('⏳ Loading started, showing spinner');
+            console.log('⏳ AppController received loading:started event, showing spinner');
             this.showLoading();
         });
         
@@ -176,6 +178,15 @@ class AppController {
         signalsStore.subscribe('tab:changed', (tabName) => {
             this.handleTabChanged(tabName);
         });
+        
+        // Check if data is already loaded (in case we missed the event)
+        const state = signalsStore.getState();
+        if (!state.loading && state.signals && state.signals.length > 0) {
+            console.log('📊 Data already loaded, hiding spinner immediately');
+            this.hideLoading();
+            this.updateSummaryStats();
+            this.renderCurrentTab();
+        }
     }
     
     // switchTab method removed - now using handleTabChanged via store subscription
