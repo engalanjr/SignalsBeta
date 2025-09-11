@@ -289,19 +289,8 @@
     <!-- Flux Testing (Development Only) -->
     <script src="js/flux/FluxTest.js"></script>
 
-    <!-- Data Layer -->
-    <script src="js/MasterDataLoader.js"></script>
-    <script src="js/DataLoader.js"></script>
-    <script src="js/DataCache.js"></script>
-    <script src="js/DataService.js"></script>
-
-    <!-- Core Services (must load before main app) -->
+    <!-- Core Services (Notification service remains as it's used by UI) -->
     <script src="js/services/NotificationService.js"></script>
-    <script src="js/services/SignalDetailsService.js"></script>
-    <script src="js/services/CommentService.js"></script>
-    <script src="js/services/SignalFeedbackService.js"></script>
-    <script src="js/services/ActionPlanService.js"></script>
-    <script src="js/services/SignalManagementService.js"></script>
 
     <!-- Event Handling -->
     <!-- EventHandlers.js removed - now using Flux controllers -->
@@ -320,8 +309,6 @@
     <script src="js/controllers/PortfolioController.js"></script>
     <script src="js/controllers/AppController.js"></script>
 
-    <!-- Main Application (Legacy - replaced by Flux controllers) -->
-    <!-- <script src="js/SignalsAI.js"></script> -->
 
     <!-- Application Initialization -->
     <script>
@@ -339,10 +326,24 @@
             // Set up the create plan button handler
             document.addEventListener('click', async (e) => {
                 if (e.target.id === 'createPlan') {
-                    await ActionPlanService.createActionPlan(app);
+                    // Use the Flux ActionPlansService instead
+                    const drawerContent = document.querySelector('.drawer-body');
+                    const titleInput = drawerContent?.querySelector('input[placeholder*="title"]');
+                    const descriptionInput = drawerContent?.querySelector('textarea');
+                    
+                    if (titleInput && titleInput.value) {
+                        await ActionPlansService.createActionPlan(
+                            window.appController?.selectedSignalId || null,
+                            titleInput.value,
+                            descriptionInput?.value || ''
+                        );
+                        dispatcher.dispatch(Actions.closePlanDrawer());
+                    } else {
+                        dispatcher.dispatch(Actions.showMessage('Please enter a plan title', 'error'));
+                    }
                 }
                 if (e.target.id === 'cancelPlan' || e.target.id === 'closePlanDrawer') {
-                    ActionPlanService.closePlanDrawer();
+                    dispatcher.dispatch(Actions.closePlanDrawer());
                 }
             });
         });

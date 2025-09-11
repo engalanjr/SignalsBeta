@@ -93,12 +93,68 @@ class FeedbackService {
         const state = signalsStore.getState();
         const interactions = state.interactions.get(signalId) || [];
         
-        const likes = interactions.filter(i => i.interactionType === 'like').length;
-        const notAccurate = interactions.filter(i => i.interactionType === 'not-accurate').length;
+        const likes = interactions.filter(i => i.interactionType === 'like' || i.type === 'like').length;
+        const notAccurate = interactions.filter(i => i.interactionType === 'not-accurate' || i.type === 'not-accurate').length;
         
         return { likes, notAccurate };
+    }
+    
+    /**
+     * Mark signal as viewed (for tracking)
+     * @param {string} signalId - Signal ID
+     * @param {Object} app - Legacy app reference (ignored in Flux)
+     */
+    static async markSignalAsViewed(signalId, app) {
+        const userId = signalsStore.getState().userInfo.userId || 'user-1';
+        
+        console.log(`👁️ FeedbackService: Marking signal ${signalId} as viewed`);
+        
+        // Dispatch viewed action
+        dispatcher.dispatch(Actions.viewSignal(signalId));
+        
+        try {
+            // Save to API in background
+            await SignalsRepository.saveFeedbackInteraction(signalId, 'viewed', userId);
+        } catch (error) {
+            console.error('Failed to save viewed status:', error);
+            // Don't revert for view tracking - it's not critical
+        }
+    }
+    
+    /**
+     * Acknowledge signal (wrapper for compatibility with old code)
+     * @param {string} signalId - Signal ID
+     * @param {string} feedbackType - Type of feedback
+     * @param {Object} app - Legacy app reference (ignored)
+     */
+    static async acknowledgeSignal(signalId, feedbackType, app) {
+        return this.handleFeedback(signalId, feedbackType);
+    }
+    
+    /**
+     * Save interaction to API
+     * @param {string} signalId - Signal ID
+     * @param {string} interactionType - Type of interaction
+     */
+    static async saveInteraction(signalId, interactionType) {
+        const userId = signalsStore.getState().userInfo.userId || 'user-1';
+        return SignalsRepository.saveFeedbackInteraction(signalId, interactionType, userId);
+    }
+    
+    /**
+     * Update signal display counts in UI
+     * @param {string} signalId - Signal ID
+     * @param {Object} app - Legacy app reference (ignored)
+     */
+    static updateSignalDisplayCounts(signalId, app) {
+        // This is now handled automatically through store change events
+        // Trigger a UI update through the store
+        signalsStore.emitChange('feedback:counts_updated', signalId);
     }
 }
 
 // Make globally available
 window.FeedbackService = FeedbackService;
+
+// Create aliases for backward compatibility with old code
+window.SignalFeedbackService = FeedbackService;
