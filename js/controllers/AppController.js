@@ -211,32 +211,42 @@ class AppController {
     }
     
     updateSummaryStats() {
-        const state = signalsStore.getState();
-        
-        // Update dashboard stats from store state
-        const allSignals = Array.from(state.signals.values());
-        const highPrioritySignals = allSignals.filter(s => s.priority === 'High');
-        const accountsWithSignals = Array.from(state.accounts.values()).filter(account => account.signals.length > 0);
-        
-        // Update Requires Attention count (accounts without action plans)
-        const planAccountIds = new Set(
-            Array.from(state.actionPlans.values())
-                .map(plan => plan.accountId)
-                .filter(accountId => accountId)
-        );
-        const accountsWithoutPlans = Array.from(state.accounts.values()).filter(account => 
-            !planAccountIds.has(account.id)
-        );
-        
-        // Update DOM elements
-        const updateElement = (id, value) => {
-            const element = document.getElementById(id);
-            if (element) element.textContent = value;
-        };
-        
-        updateElement('requiresAttentionCount', accountsWithoutPlans.length);
-        updateElement('highPriorityDashboard', highPrioritySignals.length);
-        updateElement('activeAccountsCount', accountsWithSignals.length);
+        try {
+            const state = signalsStore.getState();
+            
+            // Update dashboard stats from store state
+            // signals is an array, not a Map
+            const allSignals = state.signals || [];
+            const highPrioritySignals = allSignals.filter(s => s.priority === 'High');
+            
+            // Get unique accounts from signals
+            const uniqueAccountIds = new Set(allSignals.map(s => s.account_id).filter(id => id));
+            const accountsWithSignals = uniqueAccountIds.size;
+            
+            // Update Requires Attention count (accounts without action plans)
+            const planAccountIds = new Set(
+                Array.from(state.actionPlans.values())
+                    .map(plan => plan.accountId)
+                    .filter(accountId => accountId)
+            );
+            
+            // Count accounts that have signals but no action plans
+            const accountsWithoutPlans = Array.from(uniqueAccountIds).filter(accountId => 
+                !planAccountIds.has(accountId)
+            ).length;
+            
+            // Update DOM elements
+            const updateElement = (id, value) => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = value;
+            };
+            
+            updateElement('requiresAttentionCount', accountsWithoutPlans);
+            updateElement('highPriorityDashboard', highPrioritySignals.length);
+            updateElement('activeAccountsCount', accountsWithSignals);
+        } catch (error) {
+            console.error('Error updating summary stats:', error);
+        }
     }
     
     showLoading() {
