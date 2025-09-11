@@ -8,6 +8,7 @@ class SignalsStore extends Store {
         this.setInitialState({
             // Core data
             signals: [],
+            accounts: new Map(),
             comments: new Map(),
             interactions: new Map(),
             actionPlans: new Map(),
@@ -188,7 +189,7 @@ class SignalsStore extends Store {
     
     handleDataLoadRequested() {
         this.setState({ loading: true });
-        this.emitChange('data-load-requested');
+        this.emitChange('data:load-requested');
     }
     
     handleSignalRemoved(payload) {
@@ -197,7 +198,10 @@ class SignalsStore extends Store {
         const updatedSignals = currentSignals.filter(signal => signal.id !== signalId);
         
         this.setState({ signals: updatedSignals });
+        // Rebuild indexes and accounts to keep them in sync with signals
+        this.rebuildIndexesAndAccounts();
         this.emitChange('signal-removed', signalId);
+        this.emitChange('accounts-updated');
     }
     
     handleSignalDetailsOpened(payload) {
@@ -258,6 +262,7 @@ class SignalsStore extends Store {
             filters: payload.filters || this.state.viewState.filters
         };
         
+        // Apply filters and update filteredSignals
         const filteredSignals = this.applyFilters(payload.filters);
         this.setState({ 
             filteredSignals,
@@ -479,6 +484,28 @@ class SignalsStore extends Store {
             signalsByAccount.get(accountId).push(signal);
         });
         
+        // Build accounts Map from signals
+        const accounts = new Map();
+        signalsByAccount.forEach((accountSignals, accountId) => {
+            if (accountSignals.length > 0) {
+                // Get account info from the first signal (all signals for same account should have same account_name)
+                const firstSignal = accountSignals[0];
+                accounts.set(accountId, {
+                    id: accountId,
+                    name: firstSignal.account_name || `Account ${accountId}`,
+                    signals: accountSignals,
+                    at_risk_cat: firstSignal.at_risk_cat || 'Healthy',
+                    health_score: firstSignal.health_score || 0,
+                    bks_renewal_baseline_usd: firstSignal.bks_renewal_baseline_usd || 0,
+                    pacing_percent: firstSignal.pacing_percent || 0,
+                    next_renewal_date: firstSignal.next_renewal_date || '',
+                    industry: firstSignal.industry || 'Unknown',
+                    monthly_active_users: firstSignal.monthly_active_users || 0,
+                    total_lifetime_billings: firstSignal.total_lifetime_billings || 0
+                });
+            }
+        });
+        
         // Process comments
         (data.comments || []).forEach(comment => {
             const key = comment.signalId || comment.accountId;
@@ -523,6 +550,7 @@ class SignalsStore extends Store {
         
         this.setState({
             signals,
+            accounts,
             comments,
             interactions,
             actionPlans,
@@ -675,15 +703,31 @@ class SignalsStore extends Store {
         const { signals } = this.getState();
         
         // Apply filters to signals array
-        // This is a simplified version - implement your specific filter logic
         let filtered = [...signals];
         
-        if (filters.priority) {
+        // Apply priority filter
+        if (filters.priority && filters.priority !== 'all' && filters.priority !== '') {
             filtered = filtered.filter(signal => signal.priority === filters.priority);
         }
         
-        if (filters.account) {
+        // Apply category filter
+        if (filters.category && filters.category !== 'all' && filters.category !== '') {
+            filtered = filtered.filter(signal => signal.category === filters.category);
+        }
+        
+        // Apply account filter
+        if (filters.account && filters.account !== 'all') {
             filtered = filtered.filter(signal => signal.account_name === filters.account);
+        }
+        
+        // Apply search text filter
+        if (filters.searchText && filters.searchText.trim() !== '') {
+            const searchLower = filters.searchText.toLowerCase();
+            filtered = filtered.filter(signal => 
+                signal.name?.toLowerCase().includes(searchLower) ||
+                signal.summary?.toLowerCase().includes(searchLower) ||
+                signal.account_name?.toLowerCase().includes(searchLower)
+            );
         }
         
         return filtered;
@@ -732,6 +776,62 @@ class SignalsStore extends Store {
             
             this.setState({ actionPlans, actionPlansByAccount });
         }
+    }
+    
+    /**
+     * Rebuilds all indexes and accounts Map from current signals
+     * Ensures accounts Map stays in sync when signals are added/removed/modified
+     */
+    rebuildIndexesAndAccounts() {
+        const currentState = this.getState();
+        const signals = currentState.signals || [];
+        
+        // Rebuild all signal indexes
+        const signalsById = new Map();
+        const signalsByAccount = new Map();
+        
+        // Process signals and build indexes
+        signals.forEach(signal => {
+            signalsById.set(signal.id, signal);
+            const accountId = signal.account_id;
+            if (!signalsByAccount.has(accountId)) {
+                signalsByAccount.set(accountId, []);
+            }
+            signalsByAccount.get(accountId).push(signal);
+        });
+        
+        // Rebuild accounts Map from current signals
+        const accounts = new Map();
+        signalsByAccount.forEach((accountSignals, accountId) => {
+            if (accountSignals.length > 0) {
+                // Get account info from the first signal
+                const firstSignal = accountSignals[0];
+                accounts.set(accountId, {
+                    id: accountId,
+                    name: firstSignal.account_name || `Account ${accountId}`,
+                    signals: accountSignals,
+                    at_risk_cat: firstSignal.at_risk_cat || 'Healthy',
+                    health_score: firstSignal.health_score || 0,
+                    bks_renewal_baseline_usd: firstSignal.bks_renewal_baseline_usd || 0,
+                    pacing_percent: firstSignal.pacing_percent || 0,
+                    next_renewal_date: firstSignal.next_renewal_date || '',
+                    industry: firstSignal.industry || 'Unknown',
+                    monthly_active_users: firstSignal.monthly_active_users || 0,
+                    total_lifetime_billings: firstSignal.total_lifetime_billings || 0
+                });
+            }
+        });
+        
+        // Apply current filters to get updated filtered signals
+        const filteredSignals = this.applyFilters(currentState.viewState.filters);
+        
+        // Update state with rebuilt indexes and accounts
+        this.setState({
+            signalsById,
+            signalsByAccount,
+            accounts,
+            filteredSignals
+        });
     }
 }
 

@@ -32,6 +32,9 @@ def run_server():
     print(f"Starting SignalsAI server on {host}:{port}")
     print(f"Serving files from: {os.getcwd()}")
     
+    # Allow reuse of the address to prevent "Address already in use" errors
+    socketserver.TCPServer.allow_reuse_address = True
+    
     with socketserver.TCPServer((host, port), CustomHTTPRequestHandler) as httpd:
         print(f"SignalsAI is running at http://{host}:{port}")
         print("Press Ctrl+C to stop the server")

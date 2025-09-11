@@ -12,7 +12,10 @@ class SignalsController {
             if (eventType === 'signals-updated' || 
                 eventType === 'comments-updated' || 
                 eventType === 'feedback-updated' ||
-                eventType === 'signal-viewed') {
+                eventType === 'signal-viewed' ||
+                eventType === 'signals:filtered' ||
+                eventType === 'signal-removed' ||
+                eventType === 'accounts-updated') {
                 this.render();
             }
         });
@@ -105,8 +108,9 @@ class SignalsController {
         // Check if we're on the signal feed tab
         if (document.getElementById('signal-feed')?.classList.contains('active')) {
             
-            // Get filtered signals based on current view state
-            const filteredSignals = this.getFilteredSignals(state);
+            // Use the centralized filteredSignals from the store
+            // The store already manages filtering based on viewState.filters
+            const filteredSignals = state.filteredSignals || [];
             
             // Call the pure SignalRenderer with store data
             SignalRenderer.renderSignalFeed(
@@ -121,37 +125,11 @@ class SignalsController {
         }
     }
     
+    // DEPRECATED: Filtering is now centralized in SignalsStore
+    // Use state.filteredSignals directly instead of calling this method
     getFilteredSignals(state) {
-        // Apply any current filters to the signals
-        let signals = Array.from(state.signals.values());
-        
-        // Apply filters from view state if they exist
-        if (state.viewState.filters) {
-            const filters = state.viewState.filters;
-            
-            if (filters.priority && filters.priority !== 'all') {
-                signals = signals.filter(signal => 
-                    signal.priority?.toLowerCase() === filters.priority.toLowerCase()
-                );
-            }
-            
-            if (filters.category && filters.category !== 'all') {
-                signals = signals.filter(signal => 
-                    signal.category?.toLowerCase() === filters.category.toLowerCase()
-                );
-            }
-            
-            if (filters.searchText) {
-                const searchText = filters.searchText.toLowerCase();
-                signals = signals.filter(signal => 
-                    signal.name?.toLowerCase().includes(searchText) ||
-                    signal.account_name?.toLowerCase().includes(searchText) ||
-                    signal.summary?.toLowerCase().includes(searchText)
-                );
-            }
-        }
-        
-        return signals;
+        console.warn('getFilteredSignals is deprecated. Use state.filteredSignals directly.');
+        return state.filteredSignals || [];
     }
     
     applyFilters(priority = 'all', category = 'all', searchText = '') {
