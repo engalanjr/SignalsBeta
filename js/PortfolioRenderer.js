@@ -259,16 +259,12 @@ class PortfolioRenderer {
                     </div>
 
                     <div class="ai-recommendations-section">
-                        <div class="ai-header">
-                            <i class="fas fa-lightbulb ai-icon"></i>
-                            <h4 class="ai-title">AI Recommendations</h4>
+                        <div class="recommendations-header">
+                            <i class="fas fa-exclamation-triangle recommendation-warning-icon"></i>
+                            <h4 class="recommendations-title">AI Recommendations</h4>
                         </div>
 
-                        <div class="recommendation-priority">
-                            <span class="${account.aiRecommendation.priority}-badge">${account.aiRecommendation.priority.toUpperCase()}</span>
-                        </div>
-
-                        <div class="recommendations-merged">
+                        <div class="recommendations-list-container">
                             ${this.getMergedRecommendationsAndRationale(account)}
                         </div>
                     </div>
@@ -544,16 +540,73 @@ class PortfolioRenderer {
         }
         return false;
     }
+    
+    static getActionPlanInfo(actionId, appInstance) {
+        if (appInstance && appInstance.actionPlans) {
+            for (const [key, plan] of appInstance.actionPlans) {
+                // Check if the plan contains this actionId
+                if (plan && plan.actionId === actionId) {
+                    // Calculate time since added
+                    const timeSinceAdded = this.calculateTimeSinceAdded(plan.createdDate);
+                    return {
+                        isInPlan: true,
+                        timeSinceAdded: timeSinceAdded
+                    };
+                }
+                // Also check action items for associated signals
+                if (plan.actionItems) {
+                    for (const actionItem of plan.actionItems) {
+                        if (actionItem.associatedSignals && actionItem.associatedSignals.includes(actionId)) {
+                            const timeSinceAdded = this.calculateTimeSinceAdded(plan.createdDate);
+                            return {
+                                isInPlan: true,
+                                timeSinceAdded: timeSinceAdded
+                            };
+                        }
+                    }
+                }
+            }
+        }
+        return {
+            isInPlan: false,
+            timeSinceAdded: null
+        };
+    }
+    
+    static calculateTimeSinceAdded(createdDate) {
+        if (!createdDate) return null;
+        
+        const created = new Date(createdDate);
+        const now = new Date();
+        const diffInMs = now - created;
+        const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+        
+        if (diffInDays === 0) {
+            const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+            if (diffInHours === 0) {
+                const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+                return diffInMinutes === 1 ? '1 minute' : `${diffInMinutes} minutes`;
+            }
+            return diffInHours === 1 ? '1 hour' : `${diffInHours} hours`;
+        } else if (diffInDays < 7) {
+            return diffInDays === 1 ? '1 day' : `${diffInDays} days`;
+        } else if (diffInDays < 30) {
+            const weeks = Math.floor(diffInDays / 7);
+            return weeks === 1 ? '1 week' : `${weeks} weeks`;
+        } else if (diffInDays < 365) {
+            const months = Math.floor(diffInDays / 30);
+            return months === 1 ? '1 month' : `${months} months`;
+        } else {
+            const years = Math.floor(diffInDays / 365);
+            return years === 1 ? '1 year' : `${years} years`;
+        }
+    }
 
     static getMergedRecommendationsAndRationale(account) {
         const actionDataMap = new Map();
         
-        // console.log(`DEBUG: Processing recommendations for account ${account.name} (ID: ${account.id}) with ${account.signals.length} signals`);
-        
-        // Create map of recommended_action to data object with rationale, date, and action_id
+        // Create map of recommended_action to data object with priority, date, and action_id
         account.signals.forEach((signal, index) => {
-            // console.log(`DEBUG Signal ${index + 1}: account_id="${signal.account_id}", recommended_action="${signal.recommended_action}", action_id="${signal.action_id}"`);
-            
             // Extra validation to ensure signal belongs to this account
             if (signal.account_id !== account.id) {
                 console.error(`ERROR: Signal ${signal.id} has account_id ${signal.account_id} but is in account ${account.id} signals array!`);
@@ -564,73 +617,91 @@ class PortfolioRenderer {
                 signal.recommended_action.trim() && 
                 signal.recommended_action !== 'No actions specified' &&
                 signal.action_id &&
-                signal.action_id.trim() &&
-                signal.signal_rationale &&
-                signal.signal_rationale.trim() &&
-                signal.signal_rationale !== 'No rationale specified') {
+                signal.action_id.trim()) {
                 
                 const action = signal.recommended_action.trim();
-                const rationale = signal.signal_rationale.trim();
                 const date = signal.created_date || signal.call_date;
                 const actionId = signal.action_id;
+                const priority = signal.priority || 'Medium';
+                
+                // Get urgency level based on priority
+                const urgencyMap = {
+                    'High': 'IMMEDIATE',
+                    'Medium': 'NEAR-TERM',
+                    'Low': 'LONG-TERM'
+                };
+                const urgency = urgencyMap[priority] || 'NEAR-TERM';
                 
                 if (!actionDataMap.has(action)) {
                     const actionData = {
-                        rationale: rationale,
                         date: date,
                         actionId: actionId,
-                        accountId: account.id
+                        accountId: account.id,
+                        priority: priority,
+                        urgency: urgency
                     };
                     actionDataMap.set(action, actionData);
-                    // console.log(`DEBUG: Added unique action: "${action}" with rationale and date: ${date}`);
-                    // console.log('DEBUG: Recommended action object:', actionData);
                 }
-            } else {
-                // console.log(`DEBUG: Signal ${index + 1} filtered out - missing required fields`);
             }
         });
         
-        // console.log(`DEBUG: Found ${actionDataMap.size} valid action-rationale pairs for account ${account.name}`);
-        
-        // If we have action-rationale pairs, display them
+        // If we have action items, display them in the new list format
         if (actionDataMap.size > 0) {
-            // console.log('DEBUG: All recommendation objects for account:', account.name, Array.from(actionDataMap.values()));
-            return Array.from(actionDataMap.entries()).slice(0, 3).map(([action, data]) => `
-                <div class="merged-recommendation-item">
-                    <div class="recommendation-action">
-                        <div class="action-content">
-                            • ${action}
+            return Array.from(actionDataMap.entries()).slice(0, 5).map(([action, data]) => {
+                // Check if already in plan and calculate time since added
+                const planInfo = this.getActionPlanInfo(data.actionId, window.app);
+                const isInPlan = planInfo.isInPlan;
+                const timeSinceAdded = planInfo.timeSinceAdded;
+                
+                return `
+                    <div class="recommendation-list-item">
+                        <div class="recommendation-priority-badge priority-${data.priority.toLowerCase()}">
+                            ${data.urgency}
                         </div>
-                        <div class="action-controls">
-                            <span class="recommendation-date">${window.app ? window.app.formatDateSimple(data.date) : data.date}</span>
-                            ${this.isActionAlreadyInPlan(data.actionId, window.app) ? 
-                                `<span class="btn-added-status">Added!</span>` : 
+                        <div class="recommendation-text">
+                            ${SecurityUtils.sanitizeHTML(action)}
+                        </div>
+                        <div class="recommendation-date">
+                            ${FormatUtils.formatDateSimple(data.date)}
+                        </div>
+                        <div class="recommendation-action-button">
+                            ${isInPlan ? 
+                                `<span class="btn-added-status">${timeSinceAdded ? `Added ${timeSinceAdded} ago` : 'Added!'}</span>` : 
                                 `<button class="btn-add-to-plan" data-action-id="${data.actionId}" data-action-title="${action}" data-account-id="${data.accountId}" onclick="PortfolioRenderer.openAddToPlanDrawer('${data.actionId}', '${action.replace(/'/g, "\\'")}', '${data.accountId}')">
                                     Add to Plan
                                 </button>`
                             }
                         </div>
                     </div>
-                    <div class="recommendation-rationale">${data.rationale}</div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
-        
-        // console.log(`INFO: No valid action-rationale pairs found for account ${account.name} (${account.id}) - account signals may be missing required fields (recommended_action, action_id, signal_rationale).`);
         
         // Use the AI-generated recommendations from account.aiRecommendation
         if (account.aiRecommendation && account.aiRecommendation.actions && account.aiRecommendation.actions.length > 0) {
             return account.aiRecommendation.actions.map(action => `
-                <div class="merged-recommendation-item">
-                    <i class="fas fa-chevron-right recommendation-icon"></i>
-                    <span class="merged-recommendation-text">${SecurityUtils.sanitizeHTML(action)}</span>
+                <div class="recommendation-list-item">
+                    <div class="recommendation-priority-badge priority-medium">
+                        NEAR-TERM
+                    </div>
+                    <div class="recommendation-text">
+                        ${SecurityUtils.sanitizeHTML(action)}
+                    </div>
+                    <div class="recommendation-date">
+                        ${FormatUtils.formatDateSimple(new Date())}
+                    </div>
+                    <div class="recommendation-action-button">
+                        <button class="btn-add-to-plan" onclick="alert('Add functionality needs signal association')">
+                            Add to Plan
+                        </button>
+                    </div>
                 </div>
             `).join('');
         }
         
         // Only show "No recommendations" if truly no recommendations exist
         return `
-            <div class="merged-recommendation-item">
+            <div class="recommendation-list-item">
                 <div class="no-recommendations-message">
                     No AI recommendations available for this account.
                 </div>
