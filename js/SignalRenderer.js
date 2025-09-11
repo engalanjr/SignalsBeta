@@ -133,7 +133,7 @@ class SignalRenderer {
 
     static renderInlineCommentsSection(signalId, app) {
         const comments = app.signalComments.get(signalId) || [];
-        console.log(`Rendering comments for signal ${signalId}:`, comments.length, 'comments');
+        // console.log(`Rendering comments for signal ${signalId}:`, comments.length, 'comments');
         
         // Only show comments section if there are comments or to allow adding new ones
         return `

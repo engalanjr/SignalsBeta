@@ -166,7 +166,7 @@ class PortfolioRenderer {
         account.health = account.health || this.getHealthFromRiskCategory(account.at_risk_cat);
         account.industry = account.industry || 'Technology';
         account.aiRecommendation = account.aiRecommendation || this.generateAIRecommendationForAccount(account);
-        console.log('airecco: ', account.aiRecommendation);
+        // console.log('airecco: ', account.aiRecommendation);
 
         return `
             <div class="portfolio-account-card">
@@ -294,7 +294,7 @@ class PortfolioRenderer {
                 const action = signal.recommended_action.trim();
                 const actionId = signal.action_id;
                 
-                console.log('Using recommended_action for signal:', signal.name, action, 'action_id:', actionId);
+                // console.log('Using recommended_action for signal:', signal.name, action, 'action_id:', actionId);
                 
                 // Store unique actions with their action_ids
                 if (!actionMap.has(action)) {
@@ -308,9 +308,9 @@ class PortfolioRenderer {
             
             // Second priority: Use account_action_context or action_context
             const actionContext = signal.account_action_context || signal.action_context;
-            console.log('OUTER Processing action context for signal:', actionContext);
+            // console.log('OUTER Processing action context for signal:', actionContext);
             if (actionContext && actionContext.trim() && actionContext !== 'No actions specified') {
-                console.log('Processing action context for signal:', signal.name, actionContext);
+                // console.log('Processing action context for signal:', signal.name, actionContext);
 
                 // Enhanced parsing for numbered lists, bullet points, and sentences
                 let actions = [];
@@ -346,7 +346,7 @@ class PortfolioRenderer {
                         .filter(action => action.length > 10 && !action.match(/^\d+$/));
                 }
 
-                console.log('Parsed actions:', actions);
+                // console.log('Parsed actions:', actions);
                 // Add these actions to the map without action_ids
                 actions.forEach(action => {
                     if (!actionMap.has(action)) {
@@ -361,8 +361,8 @@ class PortfolioRenderer {
             .filter(action => action.length > 10) // Ensure substantial actions
             .slice(0, 3); // Take top 3 actions
 
-        console.log('Final unique actions for account:', account.name, uniqueActions);
-        console.log('Action IDs mapping:', Array.from(actionMap.entries()));
+        // console.log('Final unique actions for account:', account.name, uniqueActions);
+        // console.log('Action IDs mapping:', Array.from(actionMap.entries()));
 
         // If we have specific actions from context, use them
         if (uniqueActions.length > 0) {
@@ -508,11 +508,11 @@ class PortfolioRenderer {
     static getMergedRecommendationsAndRationale(account) {
         const actionDataMap = new Map();
         
-        console.log(`DEBUG: Processing recommendations for account ${account.name} (ID: ${account.id}) with ${account.signals.length} signals`);
+        // console.log(`DEBUG: Processing recommendations for account ${account.name} (ID: ${account.id}) with ${account.signals.length} signals`);
         
         // Create map of recommended_action to data object with rationale, date, and action_id
         account.signals.forEach((signal, index) => {
-            console.log(`DEBUG Signal ${index + 1}: account_id="${signal.account_id}", recommended_action="${signal.recommended_action}", action_id="${signal.action_id}"`);
+            // console.log(`DEBUG Signal ${index + 1}: account_id="${signal.account_id}", recommended_action="${signal.recommended_action}", action_id="${signal.action_id}"`);
             
             // Extra validation to ensure signal belongs to this account
             if (signal.account_id !== account.id) {
@@ -542,19 +542,19 @@ class PortfolioRenderer {
                         accountId: account.id
                     };
                     actionDataMap.set(action, actionData);
-                    console.log(`DEBUG: Added unique action: "${action}" with rationale and date: ${date}`);
-                    console.log('DEBUG: Recommended action object:', actionData);
+                    // console.log(`DEBUG: Added unique action: "${action}" with rationale and date: ${date}`);
+                    // console.log('DEBUG: Recommended action object:', actionData);
                 }
             } else {
-                console.log(`DEBUG: Signal ${index + 1} filtered out - missing required fields`);
+                // console.log(`DEBUG: Signal ${index + 1} filtered out - missing required fields`);
             }
         });
         
-        console.log(`DEBUG: Found ${actionDataMap.size} valid action-rationale pairs for account ${account.name}`);
+        // console.log(`DEBUG: Found ${actionDataMap.size} valid action-rationale pairs for account ${account.name}`);
         
         // If we have action-rationale pairs, display them
         if (actionDataMap.size > 0) {
-            console.log('DEBUG: All recommendation objects for account:', account.name, Array.from(actionDataMap.values()));
+            // console.log('DEBUG: All recommendation objects for account:', account.name, Array.from(actionDataMap.values()));
             return Array.from(actionDataMap.entries()).slice(0, 3).map(([action, data]) => `
                 <div class="merged-recommendation-item">
                     <div class="recommendation-action">
@@ -576,7 +576,7 @@ class PortfolioRenderer {
             `).join('');
         }
         
-        console.log(`INFO: No valid action-rationale pairs found for account ${account.name} (${account.id}) - account signals may be missing required fields (recommended_action, action_id, signal_rationale).`);
+        // console.log(`INFO: No valid action-rationale pairs found for account ${account.name} (${account.id}) - account signals may be missing required fields (recommended_action, action_id, signal_rationale).`);
         
         // DO NOT USE FALLBACK - return empty instead to avoid cross-contamination
         return `
@@ -709,7 +709,7 @@ class PortfolioRenderer {
             const signal = window.app.data.find(s => s.action_id === actionId);
             
             if (signal) {
-                console.log('Loading CS Plays for drawer action:', actionId, 'for account:', signal.account_id);
+                // console.log('Loading CS Plays for drawer action:', actionId, 'for account:', signal.account_id);
                 
                 // Extract play 1 with enhanced data
                 if (signal.play_1_name && signal.play_1_name.trim() && 
@@ -749,7 +749,7 @@ class PortfolioRenderer {
             return;
         }
         
-        console.log('Final drawer csPlays array:', csPlays);
+        // console.log('Final drawer csPlays array:', csPlays);
         
         // Show message if no plays found, otherwise show checkboxes
         if (csPlays.length === 0) {
@@ -837,7 +837,7 @@ class PortfolioRenderer {
             const result = await DataService.createActionPlan(planData);
             
             if (result && result.success) {
-                console.log('Plan created successfully from drawer:', result.plan);
+                // console.log('Plan created successfully from drawer:', result.plan);
                 
                 // Update local action plans collection immediately for "Added!" state
                 if (window.app && window.app.actionPlans && result.plan) {
