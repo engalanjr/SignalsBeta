@@ -313,10 +313,12 @@ class SignalRenderer {
             
             switch (action) {
                 case 'like':
-                    dispatcher.dispatch(Actions.submitFeedback(signalId, 'like'));
+                    const userId = signalsStore.getState().userInfo?.userId || 'user-1';
+                    dispatcher.dispatch(Actions.requestFeedback(signalId, 'like', userId));
                     break;
                 case 'not-accurate':
-                    dispatcher.dispatch(Actions.submitFeedback(signalId, 'not-accurate'));
+                    const userId2 = signalsStore.getState().userInfo?.userId || 'user-1';
+                    dispatcher.dispatch(Actions.requestFeedback(signalId, 'not-accurate', userId2));
                     break;
                 case 'remove-signal':
                     dispatcher.dispatch(Actions.removeSignalFromFeed(signalId));
@@ -324,12 +326,23 @@ class SignalRenderer {
                 case 'add-comment':
                     const inputElement = document.getElementById(`inlineCommentText-${signalId}`);
                     if (inputElement && inputElement.value.trim()) {
-                        dispatcher.dispatch(Actions.addComment(signalId, inputElement.value.trim()));
+                        const state = signalsStore.getState();
+                        const signal = state.signalsById.get(signalId);
+                        const accountId = signal?.account_id || signal?.account_name || 'unknown';
+                        const userId3 = state.userInfo?.userId || 'user-1';
+                        dispatcher.dispatch(Actions.requestComment(signalId, accountId, inputElement.value.trim(), userId3));
                         inputElement.value = '';
                     }
                     break;
                 case 'edit-comment':
-                    dispatcher.dispatch(Actions.editComment(commentId, signalId));
+                    const commentElement = document.getElementById(`comment-text-${commentId}`);
+                    if (commentElement) {
+                        const currentText = commentElement.textContent;
+                        const newText = prompt('Edit comment:', currentText);
+                        if (newText !== null && newText.trim() !== currentText) {
+                            dispatcher.dispatch(Actions.updateComment(commentId, newText.trim()));
+                        }
+                    }
                     break;
                 case 'delete-comment':
                     dispatcher.dispatch(Actions.deleteComment(commentId, signalId));
