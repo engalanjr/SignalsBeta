@@ -54,7 +54,7 @@ class FeedbackController {
     submitFeedback(signalId, feedbackType) {
         // Get current signal state
         const state = signalsStore.getState();
-        const signal = state.signals.get(signalId);
+        const signal = state.signalsById.get(signalId);
         
         if (!signal) {
             console.error(`Signal ${signalId} not found`);
@@ -98,7 +98,7 @@ class FeedbackController {
     
     clearAllFeedback(signalId) {
         const state = signalsStore.getState();
-        const signal = state.signals.get(signalId);
+        const signal = state.signalsById.get(signalId);
         
         if (!signal || !signal.currentUserFeedback) {
             return;
@@ -111,7 +111,7 @@ class FeedbackController {
     // Get feedback statistics
     getFeedbackStats() {
         const state = signalsStore.getState();
-        const signals = Array.from(state.signals.values());
+        const signals = Array.from(state.signalsById.values());
         
         const stats = {
             total: signals.length,

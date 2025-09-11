@@ -108,10 +108,10 @@ class PortfolioRenderer {
                     ${accountComments.map(comment => `
                         <div class="account-comment">
                             <div class="comment-header">
-                                <span class="comment-author">${comment.author}</span>
+                                <span class="comment-author">${SecurityUtils.sanitizeHTML(comment.author)}</span>
                                 <span class="comment-time">${FormatUtils.formatCommentTime(comment.timestamp)}</span>
                             </div>
-                            <div class="comment-text">${comment.text}</div>
+                            <div class="comment-text">${SecurityUtils.sanitizeHTML(comment.text)}</div>
                         </div>
                     `).join('')}
                 </div>
@@ -217,7 +217,7 @@ class PortfolioRenderer {
                             <i class="fas fa-exclamation-triangle ${account.health === 'critical' ? 'critical-warning' : account.health === 'warning' ? 'warning-warning' : 'healthy-warning'}"></i>
                         </div>
                         <div class="account-name-info">
-                            <h3 class="account-name">${account.name}</h3>
+                            <h3 class="account-name">${SecurityUtils.sanitizeHTML(account.name)}</h3>
                             <div class="account-stats">${totalSignals} signals • ${highPriorityCount} high priority</div>
                         </div>
                     </div>
@@ -288,7 +288,7 @@ class PortfolioRenderer {
                                         <span class="priority-tag priority-${signal.priority.toLowerCase()}">${signal.priority}</span>
                                     </div>
                                     <div class="signal-name-content">
-                                        <span class="signal-name-text">${signal.name}</span>
+                                        <span class="signal-name-text">${SecurityUtils.sanitizeHTML(signal.name)}</span>
                                     </div>
                                     <div class="signal-meta-actions">
                                         <span class="signal-date-text">${FormatUtils.formatDateSimple(signal.call_date || signal.created_date)}</span>

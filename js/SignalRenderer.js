@@ -60,11 +60,12 @@ class SignalRenderer {
         const cardClass = isNew ? 'signal-new' : 'signal-viewed';
         const priorityClass = priority.toLowerCase();
 
-        // Ensure required fields have fallback values
-        const accountName = signal.account_name || 'Unknown Account';
-        const signalName = signal.name || 'Unnamed Signal';
-        const summary = signal.summary || 'No summary available';
-        const rationale = signal.rationale || 'No rationale provided';
+        // Ensure required fields have fallback values and sanitize user content
+        const accountName = SecurityUtils.sanitizeHTML(signal.account_name || 'Unknown Account');
+        const signalName = SecurityUtils.sanitizeHTML(signal.name || 'Unnamed Signal');
+        const summary = SecurityUtils.sanitizeHTML(signal.summary || 'No summary available');
+        const rationale = SecurityUtils.sanitizeHTML(signal.rationale || 'No rationale provided');
+        const category = SecurityUtils.sanitizeHTML(signal.category || 'General');
 
         return `
             <div class="signal-card ${cardClass} ${priorityClass}-priority ${feedbackClass}" data-signal-id="${signal.id}" style="${feedbackStyle}">
@@ -73,7 +74,7 @@ class SignalRenderer {
                         <div class="signal-title">${accountName}</div>
                         <div class="signal-meta">
                             <span><i class="${signal.source_icon || 'fas fa-info-circle'}"></i> ${signalName}</span>
-                            <span class="category-badge">${signal.category || 'General'}</span>
+                            <span class="category-badge">${category}</span>
                             <span class="priority-badge priority-${priorityClass}">${priority}</span>
                             <span>${FormatUtils.formatDate(signal.created_at || signal.created_date)}</span>
                             ${isNew ? '<span class="new-badge">NEW</span>' : ''}
@@ -146,10 +147,10 @@ class SignalRenderer {
                             </div>
                             <div class="comment-content">
                                 <div class="comment-header">
-                                    <span class="comment-author">${comment.author}</span>
+                                    <span class="comment-author">${SecurityUtils.sanitizeHTML(comment.author)}</span>
                                     <span class="comment-time">${FormatUtils.formatCommentTime(comment.timestamp)}</span>
                                 </div>
-                                <div class="comment-text" id="comment-text-${comment.id}">${comment.text}</div>
+                                <div class="comment-text" id="comment-text-${comment.id}">${SecurityUtils.sanitizeHTML(comment.text)}</div>
                                 <div class="comment-actions">
                                     <button class="comment-action-btn" data-action="edit-comment" data-comment-id="${comment.id}" data-signal-id="${signalId}">
                                         <i class="fas fa-edit"></i> Edit
@@ -272,27 +273,34 @@ class SignalRenderer {
     }
 
     static attachEventListeners(container) {
+        // Remove any existing listeners to prevent duplication
+        if (container._signalListenersAttached) {
+            return; // Already attached, no need to re-attach
+        }
+        container._signalListenersAttached = true;
+        
         // Set up intersection observer for auto-viewing signals on scroll
         this.setupScrollBasedViewing(container);
 
-        // Signal card clicks
-        container.querySelectorAll('.signal-card').forEach(card => {
-            card.addEventListener('click', async (e) => {
-                if (!e.target.closest('.linkedin-comments-section') &&
-                    !e.target.closest('.add-comment-form') &&
-                    !e.target.closest('.signal-actions') &&
-                    !e.target.classList.contains('add-comment-btn') &&
-                    !e.target.classList.contains('comment-input-linkedin') &&
-                    !e.target.classList.contains('comment-submit-btn')) {
-                    const signalId = e.currentTarget.getAttribute('data-signal-id');
-                    dispatcher.dispatch(Actions.markSignalAsViewed(signalId));
-                    dispatcher.dispatch(Actions.openSignalDetails(signalId));
-                }
-            });
-        });
-
-        // Action buttons using data attributes
+        // Use event delegation for all clicks on the container
         container.addEventListener('click', (e) => {
+            // Handle signal card clicks (but not on interactive elements)
+            const signalCard = e.target.closest('.signal-card');
+            if (signalCard && 
+                !e.target.closest('.linkedin-comments-section') &&
+                !e.target.closest('.add-comment-form') &&
+                !e.target.closest('.signal-actions') &&
+                !e.target.classList.contains('add-comment-btn') &&
+                !e.target.classList.contains('comment-input-linkedin') &&
+                !e.target.classList.contains('comment-submit-btn') &&
+                !e.target.closest('[data-action]')) {
+                const signalId = signalCard.getAttribute('data-signal-id');
+                dispatcher.dispatch(Actions.markSignalAsViewed(signalId));
+                dispatcher.dispatch(Actions.openSignalDetails(signalId));
+                return;
+            }
+            
+            // Handle action buttons using data attributes
             const target = e.target.closest('[data-action]');
             if (!target) return;
             
@@ -329,21 +337,31 @@ class SignalRenderer {
             }
         });
 
-        // Comment input handling
-        container.querySelectorAll('.comment-input-linkedin').forEach(input => {
-            input.addEventListener('click', (e) => e.stopPropagation());
-            input.addEventListener('focus', (e) => e.stopPropagation());
-            input.addEventListener('keydown', (e) => {
+        // Comment input handling using event delegation
+        container.addEventListener('click', (e) => {
+            if (e.target.classList.contains('comment-input-linkedin')) {
+                e.stopPropagation();
+            }
+        });
+        
+        container.addEventListener('focus', (e) => {
+            if (e.target.classList.contains('comment-input-linkedin')) {
+                e.stopPropagation();
+            }
+        }, true);
+        
+        container.addEventListener('keydown', (e) => {
+            if (e.target.classList.contains('comment-input-linkedin')) {
                 e.stopPropagation();
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    const signalId = input.closest('.signal-card').getAttribute('data-signal-id');
-                    if (input.value.trim()) {
-                        dispatcher.dispatch(Actions.addComment(signalId, input.value.trim()));
-                        input.value = '';
+                    const signalId = e.target.closest('.signal-card').getAttribute('data-signal-id');
+                    if (e.target.value.trim()) {
+                        dispatcher.dispatch(Actions.addComment(signalId, e.target.value.trim()));
+                        e.target.value = '';
                     }
                 }
-            });
+            }
         });
     }
 

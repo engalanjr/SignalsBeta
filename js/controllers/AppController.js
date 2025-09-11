@@ -58,9 +58,13 @@ class AppController {
         navTabs.forEach(tab => {
             const handleTabSwitch = (e) => {
                 e.preventDefault();
-                const tabName = e.target.getAttribute('data-tab');
-                // Use action dispatch instead of direct method call
-                dispatcher.dispatch(Actions.switchTab(tabName));
+                // Use closest to ensure we get the tab element even if clicking on child elements
+                const tabElement = e.target.closest('.nav-tab');
+                const tabName = tabElement?.getAttribute('data-tab');
+                if (tabName) {
+                    // Use action dispatch instead of direct method call
+                    dispatcher.dispatch(Actions.switchTab(tabName));
+                }
             };
 
             tab.addEventListener('click', handleTabSwitch);
