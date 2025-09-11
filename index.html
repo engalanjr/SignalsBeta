@@ -312,16 +312,29 @@
     <script src="js/SignalRenderer.js"></script>
     <script src="js/PortfolioRenderer.js"></script>
     <script src="js/ActionsRenderer.js"></script>
+    
+    <!-- Flux Controllers (must load after renderers and Flux infrastructure) -->
+    <script src="js/controllers/FeedbackController.js"></script>
+    <script src="js/controllers/CommentsController.js"></script>
+    <script src="js/controllers/SignalsController.js"></script>
+    <script src="js/controllers/PortfolioController.js"></script>
+    <script src="js/controllers/AppController.js"></script>
 
-    <!-- Main Application (must load after all dependencies) -->
-    <script src="js/SignalsAI.js"></script>
+    <!-- Main Application (Legacy - replaced by Flux controllers) -->
+    <!-- <script src="js/SignalsAI.js"></script> -->
 
     <!-- Application Initialization -->
     <script>
-        let app;
-        document.addEventListener('DOMContentLoaded', () => {
-            app = new SignalsAI();
-            window.app = app; // Make app globally accessible
+        // Initialize new Flux-based AppController
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 SignalsAI v8.0 Flux architecture initializing...');
+            try {
+                window.appController = new AppController();
+                await window.appController.init();
+                console.log('✅ SignalsAI Flux architecture initialized successfully!');
+            } catch (error) {
+                console.error('❌ Failed to initialize Flux architecture:', error);
+            }
             
             // Set up the create plan button handler
             document.addEventListener('click', async (e) => {
