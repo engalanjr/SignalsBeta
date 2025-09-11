@@ -228,6 +228,21 @@ class PortfolioRenderer {
                         </div>
                     </div>
 
+                    <div class="ai-recommendations-section">
+                        <div class="ai-header">
+                            <i class="fas fa-lightbulb ai-icon"></i>
+                            <h4 class="ai-title">AI Recommendations</h4>
+                        </div>
+
+                        <div class="recommendation-priority">
+                            <span class="${account.aiRecommendation.priority}-badge">${account.aiRecommendation.priority.toUpperCase()}</span>
+                        </div>
+
+                        <div class="recommendations-merged">
+                            ${this.getMergedRecommendationsAndRationale(account)}
+                        </div>
+                    </div>
+
                     <div class="signals-section">
                         <div class="signals-header">
                             <div class="signals-header-left">
@@ -256,21 +271,6 @@ class PortfolioRenderer {
                         <div class="signals-pagination">
                             ${hasMoreSignals ? `<button class="btn btn-secondary show-more-btn" onclick="event.stopPropagation(); window.app.showMoreSignalsForAccount('${account.id}')">Show 3 more</button>` : ''}
                             ${currentPage > 0 ? `<button class="btn btn-outline show-less-btn" onclick="event.stopPropagation(); window.app.showLessSignalsForAccount('${account.id}')">Show Less</button>` : ''}
-                        </div>
-                    </div>
-
-                    <div class="ai-recommendations-section">
-                        <div class="ai-header">
-                            <i class="fas fa-lightbulb ai-icon"></i>
-                            <h4 class="ai-title">AI Recommendations</h4>
-                        </div>
-
-                        <div class="recommendation-priority">
-                            <span class="${account.aiRecommendation.priority}-badge">${account.aiRecommendation.priority.toUpperCase()}</span>
-                        </div>
-
-                        <div class="recommendations-merged">
-                            ${this.getMergedRecommendationsAndRationale(account)}
                         </div>
                     </div>
 
