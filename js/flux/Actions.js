@@ -55,7 +55,13 @@ class Actions {
         SIGNAL_DRAWER_CLOSED: 'SIGNAL_DRAWER_CLOSED',
         
         // Portfolio Filters
-        PORTFOLIO_FILTERED: 'PORTFOLIO_FILTERED'
+        PORTFOLIO_FILTERED: 'PORTFOLIO_FILTERED',
+        
+        // Account Management
+        ACCOUNT_EXPANDED: 'ACCOUNT_EXPANDED',
+        ACCOUNT_COLLAPSED: 'ACCOUNT_COLLAPSED',
+        SHOW_MORE_SIGNALS: 'SHOW_MORE_SIGNALS',
+        SHOW_LESS_SIGNALS: 'SHOW_LESS_SIGNALS'
     };
     
     // Action Creators - Functions that create action objects
@@ -392,6 +398,39 @@ class Actions {
         return {
             type: this.Types.PORTFOLIO_FILTERED,
             payload: { filterType },
+            timestamp: Date.now()
+        };
+    }
+    
+    // Account Management Actions
+    static expandAccount(accountId) {
+        return {
+            type: this.Types.ACCOUNT_EXPANDED,
+            payload: { accountId },
+            timestamp: Date.now()
+        };
+    }
+    
+    static collapseAccount(accountId) {
+        return {
+            type: this.Types.ACCOUNT_COLLAPSED,
+            payload: { accountId },
+            timestamp: Date.now()
+        };
+    }
+    
+    static showMoreSignalsForAccount(accountId) {
+        return {
+            type: this.Types.SHOW_MORE_SIGNALS,
+            payload: { accountId },
+            timestamp: Date.now()
+        };
+    }
+    
+    static showLessSignalsForAccount(accountId) {
+        return {
+            type: this.Types.SHOW_LESS_SIGNALS,
+            payload: { accountId },
             timestamp: Date.now()
         };
     }

@@ -618,7 +618,17 @@ class PortfolioRenderer {
         
         // console.log(`INFO: No valid action-rationale pairs found for account ${account.name} (${account.id}) - account signals may be missing required fields (recommended_action, action_id, signal_rationale).`);
         
-        // DO NOT USE FALLBACK - return empty instead to avoid cross-contamination
+        // Use the AI-generated recommendations from account.aiRecommendation
+        if (account.aiRecommendation && account.aiRecommendation.actions && account.aiRecommendation.actions.length > 0) {
+            return account.aiRecommendation.actions.map(action => `
+                <div class="merged-recommendation-item">
+                    <i class="fas fa-chevron-right recommendation-icon"></i>
+                    <span class="merged-recommendation-text">${SecurityUtils.sanitizeHTML(action)}</span>
+                </div>
+            `).join('');
+        }
+        
+        // Only show "No recommendations" if truly no recommendations exist
         return `
             <div class="merged-recommendation-item">
                 <div class="no-recommendations-message">

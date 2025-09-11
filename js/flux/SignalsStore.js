@@ -154,6 +154,20 @@ class SignalsStore extends Store {
                 this.handlePortfolioFiltered(payload);
                 break;
                 
+            // Account Management
+            case Actions.Types.ACCOUNT_EXPANDED:
+                this.handleAccountExpanded(payload);
+                break;
+            case Actions.Types.ACCOUNT_COLLAPSED:
+                this.handleAccountCollapsed(payload);
+                break;
+            case Actions.Types.SHOW_MORE_SIGNALS:
+                this.handleShowMoreSignals(payload);
+                break;
+            case Actions.Types.SHOW_LESS_SIGNALS:
+                this.handleShowLessSignals(payload);
+                break;
+                
             // Modal/Drawer
             case Actions.Types.MODAL_OPENED:
                 this.handleModalOpened(payload);
@@ -232,6 +246,56 @@ class SignalsStore extends Store {
         const { filterType } = payload;
         // Portfolio filtering logic would go here
         this.emitChange('portfolio-filtered', filterType);
+    }
+    
+    handleAccountExpanded(payload) {
+        const { accountId } = payload;
+        const accounts = this.getState().accounts;
+        const account = accounts.get(accountId);
+        if (account) {
+            account.isExpanded = true;
+            this.setState({ accounts });
+            this.emitChange('account-expanded', accountId);
+        }
+    }
+    
+    handleAccountCollapsed(payload) {
+        const { accountId } = payload;
+        const accounts = this.getState().accounts;
+        const account = accounts.get(accountId);
+        if (account) {
+            account.isExpanded = false;
+            this.setState({ accounts });
+            this.emitChange('account-collapsed', accountId);
+        }
+    }
+    
+    handleShowMoreSignals(payload) {
+        const { accountId } = payload;
+        const accounts = this.getState().accounts;
+        const account = accounts.get(accountId);
+        if (account) {
+            if (!account.signalsPagination) {
+                account.signalsPagination = { currentPage: 0, pageSize: 3 };
+            }
+            account.signalsPagination.currentPage++;
+            this.setState({ accounts });
+            this.emitChange('accounts-updated');
+        }
+    }
+    
+    handleShowLessSignals(payload) {
+        const { accountId } = payload;
+        const accounts = this.getState().accounts;
+        const account = accounts.get(accountId);
+        if (account) {
+            if (!account.signalsPagination) {
+                account.signalsPagination = { currentPage: 0, pageSize: 3 };
+            }
+            account.signalsPagination.currentPage = 0;
+            this.setState({ accounts });
+            this.emitChange('accounts-updated');
+        }
     }
     
     handleDataLoadStarted() {
