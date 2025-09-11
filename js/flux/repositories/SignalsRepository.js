@@ -290,42 +290,46 @@ class SignalsRepository {
     }
     
     /**
-     * Load user interactions from API
+     * Load user interactions from API with proper fallback
      */
     static async loadInteractions() {
         try {
-            console.log('👍 Loading interactions...');
+            console.log('👍 Loading interactions from Domo API...');
             const response = await domo.get('/domo/datastores/v1/collections/SignalAI.Interactions/documents');
             
             if (response && response.length > 0) {
-                console.log(`✅ Loaded ${response.length} interactions`);
+                console.log(`✅ Loaded ${response.length} interactions from Domo API`);
                 return response;
+            } else {
+                console.warn('⚠️ No interactions from API, using fallback data');
+                return this.getDefaultInteractions();
             }
-            
-            return [];
         } catch (error) {
-            console.error('Failed to load interactions:', error);
-            return [];
+            console.error('❌ Failed to load interactions from API:', error);
+            console.log('📁 Loading fallback interactions...');
+            return this.getDefaultInteractions();
         }
     }
     
     /**
-     * Load comments from API
+     * Load comments from API with proper fallback
      */
     static async loadComments() {
         try {
-            console.log('💬 Loading comments...');
+            console.log('💬 Loading comments from Domo API...');
             const response = await domo.get('/domo/datastores/v1/collections/SignalAI.Comments/documents');
             
             if (response && response.length > 0) {
-                console.log(`✅ Loaded ${response.length} comments`);
+                console.log(`✅ Loaded ${response.length} comments from Domo API`);
                 return response;
+            } else {
+                console.warn('⚠️ No comments from API, using fallback data');
+                return this.getDefaultComments();
             }
-            
-            return [];
         } catch (error) {
-            console.error('Failed to load comments:', error);
-            return [];
+            console.error('❌ Failed to load comments from API:', error);
+            console.log('📁 Loading fallback comments...');
+            return this.getDefaultComments();
         }
     }
     
@@ -379,36 +383,28 @@ class SignalsRepository {
     }
     
     /**
-     * Load user info from API
+     * Load user info from API with proper fallback
      */
     static async loadUserInfo() {
         try {
-            console.log('👤 Loading user info...');
+            console.log('👤 Loading user info from Domo API...');
             const response = await domo.get('/domo/environment/v1/');
             
             if (response && response.userId) {
-                console.log('✅ Loaded user info:', response.userName);
+                console.log('✅ Loaded user info from Domo API:', response.userName);
                 return {
                     userId: response.userId,
                     userName: response.userName || 'Current User',
                     email: response.userEmail || ''
                 };
+            } else {
+                console.warn('⚠️ No user info from API, using fallback data');
+                return this.getDefaultUserInfo();
             }
-            
-            // Return default user info
-            return {
-                userId: 'user-1',
-                userName: 'Current User',
-                email: ''
-            };
         } catch (error) {
-            console.error('Failed to load user info:', error);
-            // Return default user info
-            return {
-                userId: 'user-1',
-                userName: 'Current User',
-                email: ''
-            };
+            console.error('❌ Failed to load user info from API:', error);
+            console.log('📁 Loading fallback user info...');
+            return this.getDefaultUserInfo();
         }
     }
     
@@ -734,6 +730,38 @@ class SignalsRepository {
                 error: error.message || 'Failed to delete action plan'
             };
         }
+    }
+    
+    /**
+     * Get default interactions for fallback
+     */
+    static getDefaultInteractions() {
+        console.log('📦 Using default interactions (empty)');
+        // Return empty array for now - in production, you could load from a JSON file
+        // or return some sample interactions for demo purposes
+        return [];
+    }
+    
+    /**
+     * Get default comments for fallback
+     */
+    static getDefaultComments() {
+        console.log('📦 Using default comments (empty)');
+        // Return empty array for now - in production, you could load from a JSON file
+        // or return some sample comments for demo purposes
+        return [];
+    }
+    
+    /**
+     * Get default user info for fallback
+     */
+    static getDefaultUserInfo() {
+        console.log('📦 Using default user info');
+        return {
+            userId: 'user-1',
+            userName: 'Current User',
+            email: 'user@example.com'
+        };
     }
 }
 
