@@ -1,15 +1,15 @@
-// Portfolio Renderer - Handle portfolio tab rendering
+// Portfolio Renderer - Pure view for rendering portfolio tab
 class PortfolioRenderer {
 
-    static renderMyPortfolio(app) {
+    static renderMyPortfolio(accounts, actionPlans, comments) {
         const container = document.getElementById('accountsList');
         if (!container) return;
 
         // Update dashboard card values
-        this.updateDashboardCards(app);
+        this.updateDashboardCards(accounts, actionPlans);
 
         // Get all accounts
-        const allAccounts = Array.from(app.accounts.values());
+        const allAccounts = Array.from(accounts.values());
 
         // Filter accounts with recent high priority signals
         const accountsWithHighPrioritySignals = allAccounts
@@ -40,7 +40,7 @@ class PortfolioRenderer {
                 <div class="portfolio-section">
                     <h3 class="portfolio-section-header">Accounts with a recent high Priority Signal</h3>
                     <div class="portfolio-section-content">
-                        ${accountsWithHighPrioritySignals.map(account => this.renderAccountCard(account, app)).join('')}
+                        ${accountsWithHighPrioritySignals.map(account => this.renderAccountCard(account, actionPlans, comments)).join('')}
                     </div>
                 </div>
             `;
@@ -51,7 +51,7 @@ class PortfolioRenderer {
             <div class="portfolio-section">
                 <h3 class="portfolio-section-header">All Accounts</h3>
                 <div class="portfolio-section-content">
-                    ${sortedAllAccounts.map(account => this.renderAccountCard(account, app)).join('')}
+                    ${sortedAllAccounts.map(account => this.renderAccountCard(account, actionPlans, comments)).join('')}
                 </div>
             </div>
         `;
@@ -59,20 +59,20 @@ class PortfolioRenderer {
         container.innerHTML = html;
     }
 
-    static updateDashboardCards(app) {
-        const allSignals = Array.from(app.accounts.values()).flatMap(account => account.signals);
+    static updateDashboardCards(accounts, actionPlans) {
+        const allSignals = Array.from(accounts.values()).flatMap(account => account.signals);
         const highPrioritySignals = allSignals.filter(s => s.priority === 'High');
-        const accountsWithSignals = Array.from(app.accounts.values()).filter(account => account.signals.length > 0);
+        const accountsWithSignals = Array.from(accounts.values()).filter(account => account.signals.length > 0);
 
         // Update Requires Attention count (accounts without action plans)
         // Create a Set of account IDs that have action plans for efficient lookup
         const planAccountIds = new Set(
-            Array.from(app.actionPlans?.values() || [])
+            Array.from(actionPlans?.values() || [])
                 .map(plan => plan.accountId)
                 .filter(accountId => accountId) // Remove any undefined/null accountIds
         );
         
-        const accountsWithoutPlans = Array.from(app.accounts.values()).filter(account => 
+        const accountsWithoutPlans = Array.from(accounts.values()).filter(account => 
             !planAccountIds.has(account.id)
         );
         const requiresAttentionCount = accountsWithoutPlans.length;
@@ -94,9 +94,39 @@ class PortfolioRenderer {
         }
     }
 
-    static updateSingleAccount(accountId, app) {
+    static renderAccountCommentsSection(accountId, comments) {
+        const accountComments = comments.get ? comments.get(accountId) || [] : comments[accountId] || [];
+        
+        return `
+            <div class="account-comments-section">
+                <div class="comments-header">
+                    <h4 class="comments-title">Account Comments</h4>
+                    <span class="comments-count">${accountComments.length} comment${accountComments.length !== 1 ? 's' : ''}</span>
+                </div>
+                ${accountComments.length > 0 ? `
+                <div class="comments-list">
+                    ${accountComments.map(comment => `
+                        <div class="account-comment">
+                            <div class="comment-header">
+                                <span class="comment-author">${comment.author}</span>
+                                <span class="comment-time">${FormatUtils.formatCommentTime(comment.timestamp)}</span>
+                            </div>
+                            <div class="comment-text">${comment.text}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+                <div class="add-comment-section">
+                    <input type="text" placeholder="Add a comment about this account..." class="account-comment-input" id="accountCommentInput-${accountId}">
+                    <button class="btn btn-primary" data-action="add-account-comment" data-account-id="${accountId}">Add Comment</button>
+                </div>
+            </div>
+        `;
+    }
+
+    static updateSingleAccount(accountId, accounts, actionPlans, comments) {
         // Find the account
-        const account = app.accounts.get(accountId);
+        const account = accounts.get(accountId);
         if (!account) return;
 
         // Find the existing account card in the DOM
@@ -104,7 +134,7 @@ class PortfolioRenderer {
         if (!container) return;
 
         // Generate the updated account card HTML
-        const updatedAccountHTML = this.renderAccountCard(account, app);
+        const updatedAccountHTML = this.renderAccountCard(account, actionPlans, comments);
 
         // Create a temporary container to parse the HTML
         const tempDiv = document.createElement('div');
@@ -137,7 +167,7 @@ class PortfolioRenderer {
         }
     }
 
-    static renderAccountCard(account, app) {
+    static renderAccountCard(account, actionPlans, comments) {
         const highPriorityCount = account.signals.filter(s => s.priority === 'High').length;
         const totalSignals = account.signals.length;
 
@@ -180,7 +210,7 @@ class PortfolioRenderer {
 
         return `
             <div class="portfolio-account-card">
-                <div class="account-header-row" onclick="event.target.closest('.create-plan-btn') ? null : window.app.toggleAccountSignals('${account.id}')">
+                <div class="account-header-row" data-action="toggle-account-signals" data-account-id="${account.id}">
                     <div class="account-title-section">
                         <i class="fas fa-chevron-right account-chevron" id="chevron-${account.id}"></i>
                         <div class="account-warning-icon">
@@ -193,7 +223,7 @@ class PortfolioRenderer {
                     </div>
                     <div class="account-actions-section">
                         ${account.health === 'critical' ? '<span class="critical-badge">critical</span>' : ''}
-                        <button class="btn btn-secondary view-details-btn" onclick="event.stopPropagation(); window.app.toggleAccountSignals('${account.id}')">
+                        <button class="btn btn-secondary view-details-btn" data-action="toggle-account-signals" data-account-id="${account.id}" onclick="event.stopPropagation();">
                             View Details
                         </button>
                     </div>
@@ -210,7 +240,7 @@ class PortfolioRenderer {
                             <div class="financial-content">
                                 <div class="financial-metric">
                                     <span class="financial-label">Renewal Baseline$</span>
-                                    <span class="financial-value">${account.bks_renewal_baseline_usd > 0 ? app.formatCurrency(account.bks_renewal_baseline_usd) : '$0'}</span>
+                                    <span class="financial-value">${account.bks_renewal_baseline_usd > 0 ? FormatUtils.formatCurrency(account.bks_renewal_baseline_usd) : '$0'}</span>
                                 </div>
                                 <div class="financial-metric">
                                     <span class="financial-label">GPA</span>
@@ -261,20 +291,20 @@ class PortfolioRenderer {
                                         <span class="signal-name-text">${signal.name}</span>
                                     </div>
                                     <div class="signal-meta-actions">
-                                        <span class="signal-date-text">${app.formatDateSimple(signal.call_date || signal.created_date)}</span>
-                                        <a href="#" class="view-link" onclick="event.stopPropagation(); window.app.openSignalDetails('${signal.id}')">View</a>
+                                        <span class="signal-date-text">${FormatUtils.formatDateSimple(signal.call_date || signal.created_date)}</span>
+                                        <a href="#" class="view-link" data-action="view-signal" data-signal-id="${signal.id}" onclick="event.stopPropagation();">View</a>
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
                         
                         <div class="signals-pagination">
-                            ${hasMoreSignals ? `<button class="btn btn-secondary show-more-btn" onclick="event.stopPropagation(); window.app.showMoreSignalsForAccount('${account.id}')">Show 3 more</button>` : ''}
-                            ${currentPage > 0 ? `<button class="btn btn-outline show-less-btn" onclick="event.stopPropagation(); window.app.showLessSignalsForAccount('${account.id}')">Show Less</button>` : ''}
+                            ${hasMoreSignals ? `<button class="btn btn-secondary show-more-btn" data-action="show-more-signals" data-account-id="${account.id}" onclick="event.stopPropagation();">Show 3 more</button>` : ''}
+                            ${currentPage > 0 ? `<button class="btn btn-outline show-less-btn" data-action="show-less-signals" data-account-id="${account.id}" onclick="event.stopPropagation();">Show Less</button>` : ''}
                         </div>
                     </div>
 
-                    ${CommentService.renderAccountCommentsSection(account.id, app)}
+                    ${this.renderAccountCommentsSection(account.id, comments)}
 
                 </div>
             </div>

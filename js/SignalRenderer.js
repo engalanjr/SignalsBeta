@@ -1,15 +1,12 @@
-// Signal Renderer - Handle signal feed rendering
+// Signal Renderer - Pure view for rendering signal feed
 class SignalRenderer {
 
-    static renderSignalFeed(app) {
+    static renderSignalFeed(signals, viewState, comments, interactions, actionPlans) {
         const container = document.getElementById('signalsList');
         if (!container) return;
 
-        if (app.filteredData.length === 0 && app.data.length > 0) {
-            app.applyFilters();
-        }
-
-        const sortedSignals = [...app.filteredData].sort((a, b) => {
+        // Sort signals by priority and date
+        const sortedSignals = [...signals].sort((a, b) => {
             const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
             const priorityA = priorityOrder[a.priority] || 0;
             const priorityB = priorityOrder[b.priority] || 0;
@@ -23,9 +20,9 @@ class SignalRenderer {
             return dateB - dateA;
         });
 
-        // Filter signals based on any user interaction (not just viewed)
-        const newSignals = sortedSignals.filter(signal => !this.hasUserInteraction(signal, app));
-        const viewedSignals = sortedSignals.filter(signal => this.hasUserInteraction(signal, app));
+        // Filter signals based on any user interaction
+        const newSignals = sortedSignals.filter(signal => !this.hasUserInteraction(signal, viewState, interactions, actionPlans));
+        const viewedSignals = sortedSignals.filter(signal => this.hasUserInteraction(signal, viewState, interactions, actionPlans));
 
         let html = '';
 
@@ -33,7 +30,7 @@ class SignalRenderer {
         html += this.renderNewSignalsHeader(newSignals.length);
 
         newSignals.forEach(signal => {
-            html += this.renderSignalCard(signal, app, true);
+            html += this.renderSignalCard(signal, comments, true);
         });
 
         if (newSignals.length > 0 && viewedSignals.length > 0) {
@@ -41,14 +38,14 @@ class SignalRenderer {
         }
 
         viewedSignals.forEach(signal => {
-            html += this.renderSignalCard(signal, app, false);
+            html += this.renderSignalCard(signal, comments, false);
         });
 
         container.innerHTML = html;
-        this.attachEventListeners(container, app);
+        this.attachEventListeners(container);
     }
 
-    static renderSignalCard(signal, app, isNew) {
+    static renderSignalCard(signal, comments, isNew) {
         // Safety check for signal data
         if (!signal || !signal.id) {
             console.error('Invalid signal data:', signal);
@@ -78,7 +75,7 @@ class SignalRenderer {
                             <span><i class="${signal.source_icon || 'fas fa-info-circle'}"></i> ${signalName}</span>
                             <span class="category-badge">${signal.category || 'General'}</span>
                             <span class="priority-badge priority-${priorityClass}">${priority}</span>
-                            <span>${app.formatDate(signal.created_at || signal.created_date)}</span>
+                            <span>${FormatUtils.formatDate(signal.created_at || signal.created_date)}</span>
                             ${isNew ? '<span class="new-badge">NEW</span>' : ''}
                         </div>
                     </div>
@@ -99,7 +96,7 @@ class SignalRenderer {
                         ${notAccurateButtonHtml}
                     </div>
                 </div>
-                ${this.renderInlineCommentsSection(signal.id, app)}
+                ${this.renderInlineCommentsSection(signal.id, comments)}
             </div>
         `;
     }
@@ -131,34 +128,33 @@ class SignalRenderer {
         `;
     }
 
-    static renderInlineCommentsSection(signalId, app) {
-        const comments = app.signalComments.get(signalId) || [];
-        // console.log(`Rendering comments for signal ${signalId}:`, comments.length, 'comments');
+    static renderInlineCommentsSection(signalId, comments) {
+        const signalComments = comments.get(signalId) || [];
         
         // Only show comments section if there are comments or to allow adding new ones
         return `
             <div class="linkedin-comments-section">
                 <div class="comments-header">
-                    <span class="comments-count">${comments.length} comment${comments.length !== 1 ? 's' : ''}</span>
+                    <span class="comments-count">${signalComments.length} comment${signalComments.length !== 1 ? 's' : ''}</span>
                 </div>
-                ${comments.length > 0 ? `
+                ${signalComments.length > 0 ? `
                 <div class="comments-list-linkedin">
-                    ${comments.map(comment => `
+                    ${signalComments.map(comment => `
                         <div class="comment-linkedin">
                             <div class="comment-avatar">
-                                <span class="avatar-initials">${app.getInitials(comment.author)}</span>
+                                <span class="avatar-initials">${FormatUtils.getInitials(comment.author)}</span>
                             </div>
                             <div class="comment-content">
                                 <div class="comment-header">
                                     <span class="comment-author">${comment.author}</span>
-                                    <span class="comment-time">${app.formatCommentTime(comment.timestamp)}</span>
+                                    <span class="comment-time">${FormatUtils.formatCommentTime(comment.timestamp)}</span>
                                 </div>
                                 <div class="comment-text" id="comment-text-${comment.id}">${comment.text}</div>
                                 <div class="comment-actions">
-                                    <button class="comment-action-btn" onclick="app.editComment('${comment.id}', '${signalId}')">
+                                    <button class="comment-action-btn" data-action="edit-comment" data-comment-id="${comment.id}" data-signal-id="${signalId}">
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
-                                    <button class="comment-action-btn delete-btn" onclick="app.deleteComment('${comment.id}', '${signalId}')">
+                                    <button class="comment-action-btn delete-btn" data-action="delete-comment" data-comment-id="${comment.id}" data-signal-id="${signalId}">
                                         <i class="fas fa-trash"></i> Delete
                                     </button>
                                 </div>
@@ -173,7 +169,7 @@ class SignalRenderer {
                     </div>
                     <div class="comment-input-container">
                         <input type="text" id="inlineCommentText-${signalId}" placeholder="Write a comment..." class="comment-input-linkedin">
-                        <button class="comment-submit-btn">Comment</button>
+                        <button class="comment-submit-btn" data-action="add-comment" data-signal-id="${signalId}">Comment</button>
                     </div>
                 </div>
             </div>
@@ -251,10 +247,10 @@ class SignalRenderer {
         }
     }
 
-    static hasUserInteraction(signal, app) {
+    static hasUserInteraction(signal, viewState, interactions, actionPlans) {
         // Check if user has any interaction with this signal:
         // 1. Viewed the signal
-        if (app.viewedSignals.has(signal.id)) {
+        if (viewState.viewedSignals && viewState.viewedSignals.has(signal.id)) {
             return true;
         }
         
@@ -264,29 +260,20 @@ class SignalRenderer {
         }
         
         // 3. Created an action plan for this account
-        let hasActionPlan = false;
-        if (app.actionPlans instanceof Map) {
-            // Check if any plan exists for this account (now that keys are plan IDs)
-            hasActionPlan = Array.from(app.actionPlans.values()).some(plan => plan.accountId === signal.account_id);
-        } else if (Array.isArray(app.actionPlans)) {
-            hasActionPlan = app.actionPlans.some(plan => plan.accountId === signal.account_id);
+        if (actionPlans instanceof Map) {
+            // Check if any plan exists for this account
+            const hasActionPlan = Array.from(actionPlans.values()).some(plan => plan.accountId === signal.account_id);
+            if (hasActionPlan) {
+                return true;
+            }
         }
-        if (!hasActionPlan && window.DataService && window.DataService.actionPlansByAccount) {
-            hasActionPlan = window.DataService.actionPlansByAccount.has(signal.account_id);
-        }
-        if (hasActionPlan) {
-            return true;
-        }
-        
-        // 4. Removed from feed (this would be handled by removing from data entirely, 
-        //    but we could also check a removedSignals set if implemented)
         
         return false;
     }
 
-    static attachEventListeners(container, app) {
+    static attachEventListeners(container) {
         // Set up intersection observer for auto-viewing signals on scroll
-        this.setupScrollBasedViewing(container, app);
+        this.setupScrollBasedViewing(container);
 
         // Signal card clicks
         container.querySelectorAll('.signal-card').forEach(card => {
@@ -298,71 +285,69 @@ class SignalRenderer {
                     !e.target.classList.contains('comment-input-linkedin') &&
                     !e.target.classList.contains('comment-submit-btn')) {
                     const signalId = e.currentTarget.getAttribute('data-signal-id');
-                    await app.markSignalAsViewed(signalId);
-                    SignalDetailsService.openSignalDetails(signalId, app);
+                    dispatcher.dispatch(Actions.markSignalAsViewed(signalId));
+                    dispatcher.dispatch(Actions.openSignalDetails(signalId));
                 }
             });
         });
 
-        // Comment submission
-        container.querySelectorAll('.comment-submit-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                const signalId = btn.closest('.signal-card').getAttribute('data-signal-id');
-                await CommentService.addComment(signalId, app);
-            });
+        // Action buttons using data attributes
+        container.addEventListener('click', (e) => {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+            
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const action = target.getAttribute('data-action');
+            const signalId = target.getAttribute('data-signal-id');
+            const commentId = target.getAttribute('data-comment-id');
+            
+            switch (action) {
+                case 'like':
+                    dispatcher.dispatch(Actions.submitFeedback(signalId, 'like'));
+                    break;
+                case 'not-accurate':
+                    dispatcher.dispatch(Actions.submitFeedback(signalId, 'not-accurate'));
+                    break;
+                case 'remove-signal':
+                    dispatcher.dispatch(Actions.removeSignalFromFeed(signalId));
+                    break;
+                case 'add-comment':
+                    const inputElement = document.getElementById(`inlineCommentText-${signalId}`);
+                    if (inputElement && inputElement.value.trim()) {
+                        dispatcher.dispatch(Actions.addComment(signalId, inputElement.value.trim()));
+                        inputElement.value = '';
+                    }
+                    break;
+                case 'edit-comment':
+                    dispatcher.dispatch(Actions.editComment(commentId, signalId));
+                    break;
+                case 'delete-comment':
+                    dispatcher.dispatch(Actions.deleteComment(commentId, signalId));
+                    break;
+            }
         });
 
         // Comment input handling
         container.querySelectorAll('.comment-input-linkedin').forEach(input => {
             input.addEventListener('click', (e) => e.stopPropagation());
             input.addEventListener('focus', (e) => e.stopPropagation());
-            input.addEventListener('keydown', async (e) => {
+            input.addEventListener('keydown', (e) => {
                 e.stopPropagation();
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     const signalId = input.closest('.signal-card').getAttribute('data-signal-id');
-                    await CommentService.addComment(signalId, app);
+                    if (input.value.trim()) {
+                        dispatcher.dispatch(Actions.addComment(signalId, input.value.trim()));
+                        input.value = '';
+                    }
                 }
-            });
-        });
-
-        // Action buttons
-        container.querySelectorAll('[data-action="like"]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const signalId = btn.getAttribute('data-signal-id');
-                SignalFeedbackService.acknowledgeSignal(signalId, 'like', app);
-            });
-        });
-
-        container.querySelectorAll('[data-action="not-accurate"]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const signalId = btn.getAttribute('data-signal-id');
-                SignalFeedbackService.acknowledgeSignal(signalId, 'not-accurate', app);
-            });
-        });
-
-        container.querySelectorAll('[data-action="take-action"]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const signalId = btn.getAttribute('data-signal-id');
-                ActionPlanService.createPlan(signalId, app);
-            });
-        });
-
-        container.querySelectorAll('[data-action="remove-signal"]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const signalId = btn.getAttribute('data-signal-id');
-                SignalManagementService.removeSignalFromFeed(signalId, app);
             });
         });
     }
 
-    static setupScrollBasedViewing(container, app) {
+    static setupScrollBasedViewing(container) {
         // Create intersection observer to detect when signals come into view
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -375,8 +360,8 @@ class SignalRenderer {
                         // Add a small delay to ensure the user actually scrolled through it
                         setTimeout(() => {
                             if (entry.isIntersecting) { // Check if still in view after delay
-                                // Mark as viewed but don't refresh immediately - let it stay visible
-                                app.markSignalAsViewed(signalId);
+                                // Mark as viewed through Flux action
+                                dispatcher.dispatch(Actions.markSignalAsViewed(signalId));
                             }
                         }, 1500); // 1.5 second delay
                     }
@@ -394,10 +379,10 @@ class SignalRenderer {
             observer.observe(card);
         });
 
-        // Store the observer on the app instance so we can disconnect it later
-        if (app.scrollObserver) {
-            app.scrollObserver.disconnect();
+        // Store the observer globally so we can disconnect it later
+        if (window.signalScrollObserver) {
+            window.signalScrollObserver.disconnect();
         }
-        app.scrollObserver = observer;
+        window.signalScrollObserver = observer;
     }
 }
