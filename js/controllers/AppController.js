@@ -10,7 +10,8 @@ class AppController {
 
     async init() {
         try {
-            this.showLoading();
+            // Subscribe to store changes FIRST so we can respond to loading events
+            this.subscribeToStore();
             
             // Initialize Flux store with data
             console.log('📡 Loading initial data through Flux actions...');
@@ -26,9 +27,6 @@ class AppController {
             this.setupTabNavigation();
             this.setupEventListeners();
             
-            // Subscribe to store changes for app-level updates
-            this.subscribeToStore();
-            
             // Render initial tab
             this.renderCurrentTab();
             
@@ -37,9 +35,8 @@ class AppController {
             
         } catch (error) {
             console.error('❌ Failed to initialize AppController:', error);
-            this.showErrorMessage('Failed to load application. Please refresh the page.');
-        } finally {
             this.hideLoading();
+            this.showErrorMessage('Failed to load application. Please refresh the page.');
         }
     }
     
@@ -157,13 +154,22 @@ class AppController {
         });
         
         // Subscribe to data loading states
-        signalsStore.subscribe('data-load', (eventType) => {
-            if (eventType === 'data-load-succeeded') {
-                this.updateSummaryStats();
-                this.renderCurrentTab();
-            } else if (eventType === 'data-load-failed') {
-                this.showErrorMessage('Failed to load data. Please refresh the page.');
-            }
+        signalsStore.subscribe('data:loaded', () => {
+            console.log('📊 Data loaded successfully, hiding loading spinner');
+            this.hideLoading();
+            this.updateSummaryStats();
+            this.renderCurrentTab();
+        });
+        
+        signalsStore.subscribe('data:load_failed', () => {
+            console.log('❌ Data load failed, hiding loading spinner');
+            this.hideLoading();
+            this.showErrorMessage('Failed to load data. Please refresh the page.');
+        });
+        
+        signalsStore.subscribe('loading:started', () => {
+            console.log('⏳ Loading started, showing spinner');
+            this.showLoading();
         });
         
         // Subscribe to tab changes to update DOM
