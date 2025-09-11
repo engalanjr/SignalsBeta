@@ -261,12 +261,12 @@ class AppController {
     }
     
     showLoading() {
-        const loader = document.getElementById('loading');
+        const loader = document.getElementById('loadingOverlay');
         if (loader) loader.style.display = 'flex';
     }
     
     hideLoading() {
-        const loader = document.getElementById('loading');
+        const loader = document.getElementById('loadingOverlay');
         if (loader) loader.style.display = 'none';
     }
     
