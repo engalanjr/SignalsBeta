@@ -22,8 +22,9 @@ class AppController {
             // Initialize focused controllers
             this.initializeControllers();
             
-            // Set up tab navigation
+            // Set up tab navigation and event listeners
             this.setupTabNavigation();
+            this.setupEventListeners();
             
             // Subscribe to store changes for app-level updates
             this.subscribeToStore();
@@ -58,7 +59,8 @@ class AppController {
             const handleTabSwitch = (e) => {
                 e.preventDefault();
                 const tabName = e.target.getAttribute('data-tab');
-                this.switchTab(tabName);
+                // Use action dispatch instead of direct method call
+                dispatcher.dispatch(Actions.switchTab(tabName));
             };
 
             tab.addEventListener('click', handleTabSwitch);
@@ -66,27 +68,10 @@ class AppController {
         });
     }
     
-    subscribeToStore() {
-        // Subscribe to store changes for app-level updates
-        signalsStore.subscribe('app-controller', () => {
-            this.updateSummaryStats();
-        });
-        
-        // Subscribe to data loading states
-        signalsStore.subscribe('data-load', (eventType) => {
-            if (eventType === 'data-load-succeeded') {
-                this.updateSummaryStats();
-                this.renderCurrentTab();
-            } else if (eventType === 'data-load-failed') {
-                this.showErrorMessage('Failed to load data. Please refresh the page.');
-            }
-        });
-    }
-    
-    switchTab(tabName) {
+    handleTabChanged(tabName) {
         if (this.currentTab === tabName) return;
         
-        console.log(`🔄 Switching from ${this.currentTab} to ${tabName}`);
+        console.log(`🔄 Handling tab change from ${this.currentTab} to ${tabName}`);
         
         // Update active tab in UI
         document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -104,10 +89,86 @@ class AppController {
         
         this.currentTab = tabName;
         this.renderCurrentTab();
-        
-        // Dispatch action to track tab switch
-        dispatcher.dispatch(Actions.tabSwitched(tabName));
     }
+    
+    setupEventListeners() {
+        // Drawer close events
+        const closePlanDrawer = document.getElementById('closePlanDrawer');
+        if (closePlanDrawer) {
+            closePlanDrawer.addEventListener('click', () => {
+                dispatcher.dispatch(Actions.closePlanDrawer());
+            });
+        }
+        
+        const closeSignalDrawer = document.getElementById('closeSignalDrawer');
+        if (closeSignalDrawer) {
+            closeSignalDrawer.addEventListener('click', () => {
+                dispatcher.dispatch(Actions.closeSignalDrawer());
+            });
+        }
+        
+        const createPlan = document.getElementById('createPlan');
+        if (createPlan) {
+            createPlan.addEventListener('click', () => {
+                dispatcher.dispatch(Actions.createActionPlan());
+            });
+        }
+        
+        const cancelPlan = document.getElementById('cancelPlan');
+        if (cancelPlan) {
+            cancelPlan.addEventListener('click', () => {
+                dispatcher.dispatch(Actions.closePlanDrawer());
+            });
+        }
+        
+        // Drawer backdrop and close button handlers
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('drawer-close') || e.target.id === 'closePlanDrawer') {
+                dispatcher.dispatch(Actions.closePlanDrawer());
+            }
+            if (e.target.classList.contains('drawer-close') || e.target.id === 'closeSignalDrawer') {
+                dispatcher.dispatch(Actions.closeSignalDrawer());
+            }
+            if (e.target.id === 'createPlanDrawerBackdrop') {
+                dispatcher.dispatch(Actions.closePlanDrawer());
+            }
+        });
+        
+        // Confidence slider - optional element
+        const confidenceSlider = document.getElementById('signalConfidence');
+        if (confidenceSlider) {
+            confidenceSlider.addEventListener('input', (e) => {
+                const confidenceDisplay = document.querySelector('.confidence-display');
+                if (confidenceDisplay) {
+                    confidenceDisplay.textContent = e.target.value + '%';
+                }
+            });
+        }
+    }
+    
+    subscribeToStore() {
+        // Subscribe to store changes for app-level updates
+        signalsStore.subscribe('app-controller', () => {
+            this.updateSummaryStats();
+        });
+        
+        // Subscribe to data loading states
+        signalsStore.subscribe('data-load', (eventType) => {
+            if (eventType === 'data-load-succeeded') {
+                this.updateSummaryStats();
+                this.renderCurrentTab();
+            } else if (eventType === 'data-load-failed') {
+                this.showErrorMessage('Failed to load data. Please refresh the page.');
+            }
+        });
+        
+        // Subscribe to tab changes to update DOM
+        signalsStore.subscribe('tab:changed', (tabName) => {
+            this.handleTabChanged(tabName);
+        });
+    }
+    
+    // switchTab method removed - now using handleTabChanged via store subscription
     
     renderCurrentTab() {
         const state = signalsStore.getState();

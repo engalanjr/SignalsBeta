@@ -37,6 +37,25 @@ class SignalsController {
                 }
             });
         }
+        
+        // Filter events for signal feed
+        const categoryFilter = document.getElementById('categoryFilter');
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', () => {
+                const priority = document.getElementById('priorityFilter')?.value || 'all';
+                const category = categoryFilter.value;
+                dispatcher.dispatch(Actions.applyFilters({ priority, category }));
+            });
+        }
+        
+        const priorityFilter = document.getElementById('priorityFilter');
+        if (priorityFilter) {
+            priorityFilter.addEventListener('change', () => {
+                const category = document.getElementById('categoryFilter')?.value || 'all';
+                const priority = priorityFilter.value;
+                dispatcher.dispatch(Actions.applyFilters({ priority, category }));
+            });
+        }
     }
     
     isSignalAction(action) {

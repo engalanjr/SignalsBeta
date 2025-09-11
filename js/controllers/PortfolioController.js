@@ -37,6 +37,20 @@ class PortfolioController {
                 }
             });
         }
+        
+        // Portfolio filter buttons
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Update active state
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                // Dispatch filter action
+                const filterType = e.target.getAttribute('data-filter');
+                dispatcher.dispatch(Actions.applyPortfolioFilter(filterType));
+            });
+        });
     }
     
     isPortfolioAction(action) {

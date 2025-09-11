@@ -48,6 +48,9 @@ class SignalsStore extends Store {
                 break;
                 
             // Data Loading
+            case Actions.Types.DATA_LOAD_REQUESTED:
+                this.handleDataLoadRequested();
+                break;
             case Actions.Types.DATA_LOAD_STARTED:
                 this.handleDataLoadStarted();
                 break;
@@ -67,6 +70,12 @@ class SignalsStore extends Store {
                 break;
             case Actions.Types.SIGNAL_SELECTED:
                 this.handleSignalSelected(payload);
+                break;
+            case Actions.Types.SIGNAL_REMOVED:
+                this.handleSignalRemoved(payload);
+                break;
+            case Actions.Types.SIGNAL_DETAILS_OPENED:
+                this.handleSignalDetailsOpened(payload);
                 break;
                 
             // Feedback (Optimistic Updates)
@@ -121,6 +130,15 @@ class SignalsStore extends Store {
             case Actions.Types.MESSAGE_HIDDEN:
                 this.handleMessageHidden();
                 break;
+            case Actions.Types.PLAN_DRAWER_CLOSED:
+                this.handlePlanDrawerClosed();
+                break;
+            case Actions.Types.SIGNAL_DRAWER_CLOSED:
+                this.handleSignalDrawerClosed();
+                break;
+            case Actions.Types.PORTFOLIO_FILTERED:
+                this.handlePortfolioFiltered(payload);
+                break;
                 
             // Modal/Drawer
             case Actions.Types.MODAL_OPENED:
@@ -153,6 +171,50 @@ class SignalsStore extends Store {
             currentTab: payload.tabName
         });
         this.emitChange('tab:changed', payload.tabName);
+    }
+    
+    handleDataLoadRequested() {
+        this.setState({ loading: true });
+        this.emitChange('data-load-requested');
+    }
+    
+    handleSignalRemoved(payload) {
+        const { signalId } = payload;
+        const currentSignals = this.getState().signals;
+        const updatedSignals = currentSignals.filter(signal => signal.id !== signalId);
+        
+        this.setState({ signals: updatedSignals });
+        this.emitChange('signal-removed', signalId);
+    }
+    
+    handleSignalDetailsOpened(payload) {
+        const { signalId } = payload;
+        this.setState({ 
+            selectedSignal: signalId,
+            drawer: { isOpen: true, type: 'signal-details', data: { signalId } }
+        });
+        this.emitChange('signal-details-opened', signalId);
+    }
+    
+    handlePlanDrawerClosed() {
+        this.setState({ 
+            drawer: { isOpen: false, type: null, data: null }
+        });
+        this.emitChange('plan-drawer-closed');
+    }
+    
+    handleSignalDrawerClosed() {
+        this.setState({ 
+            drawer: { isOpen: false, type: null, data: null },
+            selectedSignal: null
+        });
+        this.emitChange('signal-drawer-closed');
+    }
+    
+    handlePortfolioFiltered(payload) {
+        const { filterType } = payload;
+        // Portfolio filtering logic would go here
+        this.emitChange('portfolio-filtered', filterType);
     }
     
     handleDataLoadStarted() {

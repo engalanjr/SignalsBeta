@@ -8,6 +8,7 @@ class Actions {
         TAB_CHANGED: 'TAB_CHANGED',
         
         // Data Loading
+        DATA_LOAD_REQUESTED: 'DATA_LOAD_REQUESTED',
         DATA_LOAD_STARTED: 'DATA_LOAD_STARTED',
         DATA_LOAD_SUCCESS: 'DATA_LOAD_SUCCESS',
         DATA_LOAD_FAILED: 'DATA_LOAD_FAILED',
@@ -16,6 +17,8 @@ class Actions {
         SIGNALS_FILTERED: 'SIGNALS_FILTERED',
         SIGNAL_VIEWED: 'SIGNAL_VIEWED',
         SIGNAL_SELECTED: 'SIGNAL_SELECTED',
+        SIGNAL_REMOVED: 'SIGNAL_REMOVED',
+        SIGNAL_DETAILS_OPENED: 'SIGNAL_DETAILS_OPENED',
         
         // Feedback Actions (with optimistic flow)
         FEEDBACK_REQUESTED: 'FEEDBACK_REQUESTED',
@@ -47,7 +50,12 @@ class Actions {
         MODAL_OPENED: 'MODAL_OPENED',
         MODAL_CLOSED: 'MODAL_CLOSED',
         DRAWER_OPENED: 'DRAWER_OPENED',
-        DRAWER_CLOSED: 'DRAWER_CLOSED'
+        DRAWER_CLOSED: 'DRAWER_CLOSED',
+        PLAN_DRAWER_CLOSED: 'PLAN_DRAWER_CLOSED',
+        SIGNAL_DRAWER_CLOSED: 'SIGNAL_DRAWER_CLOSED',
+        
+        // Portfolio Filters
+        PORTFOLIO_FILTERED: 'PORTFOLIO_FILTERED'
     };
     
     // Action Creators - Functions that create action objects
@@ -69,7 +77,23 @@ class Actions {
         };
     }
     
+    // Alias for consistency
+    static switchTab(tabName) {
+        return this.changeTab(tabName);
+    }
+    
+    static tabSwitched(tabName) {
+        return this.changeTab(tabName);
+    }
+    
     // Data Loading Actions
+    static dataLoadRequested() {
+        return {
+            type: this.Types.DATA_LOAD_REQUESTED,
+            timestamp: Date.now()
+        };
+    }
+    
     static startDataLoad() {
         return {
             type: this.Types.DATA_LOAD_STARTED,
@@ -102,9 +126,35 @@ class Actions {
         };
     }
     
+    // Alias for consistency
+    static applyFilters(filters) {
+        return this.filterSignals(filters);
+    }
+    
     static viewSignal(signalId) {
         return {
             type: this.Types.SIGNAL_VIEWED,
+            payload: { signalId },
+            timestamp: Date.now()
+        };
+    }
+    
+    // Alias for consistency
+    static markSignalAsViewed(signalId) {
+        return this.viewSignal(signalId);
+    }
+    
+    static removeSignalFromFeed(signalId) {
+        return {
+            type: this.Types.SIGNAL_REMOVED,
+            payload: { signalId },
+            timestamp: Date.now()
+        };
+    }
+    
+    static openSignalDetails(signalId) {
+        return {
+            type: this.Types.SIGNAL_DETAILS_OPENED,
             payload: { signalId },
             timestamp: Date.now()
         };
@@ -309,6 +359,39 @@ class Actions {
     static closeDrawer() {
         return {
             type: this.Types.DRAWER_CLOSED,
+            timestamp: Date.now()
+        };
+    }
+    
+    // Specific drawer actions
+    static closePlanDrawer() {
+        return {
+            type: this.Types.PLAN_DRAWER_CLOSED,
+            timestamp: Date.now()
+        };
+    }
+    
+    static closeSignalDrawer() {
+        return {
+            type: this.Types.SIGNAL_DRAWER_CLOSED,
+            timestamp: Date.now()
+        };
+    }
+    
+    // Action Plan Actions
+    static createActionPlan(data = null) {
+        return {
+            type: this.Types.ACTION_PLAN_REQUESTED,
+            payload: { data },
+            timestamp: Date.now()
+        };
+    }
+    
+    // Portfolio Filter Actions
+    static applyPortfolioFilter(filterType) {
+        return {
+            type: this.Types.PORTFOLIO_FILTERED,
+            payload: { filterType },
             timestamp: Date.now()
         };
     }
