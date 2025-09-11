@@ -175,7 +175,7 @@ class AppController {
         });
         
         // Subscribe to tab changes to update DOM
-        signalsStore.subscribe('tab:changed', (tabName) => {
+        signalsStore.subscribe('tab:changed', (state, tabName) => {
             this.handleTabChanged(tabName);
         });
         
