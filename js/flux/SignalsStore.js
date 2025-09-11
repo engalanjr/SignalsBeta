@@ -101,6 +101,12 @@ class SignalsStore extends Store {
             case Actions.Types.ACTION_PLAN_FAILED:
                 this.handleActionPlanFailed(payload);
                 break;
+            case Actions.Types.ACTION_PLAN_UPDATED:
+                this.handleUpdateActionPlan(payload);
+                break;
+            case Actions.Types.ACTION_PLAN_DELETED:
+                this.handleDeleteActionPlan(payload);
+                break;
                 
             // UI State
             case Actions.Types.LOADING_SHOWN:
@@ -290,6 +296,18 @@ class SignalsStore extends Store {
             message: { text: 'Failed to save action plan', type: 'error' }
         });
         this.emitChange('action_plan:failed', { error });
+    }
+    
+    handleUpdateActionPlan(payload) {
+        const { planId, updates } = payload;
+        this.updateActionPlanInState(planId, updates);
+        this.emitChange('action_plan:updated', { planId, updates });
+    }
+    
+    handleDeleteActionPlan(payload) {
+        const { planId } = payload;
+        this.removeActionPlanFromState(planId);
+        this.emitChange('action_plan:deleted', { planId });
     }
     
     handleLoadingShown() {
@@ -583,6 +601,51 @@ class SignalsStore extends Store {
         }
         
         return filtered;
+    }
+    
+    updateActionPlanInState(planId, updates) {
+        const currentState = this.getState();
+        const actionPlans = new Map(currentState.actionPlans);
+        const actionPlansByAccount = new Map(currentState.actionPlansByAccount);
+        
+        const existingPlan = actionPlans.get(planId);
+        if (existingPlan) {
+            const updatedPlan = { ...existingPlan, ...updates };
+            actionPlans.set(planId, updatedPlan);
+            
+            // Update in account index too
+            if (updatedPlan.accountId) {
+                const accountPlans = actionPlansByAccount.get(updatedPlan.accountId) || [];
+                const planIndex = accountPlans.findIndex(p => p.id === planId);
+                if (planIndex !== -1) {
+                    accountPlans[planIndex] = updatedPlan;
+                }
+            }
+            
+            this.setState({ actionPlans, actionPlansByAccount });
+        }
+    }
+    
+    removeActionPlanFromState(planId) {
+        const currentState = this.getState();
+        const actionPlans = new Map(currentState.actionPlans);
+        const actionPlansByAccount = new Map(currentState.actionPlansByAccount);
+        
+        const plan = actionPlans.get(planId);
+        if (plan) {
+            actionPlans.delete(planId);
+            
+            // Remove from account index
+            if (plan.accountId) {
+                const accountPlans = actionPlansByAccount.get(plan.accountId) || [];
+                const planIndex = accountPlans.findIndex(p => p.id === planId);
+                if (planIndex !== -1) {
+                    accountPlans.splice(planIndex, 1);
+                }
+            }
+            
+            this.setState({ actionPlans, actionPlansByAccount });
+        }
     }
 }
 

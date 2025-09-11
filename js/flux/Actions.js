@@ -203,6 +203,23 @@ class Actions {
         };
     }
     
+    // Additional Action Plan Actions (using standard naming)
+    static updateActionPlan(planId, updates) {
+        return {
+            type: this.Types.ACTION_PLAN_UPDATED,
+            payload: { planId, updates },
+            timestamp: Date.now()
+        };
+    }
+    
+    static deleteActionPlan(planId) {
+        return {
+            type: this.Types.ACTION_PLAN_DELETED,
+            payload: { planId },
+            timestamp: Date.now()
+        };
+    }
+    
     // Action Plan Actions
     static requestActionPlan(signalId, title, description, tasks, userId) {
         return {
