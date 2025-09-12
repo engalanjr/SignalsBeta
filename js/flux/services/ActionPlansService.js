@@ -79,10 +79,15 @@ class ActionPlansService {
      * @param {string} accountId - Account ID (required for direct association)
      * @param {string} title - Plan title
      * @param {string} description - Plan description
-     * @param {Array} tasks - Array of tasks (optional)
-     * @param {string} userId - User ID (optional)
+     * @param {Array} plays - Array of plays (strings or objects)
+     * @param {number} userId - User ID (numeric)
+     * @param {string} userName - User name
+     * @param {string} planTitle - Plan title with date
+     * @param {string} dueDate - Due date in YYYY-MM-DD format
+     * @param {string} priority - Priority (High, Medium, Low)
+     * @param {string} signalPolarity - Signal polarity (Enrichment, Risk, Neutral)
      */
-    static async createActionPlan(actionId, accountId, title, description, tasks = [], userId = null) {
+    static async createActionPlan(actionId, accountId, title, description, plays = [], userId = null, userName = null, planTitle = null, dueDate = null, priority = 'Medium', signalPolarity = 'Enrichment') {
         const dispatcher = this.getDispatcher();
         const signalsStore = this.getSignalsStore();
         
@@ -105,7 +110,11 @@ class ActionPlansService {
         }
         
         // Get current user if not provided
-        userId = userId || signalsStore.getState().userInfo.userId || 'user-1';
+        if (!userId) {
+            const userInfo = signalsStore.getState().userInfo;
+            userId = parseInt(userInfo?.userId) || 621623466; // Ensure numeric ID
+            userName = userName || userInfo?.userName || 'Current User';
+        }
     
         if (!title || title.trim().length === 0) {
             dispatcher.dispatch(Actions.showMessage('Action plan title cannot be empty', 'error'));
@@ -114,25 +123,33 @@ class ActionPlansService {
     
         console.log(`🎯 ActionPlansService: Creating action plan for action ${actionId}`);
         
-        // Dispatch optimistic request action (using actionId instead of signalId)
-        const requestAction = Actions.requestActionPlan(actionId, title.trim(), description?.trim() || '', tasks, userId);
+        // Dispatch optimistic request action
+        const requestAction = Actions.requestActionPlan(actionId, title.trim(), description?.trim() || '', plays, userId);
         dispatcher.dispatch(requestAction);
         
         const operationId = requestAction.payload.operationId; // Store in broader scope for catch block
         
         try {
-            // Create plan object for API with proper ID (using actionId instead of signalId)
+            // Create plan object matching exact database model
+            const now = new Date();
             const planData = {
-                id: `plan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                actionId,  // Store the action ID (recommended action)
-                accountId, // Use directly passed accountId
+                id: `plan-${Date.now()}`, // Format: plan-timestamp
+                actionId,  // Recommended action ID
+                accountId, // Account ID
                 title: title.trim(),
                 description: description?.trim() || '',
-                tasks: tasks || [],
-                userId,
-                status: 'active',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                plays: plays || [], // Changed from tasks to plays
+                status: 'pending', // Initial status
+                priority: priority || 'Medium', // Capitalized priority
+                dueDate: dueDate || now.toISOString().split('T')[0], // YYYY-MM-DD format
+                assignee: userId, // Numeric user ID
+                createdDate: now.toISOString(),
+                createdAt: now.toISOString(),
+                updatedAt: now.toISOString(),
+                planTitle: planTitle || `Action Plan - ${now.toLocaleDateString('en-US')}`,
+                createdBy: userName || 'Current User',
+                createdByUserId: userId,
+                signalPolarity: signalPolarity || 'Enrichment' // NEW FIELD
             };
             
             // Make API call in background

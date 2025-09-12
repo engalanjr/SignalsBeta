@@ -976,24 +976,40 @@ class PortfolioRenderer {
         
         // Get current user info for assignee
         let userName = 'Current User';
-        let userId = 'user-1';
+        let userId = 621623466; // Default numeric ID
         
         try {
             const user = await domo.get(`/domo/environment/v1/`);
             if (user && typeof user === 'object') {
-                userId = user.userId || user.id || userId;
+                userId = parseInt(user.userId) || parseInt(user.id) || userId;
                 userName = user.userName || user.name || user.displayName || userName;
             }
         } catch (error) {
             console.warn('Could not get user info, using defaults:', error);
         }
         
+        // Get signal polarity from the signal with this actionId
+        let signalPolarity = 'Enrichment'; // Default value
+        const store = window.signalsStore;
+        if (store) {
+            const state = store.getState ? store.getState() : store.state;
+            const signals = state?.signals || [];
+            const signalWithAction = signals.find(s => s.action_id === actionId);
+            if (signalWithAction) {
+                signalPolarity = signalWithAction.signal_polarity || signalWithAction['Signal Polarity'] || 'Enrichment';
+            }
+        }
+        
         // Set due date to TODAY + 7 days
         const today = new Date();
         const dueDate = new Date(today.getTime() + (7 * 24 * 60 * 60 * 1000));
-        const dueDateISOString = dueDate.toISOString(); // Pre-compute to avoid scope issues
+        const dueDateString = dueDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
         
-        // Create the plan data structure compatible with existing Action Plan CRUD
+        // Format plan title as "Action Plan - MM/DD/YYYY"
+        const planDate = today.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+        const planTitle = `Action Plan - ${planDate}`;
+        
+        // Create the plan data structure matching exact database model
         const planData = {
             accountId: accountId,
             actionId: actionId,
@@ -1001,10 +1017,14 @@ class PortfolioRenderer {
             description: planDetails,
             plays: selectedPlays,
             status: 'pending',
-            priority: 'medium',
-            dueDate: dueDateISOString,
-            assignee: userId,
-            createdDate: new Date().toISOString()
+            priority: 'Medium', // Capitalized
+            dueDate: dueDateString, // YYYY-MM-DD format
+            assignee: userId, // Numeric ID
+            createdDate: new Date().toISOString(),
+            planTitle: planTitle,
+            createdBy: userName,
+            createdByUserId: userId,
+            signalPolarity: signalPolarity // NEW FIELD
         };
         
         try {
@@ -1016,18 +1036,17 @@ class PortfolioRenderer {
             
             // 🔄 USE PROPER FLUX ARCHITECTURE: ActionPlansService for real persistence
             const result = await ActionPlansService.createActionPlan(
-                actionId, // Use as signalId - could be signal or recommendation ID
-                accountId, // Pass accountId directly instead of requiring fragile inference
+                actionId,
+                accountId,
                 actionTitle,
                 planDetails,
-                selectedPlays.map(play => ({
-                    id: play.id,
-                    name: play.name,
-                    description: play.description || '',
-                    status: 'pending',
-                    dueDate: dueDateISOString // Use pre-computed value to avoid scope issues
-                })),
-                userId
+                selectedPlays, // Pass plays as-is (strings or objects)
+                userId,
+                userName,
+                planTitle,
+                dueDateString,
+                'Medium', // Priority
+                signalPolarity // Pass signal polarity
             );
             
             if (result) {
