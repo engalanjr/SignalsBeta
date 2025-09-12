@@ -145,6 +145,11 @@ class PortfolioController {
                 state.comments
             );
             
+            // 🎯 Initialize button states for optimistic UI
+            setTimeout(() => {
+                PortfolioRenderer.initializePlanButtonStates(state);
+            }, 50); // Small delay to ensure DOM is updated
+            
             console.log(`🎨 Rendered ${state.accounts.size} accounts in portfolio`);
         }
     }

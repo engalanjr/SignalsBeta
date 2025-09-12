@@ -333,12 +333,30 @@
                     const descriptionInput = drawerContent?.querySelector('textarea');
                     
                     if (titleInput && titleInput.value) {
-                        await ActionPlansService.createActionPlan(
-                            window.appController?.selectedSignalId || null,
-                            titleInput.value,
-                            descriptionInput?.value || ''
-                        );
-                        dispatcher.dispatch(Actions.closePlanDrawer());
+                        const signalId = window.appController?.selectedSignalId || null;
+                        
+                        // Get accountId from signalId using SignalsStore (eliminates fragile inference)
+                        let accountId = null;
+                        if (signalId && window.signalsStore) {
+                            try {
+                                const signal = window.signalsStore.getState().signalsById.get(signalId);
+                                accountId = signal?.account_id;
+                            } catch (error) {
+                                console.warn('Could not get accountId from signalId:', error);
+                            }
+                        }
+                        
+                        if (accountId) {
+                            await ActionPlansService.createActionPlan(
+                                signalId,
+                                accountId, // Pass accountId directly instead of requiring inference
+                                titleInput.value,
+                                descriptionInput?.value || ''
+                            );
+                            dispatcher.dispatch(Actions.closePlanDrawer());
+                        } else {
+                            dispatcher.dispatch(Actions.showMessage('Unable to determine account for action plan', 'error'));
+                        }
                     } else {
                         dispatcher.dispatch(Actions.showMessage('Please enter a plan title', 'error'));
                     }

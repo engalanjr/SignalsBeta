@@ -984,6 +984,7 @@ class PortfolioRenderer {
         // Set due date to TODAY + 7 days
         const today = new Date();
         const dueDate = new Date(today.getTime() + (7 * 24 * 60 * 60 * 1000));
+        const dueDateISOString = dueDate.toISOString(); // Pre-compute to avoid scope issues
         
         // Create the plan data structure compatible with existing Action Plan CRUD
         const planData = {
@@ -994,37 +995,39 @@ class PortfolioRenderer {
             plays: selectedPlays,
             status: 'pending',
             priority: 'medium',
-            dueDate: dueDate.toISOString(),
+            dueDate: dueDateISOString,
             assignee: userId,
             createdDate: new Date().toISOString()
         };
         
         try {
-            // Call DataService directly (matching comments pattern) - with guard
-            let result;
-            if (window.DataService && typeof DataService.createActionPlan === 'function') {
-                result = await DataService.createActionPlan(planData);
-            } else {
-                // Fallback: Use Flux actions for plan creation
-                const planId = `plan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                result = {
-                    success: true,
-                    plan: {
-                        id: planId,
-                        ...planData
-                    }
-                };
-            }
+            // 🎯 OPTIMISTIC UI: Update button state immediately
+            this.updateAddToPlanButtonState(accountId, 'added-today');
             
-            if (result && result.success) {
+            // Store plan creation timestamp for relative time display
+            this.storePlanCreationTimestamp(accountId);
+            
+            // 🔄 USE PROPER FLUX ARCHITECTURE: ActionPlansService for real persistence
+            const result = await ActionPlansService.createActionPlan(
+                actionId, // Use as signalId - could be signal or recommendation ID
+                accountId, // Pass accountId directly instead of requiring fragile inference
+                actionTitle,
+                planDetails,
+                selectedPlays.map(play => ({
+                    id: play.id,
+                    name: play.name,
+                    description: play.description || '',
+                    status: 'pending',
+                    dueDate: dueDateISOString // Use pre-computed value to avoid scope issues
+                })),
+                userId
+            );
+            
+            if (result) {
                 // console.log('Plan created successfully from drawer:', result.plan);
                 
-                // Update local action plans collection immediately for "Added!" state
-                if (window.app && window.app.actionPlans && result.plan) {
-                    // Use a unique plan ID as the key (not just accountId) to allow multiple plans per account
-                    const planKey = result.plan.id || `plan-${Date.now()}`;
-                    window.app.actionPlans.set(planKey, result.plan);
-                }
+                // ActionPlansService already handles state updates through Flux
+                // No need for manual state management here
                 
                 // Store expanded account state before closing drawer
                 const wasAccountExpanded = this.isAccountExpanded(accountId);
@@ -1050,10 +1053,19 @@ class PortfolioRenderer {
                 }
             } else {
                 console.error('Failed to create plan from drawer:', result ? result.error : 'Unknown error');
+                
+                // 🔄 REVERT OPTIMISTIC UI: Reset button state and clear timestamp on error
+                this.updateAddToPlanButtonState(accountId, 'default');
+                this.clearPlanCreationTimestamp(accountId); // Clean up optimistic timestamp
+                
                 this.showDrawerError('Failed to create action plan. Please check your connection and try again.');
             }
         } catch (error) {
             console.error('Error creating plan from drawer:', error);
+            
+            // 🔄 REVERT OPTIMISTIC UI: Reset button state and clear timestamp on error
+            this.updateAddToPlanButtonState(accountId, 'default');
+            this.clearPlanCreationTimestamp(accountId); // Clean up optimistic timestamp
             
             // Handle specific error types for better user experience
             if (error.message && error.message.includes('Failed to fetch')) {
@@ -1140,5 +1152,150 @@ class PortfolioRenderer {
         } else {
             return `While ${account.name} shows ${health} overall health, proactive engagement in the ${industry.toLowerCase()} sector is key to identifying expansion opportunities and preventing any emerging risks. These actions will strengthen the partnership and drive continued growth.`;
         }
+    }
+
+    // 🎯 OPTIMISTIC UI & TIMESTAMP TRACKING METHODS
+
+    /**
+     * Update the "Add to Plan" button state with optimistic UI
+     * @param {string} accountId - Account ID
+     * @param {string} state - Button state ('added-today', 'added', 'default')
+     */
+    static updateAddToPlanButtonState(accountId, state) {
+        const containers = document.querySelectorAll(`[data-account-id="${accountId}"] .recommendation-action-button`);
+        
+        containers.forEach(container => {
+            const button = container.querySelector('.btn-add-to-plan');
+            if (!button) return;
+            
+            if (state === 'added-today') {
+                button.classList.remove('btn-add-to-plan');
+                button.classList.add('btn-added-status');
+                button.textContent = 'Added Today';
+                button.disabled = true;
+            } else if (state === 'added') {
+                const timestamp = this.getPlanCreationTimestamp(accountId);
+                const relativeTime = this.getRelativeTimestamp(timestamp);
+                button.classList.remove('btn-add-to-plan');
+                button.classList.add('btn-added-status');
+                button.textContent = relativeTime;
+                button.disabled = true;
+            } else {
+                button.classList.remove('btn-added-status');
+                button.classList.add('btn-add-to-plan');
+                button.textContent = 'Add to Plan';
+                button.disabled = false;
+            }
+        });
+    }
+
+    /**
+     * Store plan creation timestamp for an account
+     * @param {string} accountId - Account ID
+     */
+    static storePlanCreationTimestamp(accountId) {
+        const timestamp = Date.now();
+        const planTimestamps = this.getPlanTimestamps();
+        planTimestamps[accountId] = timestamp;
+        
+        try {
+            localStorage.setItem('signalsai_plan_timestamps', JSON.stringify(planTimestamps));
+        } catch (error) {
+            console.warn('Could not store plan timestamp:', error);
+        }
+    }
+
+    /**
+     * Get plan creation timestamp for an account
+     * @param {string} accountId - Account ID
+     * @returns {number|null} Timestamp or null if not found
+     */
+    static getPlanCreationTimestamp(accountId) {
+        const planTimestamps = this.getPlanTimestamps();
+        return planTimestamps[accountId] || null;
+    }
+
+    /**
+     * Get all plan timestamps from localStorage
+     * @returns {Object} Object with accountId -> timestamp mappings
+     */
+    static getPlanTimestamps() {
+        try {
+            const stored = localStorage.getItem('signalsai_plan_timestamps');
+            return stored ? JSON.parse(stored) : {};
+        } catch (error) {
+            console.warn('Could not load plan timestamps:', error);
+            return {};
+        }
+    }
+
+    /**
+     * Clear plan creation timestamp for an account (for cleanup on failures)
+     * @param {string} accountId - Account ID
+     */
+    static clearPlanCreationTimestamp(accountId) {
+        if (!accountId) {
+            console.warn('⚠️ Cannot clear plan timestamp: accountId is null or undefined');
+            return;
+        }
+        
+        try {
+            const planTimestamps = this.getPlanTimestamps();
+            if (planTimestamps[accountId]) {
+                delete planTimestamps[accountId];
+                localStorage.setItem('signalsai_plan_timestamps', JSON.stringify(planTimestamps));
+                console.log(`🧹 Cleared plan timestamp for account ${accountId}`);
+            } else {
+                console.log(`ℹ️ No timestamp to clear for account ${accountId}`);
+            }
+        } catch (error) {
+            console.warn('Could not clear plan timestamp:', error);
+        }
+    }
+
+    /**
+     * Convert timestamp to relative time display
+     * @param {number} timestamp - Unix timestamp
+     * @returns {string} Relative time string
+     */
+    static getRelativeTimestamp(timestamp) {
+        if (!timestamp) return 'Add to Plan';
+        
+        const now = Date.now();
+        const diffMs = now - timestamp;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffWeeks = Math.floor(diffDays / 7);
+        const diffMonths = Math.floor(diffDays / 30);
+        
+        if (diffDays === 0) {
+            return 'Added Today';
+        } else if (diffDays === 1) {
+            return 'Added Yesterday';
+        } else if (diffDays < 7) {
+            return `Added ${diffDays} days ago`;
+        } else if (diffWeeks === 1) {
+            return 'Added 1 week ago';
+        } else if (diffWeeks < 4) {
+            return `Added ${diffWeeks} weeks ago`;
+        } else if (diffMonths === 1) {
+            return 'Added 1 month ago';
+        } else {
+            return `Added ${diffMonths} months ago`;
+        }
+    }
+
+    /**
+     * Initialize button states based on stored timestamps
+     * Call this when rendering the portfolio
+     * @param {Object} app - App state
+     */
+    static initializePlanButtonStates(app) {
+        const planTimestamps = this.getPlanTimestamps();
+        
+        Object.keys(planTimestamps).forEach(accountId => {
+            if (this.hasExistingPlan(accountId, app)) {
+                this.updateAddToPlanButtonState(accountId, 'added');
+            }
+        });
     }
 }

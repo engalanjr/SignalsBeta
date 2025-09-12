@@ -551,9 +551,12 @@ class SignalsRepository {
     }
     
     /**
-     * Load action plans from API
+     * Load action plans from API with local persistence integration
      */
     static async loadActionPlans() {
+        let apiPlans = [];
+        let localPlans = [];
+        
         try {
             console.log('📋 Loading action plans...');
             
@@ -562,24 +565,25 @@ class SignalsRepository {
             
             if (response && response.length > 0) {
                 console.log(`✅ Loaded ${response.length} action plans from API`);
-                return response;
+                apiPlans = response;
             }
             
-            // Fallback: Try loading from the fallback JSON file
-            console.log('📁 No action plans in API, checking for fallback file...');
-            const fallbackResponse = await fetch('./action-plans-fallback.json?v=' + Date.now());
-            
-            if (fallbackResponse.ok) {
-                const fallbackData = await fallbackResponse.json();
-                if (fallbackData && fallbackData.length > 0) {
-                    console.log(`✅ Loaded ${fallbackData.length} action plans from fallback file`);
-                    return fallbackData;
+            // If no API plans, try fallback JSON file
+            if (apiPlans.length === 0) {
+                console.log('📁 No action plans in API, checking for fallback file...');
+                const fallbackResponse = await fetch('./action-plans-fallback.json?v=' + Date.now());
+                
+                if (fallbackResponse.ok) {
+                    const fallbackData = await fallbackResponse.json();
+                    if (fallbackData && fallbackData.length > 0) {
+                        console.log(`✅ Loaded ${fallbackData.length} action plans from fallback file`);
+                        apiPlans = fallbackData;
+                    }
                 }
             }
             
-            return [];
         } catch (error) {
-            console.error('Failed to load action plans:', error);
+            console.error('Failed to load action plans from API:', error);
             
             // Try the fallback file as a last resort
             try {
@@ -588,15 +592,46 @@ class SignalsRepository {
                     const fallbackData = await fallbackResponse.json();
                     if (fallbackData && fallbackData.length > 0) {
                         console.log(`✅ Loaded ${fallbackData.length} action plans from fallback (error recovery)`);
-                        return fallbackData;
+                        apiPlans = fallbackData;
                     }
                 }
             } catch (fallbackError) {
                 console.error('Failed to load fallback action plans:', fallbackError);
             }
-            
-            return [];
         }
+        
+        // Load local persistence as additional source (integration with ActionPlansService)
+        try {
+            const localActionPlansData = localStorage.getItem('signalsai_action_plans');
+            if (localActionPlansData) {
+                const localPlansMap = JSON.parse(localActionPlansData);
+                localPlans = Object.values(localPlansMap);
+                
+                if (localPlans.length > 0) {
+                    console.log(`📦 Found ${localPlans.length} locally persisted action plans`);
+                }
+            }
+        } catch (error) {
+            console.warn('Could not load locally persisted action plans:', error);
+        }
+        
+        // Merge API/fallback plans with local plans, avoiding duplicates by ID
+        const allPlans = [...apiPlans];
+        const apiPlanIds = new Set(apiPlans.map(plan => plan.id));
+        
+        // Add local plans that don't exist in API plans
+        localPlans.forEach(localPlan => {
+            if (!apiPlanIds.has(localPlan.id)) {
+                allPlans.push(localPlan);
+                console.log(`🔄 Hydrating locally persisted plan: ${localPlan.id}`);
+            }
+        });
+        
+        if (allPlans.length > 0) {
+            console.log(`✅ Total action plans loaded: ${allPlans.length} (${apiPlans.length} from API/fallback, ${allPlans.length - apiPlans.length} local-only)`);
+        }
+        
+        return allPlans;
     }
     
     /**
