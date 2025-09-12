@@ -66,6 +66,10 @@ class SignalRenderer {
         const summary = SecurityUtils.sanitizeHTML(signal.summary || 'No summary available');
         const rationale = SecurityUtils.sanitizeHTML(signal.rationale || 'No rationale provided');
         const category = SecurityUtils.sanitizeHTML(signal.category || 'General');
+        
+        // Get Signal Polarity for pill display
+        const signalPolarity = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
+        const polarityClass = signalPolarity.toLowerCase();
 
         return `
             <div class="signal-card ${cardClass} ${priorityClass}-priority ${feedbackClass}" data-signal-id="${signal.id}" style="${feedbackStyle}">
@@ -76,6 +80,7 @@ class SignalRenderer {
                             <span><i class="${signal.source_icon || 'fas fa-info-circle'}"></i> ${signalName}</span>
                             <span class="category-badge">${category}</span>
                             <span class="priority-badge priority-${priorityClass}">${priority}</span>
+                            <span class="polarity-badge polarity-${polarityClass}">${signalPolarity}</span>
                             <span>${FormatUtils.formatDate(signal.created_at || signal.created_date)}</span>
                             ${isNew ? '<span class="new-badge">NEW</span>' : ''}
                         </div>

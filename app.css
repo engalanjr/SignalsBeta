@@ -611,6 +611,31 @@ body {
     color: var(--healthy-green);
 }
 
+/* Signal Polarity Pill */
+.polarity-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-left: 0.5rem;
+}
+
+.polarity-risk {
+    background: #8B0000; /* Deep Red */
+    color: #FFFFFF;
+}
+
+.polarity-opportunity {
+    background: #006400; /* Deep Green */
+    color: #FFFFFF;
+}
+
+.polarity-enrichment {
+    background: #4169E1; /* Royal Blue */
+    color: #FFFFFF;
+}
+
 /* Category Badge */
 .category-badge {
     padding: 0.25rem 0.75rem;
