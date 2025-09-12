@@ -16,8 +16,8 @@ class SignalRenderer {
                 return priorityB - priorityA;
             }
 
-            // 2. Signal Polarity - Risk, Opportunity, Enrichment
-            const polarityOrder = { 'Risk': 3, 'Opportunity': 2, 'Enrichment': 1 };
+            // 2. Signal Polarity - Risk, Opportunities, Enrichment
+            const polarityOrder = { 'Risk': 3, 'Opportunities': 2, 'Enrichment': 1 };
             const polarityA = a.signal_polarity || a['Signal Polarity'] || 'Enrichment';
             const polarityB = b.signal_polarity || b['Signal Polarity'] || 'Enrichment';
             const polarityScoreA = polarityOrder[polarityA] || 0;

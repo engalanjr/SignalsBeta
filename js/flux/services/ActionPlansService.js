@@ -85,7 +85,7 @@ class ActionPlansService {
      * @param {string} planTitle - Plan title with date
      * @param {string} dueDate - Due date in YYYY-MM-DD format
      * @param {string} priority - Priority (High, Medium, Low)
-     * @param {string} signalPolarity - Signal polarity (Enrichment, Risk, Neutral)
+     * @param {string} signalPolarity - Signal polarity (Enrichment, Risk, Opportunities)
      */
     static async createActionPlan(actionId, accountId, title, description, plays = [], userId = null, userName = null, planTitle = null, dueDate = null, priority = 'Medium', signalPolarity = 'Enrichment') {
         const dispatcher = this.getDispatcher();

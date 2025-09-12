@@ -11,29 +11,29 @@ class PortfolioRenderer {
         // Get all accounts
         const allAccounts = Array.from(accounts.values());
 
-        // Filter accounts with recent high priority Risk or Opportunity signals
+        // Filter accounts with recent high priority Risk or Opportunities signals
         const accountsWithRiskOrOpportunitySignals = allAccounts
             .filter(account => account.signals.some(signal => {
                 const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
-                return signal.priority === 'High' && (polarity === 'Risk' || polarity === 'Opportunity');
+                return signal.priority === 'High' && (polarity === 'Risk' || polarity === 'Opportunities');
             }))
             .map(account => {
-                // Find the most recent high priority Risk/Opportunity signal for sorting
+                // Find the most recent high priority Risk/Opportunities signal for sorting
                 const qualifyingSignals = account.signals.filter(signal => {
                     const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
-                    return signal.priority === 'High' && (polarity === 'Risk' || polarity === 'Opportunity');
+                    return signal.priority === 'High' && (polarity === 'Risk' || polarity === 'Opportunities');
                 });
                 
-                // Sort qualifying signals by polarity priority (Risk > Opportunity) then by call_date DESC
+                // Sort qualifying signals by polarity priority (Risk > Opportunities) then by call_date DESC
                 const sortedQualifyingSignals = qualifyingSignals.sort((a, b) => {
                     const polarityA = a.signal_polarity || a['Signal Polarity'] || '';
                     const polarityB = b.signal_polarity || b['Signal Polarity'] || '';
-                    const polarityOrder = { 'Risk': 2, 'Opportunity': 1 };
+                    const polarityOrder = { 'Risk': 2, 'Opportunities': 1 };
                     const polarityScoreA = polarityOrder[polarityA] || 0;
                     const polarityScoreB = polarityOrder[polarityB] || 0;
                     
                     if (polarityScoreA !== polarityScoreB) {
-                        return polarityScoreB - polarityScoreA; // Risk before Opportunity
+                        return polarityScoreB - polarityScoreA; // Risk before Opportunities
                     }
                     
                     // Same polarity, sort by call_date DESC
@@ -52,11 +52,11 @@ class PortfolioRenderer {
                 return { ...account, mostRecentQualifyingDate, topSignalPolarity };
             })
             .sort((a, b) => {
-                const polarityOrder = { 'Risk': 2, 'Opportunity': 1 };
+                const polarityOrder = { 'Risk': 2, 'Opportunities': 1 };
                 const polarityScoreA = polarityOrder[a.topSignalPolarity] || 0;
                 const polarityScoreB = polarityOrder[b.topSignalPolarity] || 0;
                 
-                // First sort by signal polarity (Risk before Opportunity)
+                // First sort by signal polarity (Risk before Opportunities)
                 if (polarityScoreA !== polarityScoreB) {
                     return polarityScoreB - polarityScoreA;
                 }
@@ -72,13 +72,13 @@ class PortfolioRenderer {
 
         let html = '';
 
-        // Render "Accounts with a recent Risk or Opportunity Identified" section
+        // Render "Accounts with a recent Risk or Opportunities Identified" section
         if (accountsWithRiskOrOpportunitySignals.length > 0) {
             html += `
                 <div class="portfolio-section">
-                    <h3 class="portfolio-section-header">Accounts with Risk or Opportunity Identified</h3>
+                    <h3 class="portfolio-section-header">Accounts with Risk or Opportunities Identified</h3>
                     <div class="portfolio-section-content">
-                        ${accountsWithRiskOrOpportunitySignals.map(account => this.renderAccountCard(account, actionPlans, comments, ['Risk', 'Opportunity'])).join('')}
+                        ${accountsWithRiskOrOpportunitySignals.map(account => this.renderAccountCard(account, actionPlans, comments, ['Risk', 'Opportunities'])).join('')}
                     </div>
                 </div>
             `;
@@ -206,14 +206,14 @@ class PortfolioRenderer {
     }
 
     static renderAccountCard(account, actionPlans, comments, filterPolarities = null) {
-        // Count Risk and Opportunity recommended actions (not signals)
+        // Count Risk and Opportunities recommended actions (not signals)
         const riskActions = account.signals.filter(s => {
             const polarity = s.signal_polarity || s['Signal Polarity'] || '';
             return polarity === 'Risk' && s.recommended_action && s.recommended_action.trim() && s.recommended_action !== 'No actions specified';
         }).length;
         const opportunityActions = account.signals.filter(s => {
             const polarity = s.signal_polarity || s['Signal Polarity'] || '';
-            return polarity === 'Opportunity' && s.recommended_action && s.recommended_action.trim() && s.recommended_action !== 'No actions specified';
+            return polarity === 'Opportunities' && s.recommended_action && s.recommended_action.trim() && s.recommended_action !== 'No actions specified';
         }).length;
         const totalSignals = account.signals.length;
 

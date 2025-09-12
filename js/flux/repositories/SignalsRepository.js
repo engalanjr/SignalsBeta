@@ -355,6 +355,17 @@ class SignalsRepository {
     }
     
     /**
+     * Normalize signal polarity values to standard format
+     * Maps legacy "Opportunity" to "Opportunities"
+     */
+    static normalizeSignalPolarity(polarity) {
+        if (polarity === 'Opportunity') {
+            return 'Opportunities';
+        }
+        return polarity;
+    }
+
+    /**
      * Extract normalized Signal entity (without embedded data)
      */
     static extractNormalizedSignal(rawSignal) {
@@ -372,7 +383,7 @@ class SignalsRepository {
             priority: rawSignal.priority || 'Medium',
             confidence: parseFloat(rawSignal.confidence) || 0,
             signal_confidence: parseFloat(rawSignal.signal_confidence) || 0,
-            signal_polarity: rawSignal.signal_polarity || rawSignal['Signal Polarity'] || 'Enrichment',
+            signal_polarity: this.normalizeSignalPolarity(rawSignal.signal_polarity || rawSignal['Signal Polarity'] || 'Enrichment'),
             
             // AI context (signal-specific)
             ai_signal_context: rawSignal.ai_signal_context || rawSignal['AI Signal Context'] || '',
