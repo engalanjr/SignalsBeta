@@ -130,7 +130,9 @@ class ActionsRenderer {
         // If we have Domo action plans, return them
         if (actionPlans.length > 0) {
             console.log(`Using ${actionPlans.length} action plans from app state`);
-            console.log(`🔧 [FIX] Synced ${DataService.actionPlans.length} plans to DataService for auto-save`);
+            if (window.DataService && Array.isArray(window.DataService.actionPlans)) {
+                console.log(`🔧 [FIX] Synced ${DataService.actionPlans.length} plans to DataService for auto-save`);
+            }
             return actionPlans.sort((a, b) => {
                 // Sort by urgency first, then by last updated
                 const urgencyOrder = { critical: 0, high: 1, normal: 2 };
