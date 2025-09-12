@@ -589,6 +589,17 @@ class PortfolioRenderer {
     }
     
     static getActionPlanInfo(actionId, appInstance) {
+        // First check if we have a stored timestamp for this actionId
+        const actionTimestamps = this.getActionTimestamps();
+        if (actionTimestamps[actionId]) {
+            const timeSinceAdded = this.getRelativeTimestamp(actionTimestamps[actionId]);
+            return {
+                isInPlan: true,
+                timeSinceAdded: timeSinceAdded
+            };
+        }
+        
+        // Check existing action plans for this actionId
         if (appInstance && appInstance.actionPlans) {
             for (const [key, plan] of appInstance.actionPlans) {
                 // Check if the plan contains this actionId
@@ -1032,11 +1043,11 @@ class PortfolioRenderer {
         };
         
         try {
-            // 🎯 OPTIMISTIC UI: Update button state immediately
-            this.updateAddToPlanButtonState(accountId, 'added-today');
+            // 🎯 OPTIMISTIC UI: Update specific action button immediately
+            this.updateSpecificActionButton(actionId, 'added');
             
-            // Store plan creation timestamp for relative time display
-            this.storePlanCreationTimestamp(accountId);
+            // Store plan creation timestamp for this specific action
+            this.storePlanCreationTimestamp(actionId);
             
             // 🔄 USE PROPER FLUX ARCHITECTURE: ActionPlansService for real persistence
             const result = await ActionPlansService.createActionPlan(
@@ -1085,8 +1096,8 @@ class PortfolioRenderer {
                 console.error('Failed to create plan from drawer:', result ? result.error : 'Unknown error');
                 
                 // 🔄 REVERT OPTIMISTIC UI: Reset button state and clear timestamp on error
-                this.updateAddToPlanButtonState(accountId, 'default');
-                this.clearPlanCreationTimestamp(accountId); // Clean up optimistic timestamp
+                this.updateSpecificActionButton(actionId, 'default');
+                this.clearPlanCreationTimestamp(actionId); // Clean up optimistic timestamp
                 
                 this.showDrawerError('Failed to create action plan. Please check your connection and try again.');
             }
@@ -1094,8 +1105,8 @@ class PortfolioRenderer {
             console.error('Error creating plan from drawer:', error);
             
             // 🔄 REVERT OPTIMISTIC UI: Reset button state and clear timestamp on error
-            this.updateAddToPlanButtonState(accountId, 'default');
-            this.clearPlanCreationTimestamp(accountId); // Clean up optimistic timestamp
+            this.updateSpecificActionButton(actionId, 'default');
+            this.clearPlanCreationTimestamp(actionId); // Clean up optimistic timestamp
             
             // Handle specific error types for better user experience
             if (error.message && error.message.includes('Failed to fetch')) {
@@ -1187,7 +1198,92 @@ class PortfolioRenderer {
     // 🎯 OPTIMISTIC UI & TIMESTAMP TRACKING METHODS
 
     /**
-     * Update the "Add to Plan" button state with optimistic UI
+     * Update specific action button by actionId
+     * @param {string} actionId - Action ID
+     * @param {string} state - Button state ('added', 'default')
+     */
+    static updateSpecificActionButton(actionId, state) {
+        // Find the specific button for this actionId
+        const button = document.querySelector(`[data-action-id="${actionId}"]`);
+        
+        if (button) {
+            if (state === 'added') {
+                // Get relative timestamp for display
+                const timestamp = this.getActionTimestamps()[actionId];
+                const relativeTime = this.getRelativeTimestamp(timestamp);
+                
+                button.classList.remove('btn-add-to-plan');
+                button.classList.add('btn-added-status');
+                button.textContent = relativeTime !== 'Add to Plan' ? relativeTime : 'Added!';
+                button.disabled = true;
+                
+                // Remove the onclick handler to prevent accidental clicks
+                button.removeAttribute('onclick');
+            } else {
+                button.classList.remove('btn-added-status');
+                button.classList.add('btn-add-to-plan');
+                button.textContent = 'Add to Plan';
+                button.disabled = false;
+            }
+        }
+    }
+
+    /**
+     * Store action plan creation timestamp for a specific actionId
+     * @param {string} actionId - Action ID
+     */
+    static storePlanCreationTimestamp(actionId) {
+        const timestamp = Date.now();
+        const actionTimestamps = this.getActionTimestamps();
+        actionTimestamps[actionId] = timestamp;
+        
+        try {
+            localStorage.setItem('signalsai_action_timestamps', JSON.stringify(actionTimestamps));
+        } catch (error) {
+            console.warn('Could not store action timestamp:', error);
+        }
+    }
+
+    /**
+     * Get all action timestamps from localStorage
+     * @returns {Object} Object with actionId -> timestamp mappings
+     */
+    static getActionTimestamps() {
+        try {
+            const stored = localStorage.getItem('signalsai_action_timestamps');
+            return stored ? JSON.parse(stored) : {};
+        } catch (error) {
+            console.warn('Could not load action timestamps:', error);
+            return {};
+        }
+    }
+
+    /**
+     * Clear action plan creation timestamp for a specific actionId
+     * @param {string} actionId - Action ID
+     */
+    static clearPlanCreationTimestamp(actionId) {
+        if (!actionId) {
+            console.warn('⚠️ Cannot clear action timestamp: actionId is null or undefined');
+            return;
+        }
+        
+        try {
+            const actionTimestamps = this.getActionTimestamps();
+            if (actionTimestamps[actionId]) {
+                delete actionTimestamps[actionId];
+                localStorage.setItem('signalsai_action_timestamps', JSON.stringify(actionTimestamps));
+                console.log(`🧹 Cleared action timestamp for action ${actionId}`);
+            } else {
+                console.log(`ℹ️ No timestamp to clear for action ${actionId}`);
+            }
+        } catch (error) {
+            console.warn('Could not clear action timestamp:', error);
+        }
+    }
+
+    /**
+     * Update the "Add to Plan" button state with optimistic UI (legacy method for account-level updates)
      * @param {string} accountId - Account ID
      * @param {string} state - Button state ('added-today', 'added', 'default')
      */
@@ -1284,7 +1380,7 @@ class PortfolioRenderer {
     }
 
     /**
-     * Convert timestamp to relative time display
+     * Convert timestamp to relative time display (always rounds up)
      * @param {number} timestamp - Unix timestamp
      * @returns {string} Relative time string
      */
@@ -1293,24 +1389,24 @@ class PortfolioRenderer {
         
         const now = Date.now();
         const diffMs = now - timestamp;
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        const diffWeeks = Math.floor(diffDays / 7);
-        const diffMonths = Math.floor(diffDays / 30);
         
-        if (diffDays === 0) {
-            return 'Added Today';
-        } else if (diffDays === 1) {
-            return 'Added Yesterday';
+        // Calculate time units (always round up)
+        const diffMinutes = Math.ceil(diffMs / (1000 * 60));
+        const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        const diffWeeks = Math.ceil(diffDays / 7);
+        const diffMonths = Math.ceil(diffDays / 30);
+        
+        if (diffMinutes < 60) {
+            return diffMinutes === 1 ? 'Added 1 minute ago' : `Added ${diffMinutes} minutes ago`;
+        } else if (diffHours < 24) {
+            return diffHours === 1 ? 'Added 1 hour ago' : `Added ${diffHours} hours ago`;
         } else if (diffDays < 7) {
-            return `Added ${diffDays} days ago`;
-        } else if (diffWeeks === 1) {
-            return 'Added 1 week ago';
+            return diffDays === 1 ? 'Added 1 day ago' : `Added ${diffDays} days ago`;
         } else if (diffWeeks < 4) {
-            return `Added ${diffWeeks} weeks ago`;
-        } else if (diffMonths === 1) {
-            return 'Added 1 month ago';
+            return diffWeeks === 1 ? 'Added 1 week ago' : `Added ${diffWeeks} weeks ago`;
         } else {
-            return `Added ${diffMonths} months ago`;
+            return diffMonths === 1 ? 'Added 1 month ago' : `Added ${diffMonths} months ago`;
         }
     }
 
