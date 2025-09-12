@@ -711,6 +711,208 @@ class SignalsRepository {
             userName: 'Current User'
         };
     }
+    
+    // ========== ACTION PLAN CRUD OPERATIONS ==========
+    
+    /**
+     * Save a new action plan
+     */
+    static async saveActionPlan(planData) {
+        try {
+            console.log('💾 Saving action plan:', planData);
+            
+            // Try to save to Domo API
+            try {
+                const response = await domo.post('/domo/datastores/v1/collections/SignalAI.ActionPlans/documents', {
+                    content: planData
+                });
+                
+                if (response && response.id) {
+                    console.log('✅ Action plan saved to Domo API');
+                    return { success: true, data: { ...planData, recordId: response.id } };
+                }
+            } catch (apiError) {
+                console.warn('⚠️ Failed to save to Domo API, using local storage:', apiError);
+            }
+            
+            // Fallback: Store locally and return success for optimistic update
+            const storageKey = 'signalai_action_plans';
+            const existingPlans = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            existingPlans.push(planData);
+            localStorage.setItem(storageKey, JSON.stringify(existingPlans));
+            
+            console.log('✅ Action plan saved to local storage (fallback)');
+            return { success: true, data: planData };
+            
+        } catch (error) {
+            console.error('❌ Failed to save action plan:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    /**
+     * Update an existing action plan
+     */
+    static async updateActionPlan(planId, updates) {
+        try {
+            console.log('📝 Updating action plan:', planId, updates);
+            
+            // Try to update in Domo API
+            try {
+                const response = await domo.put(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${planId}`, {
+                    content: updates
+                });
+                
+                if (response) {
+                    console.log('✅ Action plan updated in Domo API');
+                    return { success: true, data: response };
+                }
+            } catch (apiError) {
+                console.warn('⚠️ Failed to update in Domo API, using local storage:', apiError);
+            }
+            
+            // Fallback: Update in local storage
+            const storageKey = 'signalai_action_plans';
+            const existingPlans = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            const planIndex = existingPlans.findIndex(p => p.id === planId);
+            
+            if (planIndex !== -1) {
+                existingPlans[planIndex] = { ...existingPlans[planIndex], ...updates };
+                localStorage.setItem(storageKey, JSON.stringify(existingPlans));
+                console.log('✅ Action plan updated in local storage (fallback)');
+                return { success: true, data: existingPlans[planIndex] };
+            }
+            
+            return { success: false, error: 'Plan not found' };
+            
+        } catch (error) {
+            console.error('❌ Failed to update action plan:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    /**
+     * Delete an action plan
+     */
+    static async deleteActionPlan(planId) {
+        try {
+            console.log('🗑️ Deleting action plan:', planId);
+            
+            // Try to delete from Domo API
+            try {
+                await domo.delete(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${planId}`);
+                console.log('✅ Action plan deleted from Domo API');
+                return { success: true };
+            } catch (apiError) {
+                console.warn('⚠️ Failed to delete from Domo API, using local storage:', apiError);
+            }
+            
+            // Fallback: Delete from local storage
+            const storageKey = 'signalai_action_plans';
+            const existingPlans = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            const filteredPlans = existingPlans.filter(p => p.id !== planId);
+            
+            if (filteredPlans.length < existingPlans.length) {
+                localStorage.setItem(storageKey, JSON.stringify(filteredPlans));
+                console.log('✅ Action plan deleted from local storage (fallback)');
+                return { success: true };
+            }
+            
+            return { success: false, error: 'Plan not found' };
+            
+        } catch (error) {
+            console.error('❌ Failed to delete action plan:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    /**
+     * Save interaction (like/not accurate feedback)
+     */
+    static async saveInteraction(interactionData) {
+        try {
+            console.log('💾 Saving interaction:', interactionData);
+            
+            // Try to save to Domo API
+            try {
+                const response = await domo.post('/domo/datastores/v1/collections/SignalAI.Interactions/documents', {
+                    content: interactionData
+                });
+                
+                if (response && response.id) {
+                    console.log('✅ Interaction saved to Domo API');
+                    return { success: true, data: { ...interactionData, recordId: response.id } };
+                }
+            } catch (apiError) {
+                console.warn('⚠️ Failed to save to Domo API, using local storage:', apiError);
+            }
+            
+            // Fallback: Store locally
+            const storageKey = 'signalai_interactions';
+            const existingInteractions = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            existingInteractions.push(interactionData);
+            localStorage.setItem(storageKey, JSON.stringify(existingInteractions));
+            
+            console.log('✅ Interaction saved to local storage (fallback)');
+            return { success: true, data: interactionData };
+            
+        } catch (error) {
+            console.error('❌ Failed to save interaction:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    /**
+     * Save feedback interaction (alias for saveInteraction used by FeedbackService)
+     */
+    static async saveFeedbackInteraction(signalId, interactionType, userId) {
+        const interactionData = {
+            id: `interaction-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            signalId: signalId,
+            interactionType: interactionType,
+            userId: userId || 'user-1',
+            timestamp: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+        };
+        
+        return this.saveInteraction(interactionData);
+    }
+    
+    /**
+     * Save comment
+     */
+    static async saveComment(commentData) {
+        try {
+            console.log('💾 Saving comment:', commentData);
+            
+            // Try to save to Domo API
+            try {
+                const response = await domo.post('/domo/datastores/v1/collections/SignalAI.Comments/documents', {
+                    content: commentData
+                });
+                
+                if (response && response.id) {
+                    console.log('✅ Comment saved to Domo API');
+                    return { success: true, data: { ...commentData, recordId: response.id } };
+                }
+            } catch (apiError) {
+                console.warn('⚠️ Failed to save to Domo API, using local storage:', apiError);
+            }
+            
+            // Fallback: Store locally
+            const storageKey = 'signalai_comments';
+            const existingComments = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            existingComments.push(commentData);
+            localStorage.setItem(storageKey, JSON.stringify(existingComments));
+            
+            console.log('✅ Comment saved to local storage (fallback)');
+            return { success: true, data: commentData };
+            
+        } catch (error) {
+            console.error('❌ Failed to save comment:', error);
+            return { success: false, error: error.message };
+        }
+    }
 }
 
 // Make it globally available
