@@ -2398,11 +2398,24 @@ body {
     transform: translateY(0);
 }
 
+.recommendation-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
 .recommendation-text {
     font-size: 0.95rem;
     font-weight: 500;
     color: var(--neutral-gray-800);
-    flex: 1;
+}
+
+.recommendation-rationale {
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--neutral-gray-600);
+    line-height: 1.3;
 }
 
 .plays-section {

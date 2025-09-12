@@ -638,7 +638,8 @@ class PortfolioRenderer {
                         actionId: actionId,
                         accountId: account.id,
                         priority: priority,
-                        urgency: urgency
+                        urgency: urgency,
+                        rationale: signal.signal_rationale || ''
                     };
                     actionDataMap.set(action, actionData);
                 }
@@ -658,8 +659,15 @@ class PortfolioRenderer {
                         <div class="recommendation-priority-badge priority-${data.priority.toLowerCase()}">
                             ${data.urgency}
                         </div>
-                        <div class="recommendation-text">
-                            ${SecurityUtils.sanitizeHTML(action)}
+                        <div class="recommendation-content">
+                            <div class="recommendation-text">
+                                ${SecurityUtils.sanitizeHTML(action)}
+                            </div>
+                            ${data.rationale ? `
+                                <div class="recommendation-rationale">
+                                    ${SecurityUtils.sanitizeHTML(data.rationale)}
+                                </div>
+                            ` : ''}
                         </div>
                         <div class="recommendation-date">
                             ${FormatUtils.formatDateSimple(data.date)}
@@ -807,21 +815,14 @@ class PortfolioRenderer {
         // Find the signal with this action_id to get its specific plays
         let csPlays = [];
         
-        console.log('loadDrawerCSPlays called with actionId:', actionId);
-        
         // Get signals from the SignalsStore
         const state = window.signalsStore?.getState();
         const signals = state?.signals || [];
         
-        console.log('SignalsStore exists:', !!window.signalsStore);
-        console.log('Signals from store:', signals.length);
-        
         if (actionId && signals.length > 0) {
             const signal = signals.find(s => s.action_id === actionId);
-            console.log('Found signal:', signal);
             
             if (signal) {
-                console.log('Loading CS Plays for drawer action:', actionId, 'for account:', signal.account_id);
                 
                 // Extract play 1 with enhanced data - check both space and underscore versions
                 const play1Name = signal['Play 1 Name'] || signal.play_1_name || signal.play_1;
@@ -863,8 +864,6 @@ class PortfolioRenderer {
             console.error('drawerPlaysContainer element not found!');
             return;
         }
-        
-        console.log('Final drawer csPlays array:', csPlays);
         
         // Show message if no plays found, otherwise show checkboxes
         if (csPlays.length === 0) {
