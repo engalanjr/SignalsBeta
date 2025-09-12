@@ -1,70 +1,401 @@
-// SignalsRepository - Handles all signal-related API operations with Flux integration
+// SignalsRepository - Handles all data operations with normalized relational model
 class SignalsRepository {
     
     /**
-     * Load all application data (signals, comments, interactions, plans, user info)
-     * @returns {Promise} - Promise that resolves with all data
+     * Load all application data and normalize into relational structure
+     * @returns {Promise} - Promise that resolves with normalized data
      */
     static async loadAllData() {
         // Dispatch loading started action
         dispatcher.dispatch(Actions.startDataLoad());
         
         try {
-            console.log('🚀 SignalsRepository: Starting parallel batch data load...');
+            console.log('🚀 SignalsRepository: Starting data load and normalization...');
             const startTime = performance.now();
             
-            // Execute all API calls in parallel for maximum speed
+            // Load raw data from all sources
             const [
-                signalsResult,
+                rawSignalsResult,
                 interactionsResult, 
                 commentsResult,
                 actionPlansResult,
                 userInfoResult
             ] = await Promise.allSettled([
-                this.loadSignals(),
+                this.loadRawSignals(),
                 this.loadInteractions(),
                 this.loadComments(),
                 this.loadActionPlans(),
                 this.loadUserInfo()
             ]);
 
+            // Process raw results
+            const rawSignals = this.processResult(rawSignalsResult, 'signals', []);
+            const interactions = this.processResult(interactionsResult, 'interactions', []);
+            const comments = this.processResult(commentsResult, 'comments', []);
+            const actionPlans = this.processResult(actionPlansResult, 'action plans', []);
+            const userInfo = this.processResult(userInfoResult, 'user info', { userId: 'user-1', userName: 'Current User' });
+
+            // NORMALIZE THE DATA INTO RELATIONAL STRUCTURE
+            const normalizedData = this.normalizeData(rawSignals, interactions, comments, actionPlans);
+            
             const loadTime = performance.now() - startTime;
-            console.log(`⚡ Batch data load completed in ${loadTime.toFixed(2)}ms`);
-
-            // Process results and handle any failures gracefully
-            const data = {
-                signals: this.processResult(signalsResult, 'signals', []),
-                interactions: this.processResult(interactionsResult, 'interactions', []),
-                comments: this.processResult(commentsResult, 'comments', []),
-                actionPlans: this.processResult(actionPlansResult, 'action plans', []),
-                userInfo: this.processResult(userInfoResult, 'user info', { userId: 'user-1', userName: 'Current User' })
-            };
-
-            console.log('📊 Data load summary:', {
-                signals: data.signals.length,
-                interactions: data.interactions.length, 
-                comments: data.comments.length,
-                actionPlans: data.actionPlans.length,
-                userInfo: data.userInfo.userName
+            console.log(`⚡ Data load and normalization completed in ${loadTime.toFixed(2)}ms`);
+            
+            console.log('📊 Normalized data summary:', {
+                accounts: normalizedData.accounts.size,
+                signals: normalizedData.signals.size,
+                recommendedActions: normalizedData.recommendedActions.size,
+                interactions: normalizedData.interactions.size,
+                comments: normalizedData.comments.size,
+                actionPlans: normalizedData.actionPlans.size,
+                userInfo: userInfo.userName
             });
             
-            // Dispatch success action with the data
-            dispatcher.dispatch(Actions.dataLoadSuccess(data));
+            // Add userInfo to normalized data
+            normalizedData.userInfo = userInfo;
             
-            return data;
+            // Dispatch success action with normalized data
+            dispatcher.dispatch(Actions.dataLoadSuccess(normalizedData));
+            
+            return normalizedData;
             
         } catch (error) {
             console.error('❌ SignalsRepository: Failed to load data:', error);
-            
-            // Dispatch failure action
             dispatcher.dispatch(Actions.dataLoadFailed(error));
-            
             throw error;
         }
     }
     
     /**
-     * Process Promise.allSettled result and handle failures gracefully
+     * Normalize raw data into relational structure
+     */
+    static normalizeData(rawSignals, interactions, comments, actionPlans) {
+        console.log('🔄 Starting data normalization process...');
+        
+        // Initialize normalized stores
+        const accounts = new Map();
+        const signals = new Map();
+        const recommendedActions = new Map();
+        const normalizedInteractions = new Map();
+        const normalizedComments = new Map();
+        const normalizedActionPlans = new Map();
+        
+        // Initialize relationship indexes
+        const signalsByAccount = new Map();
+        const signalsByAction = new Map();
+        const actionsByAccount = new Map();
+        const interactionsBySignal = new Map();
+        const commentsBySignal = new Map();
+        const commentsByAccount = new Map();
+        const plansByAccount = new Map();
+        const plansByAction = new Map();
+        
+        // Step 1: Extract and normalize Accounts
+        console.log('📦 Extracting unique accounts...');
+        rawSignals.forEach(rawSignal => {
+            const accountId = rawSignal.account_id;
+            if (!accountId) return;
+            
+            if (!accounts.has(accountId)) {
+                const account = this.extractAccountFromSignal(rawSignal);
+                accounts.set(accountId, account);
+                signalsByAccount.set(accountId, new Set());
+                actionsByAccount.set(accountId, new Set());
+                plansByAccount.set(accountId, new Set());
+                commentsByAccount.set(accountId, new Set());
+            }
+        });
+        console.log(`✅ Extracted ${accounts.size} unique accounts`);
+        
+        // Step 2: Extract and normalize RecommendedActions
+        console.log('📦 Extracting unique recommended actions...');
+        rawSignals.forEach(rawSignal => {
+            const actionId = rawSignal.action_id;
+            if (!actionId) return;
+            
+            if (!recommendedActions.has(actionId)) {
+                const action = this.extractRecommendedActionFromSignal(rawSignal);
+                recommendedActions.set(actionId, action);
+                signalsByAction.set(actionId, new Set());
+                plansByAction.set(actionId, new Set());
+                
+                // Track action to account relationship
+                if (action.account_id && actionsByAccount.has(action.account_id)) {
+                    actionsByAccount.get(action.account_id).add(actionId);
+                }
+            }
+        });
+        console.log(`✅ Extracted ${recommendedActions.size} unique recommended actions`);
+        
+        // Step 3: Normalize Signals (remove embedded data)
+        console.log('📦 Normalizing signals...');
+        rawSignals.forEach(rawSignal => {
+            const signal = this.extractNormalizedSignal(rawSignal);
+            signals.set(signal.signal_id, signal);
+            
+            // Update relationship indexes
+            if (signal.account_id && signalsByAccount.has(signal.account_id)) {
+                signalsByAccount.get(signal.account_id).add(signal.signal_id);
+            }
+            if (signal.action_id && signalsByAction.has(signal.action_id)) {
+                signalsByAction.get(signal.action_id).add(signal.signal_id);
+            }
+            
+            // Initialize interaction index for this signal
+            interactionsBySignal.set(signal.signal_id, new Set());
+            commentsBySignal.set(signal.signal_id, new Set());
+        });
+        console.log(`✅ Normalized ${signals.size} signals`);
+        
+        // Step 4: Process Interactions
+        console.log('📦 Processing interactions...');
+        interactions.forEach(interaction => {
+            const interactionId = interaction.id || `interaction-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            normalizedInteractions.set(interactionId, interaction);
+            
+            // Update index
+            if (interaction.signalId && interactionsBySignal.has(interaction.signalId)) {
+                interactionsBySignal.get(interaction.signalId).add(interactionId);
+            }
+        });
+        console.log(`✅ Processed ${normalizedInteractions.size} interactions`);
+        
+        // Step 5: Process Comments (dual-context)
+        console.log('📦 Processing comments...');
+        comments.forEach(comment => {
+            const commentId = comment.id || `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            
+            // Ensure comment has either signalId or accountId
+            if (comment.signalId) {
+                if (commentsBySignal.has(comment.signalId)) {
+                    commentsBySignal.get(comment.signalId).add(commentId);
+                }
+            } else if (comment.accountId) {
+                if (commentsByAccount.has(comment.accountId)) {
+                    commentsByAccount.get(comment.accountId).add(commentId);
+                }
+            }
+            
+            normalizedComments.set(commentId, comment);
+        });
+        console.log(`✅ Processed ${normalizedComments.size} comments`);
+        
+        // Step 6: Process ActionPlans
+        console.log('📦 Processing action plans...');
+        actionPlans.forEach(plan => {
+            const planId = plan.id || `plan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            normalizedActionPlans.set(planId, plan);
+            
+            // Update indexes
+            if (plan.accountId && plansByAccount.has(plan.accountId)) {
+                plansByAccount.get(plan.accountId).add(planId);
+            }
+            if (plan.actionId && plansByAction.has(plan.actionId)) {
+                plansByAction.get(plan.actionId).add(planId);
+            }
+        });
+        console.log(`✅ Processed ${normalizedActionPlans.size} action plans`);
+        
+        // Return normalized data structure
+        return {
+            // Entity stores
+            accounts,
+            signals,
+            recommendedActions,
+            interactions: normalizedInteractions,
+            comments: normalizedComments,
+            actionPlans: normalizedActionPlans,
+            
+            // Relationship indexes
+            signalsByAccount,
+            signalsByAction,
+            actionsByAccount,
+            interactionsBySignal,
+            commentsBySignal,
+            commentsByAccount,
+            plansByAccount,
+            plansByAction
+        };
+    }
+    
+    /**
+     * Extract Account entity from raw signal data
+     */
+    static extractAccountFromSignal(rawSignal) {
+        return {
+            account_id: rawSignal.account_id || rawSignal['account id'],
+            account_name: rawSignal.account_name,
+            account_action_context: rawSignal.account_action_context || rawSignal['Account Action Context'] || '',
+            account_action_context_rationale: rawSignal.account_action_context_rationale || rawSignal['Account Action Context Rationale'] || '',
+            
+            // Account metrics object
+            account_metrics: rawSignal.account_metrics || {
+                relationship: rawSignal['Relationship'] || '',
+                content_creation: rawSignal['Content Creation'] || '',
+                user_engagement: rawSignal['User Engagement'] || '',
+                support: rawSignal['Support'] || '',
+                commercial: rawSignal['Commercial'] || '',
+                education: rawSignal['Education'] || '',
+                platform_utilization: rawSignal['Platform Utilization'] || '',
+                value_realization: rawSignal['Value Realization'] || '',
+                
+                relationship_value: parseFloat(rawSignal['Relationship - Value']) || 0,
+                content_creation_value: parseFloat(rawSignal['Content Creation - Value']) || 0,
+                user_engagement_value: parseFloat(rawSignal['User Engagement - Value']) || 0,
+                support_value: parseFloat(rawSignal['Support - Value']) || 0,
+                commercial_value: parseFloat(rawSignal['Commercial - Value']) || 0,
+                education_value: parseFloat(rawSignal['Education - Value']) || 0,
+                platform_utilization_value: parseFloat(rawSignal['Platform Utilization - Value']) || 0,
+                value_realization_value: parseFloat(rawSignal['Value Realization - Value']) || 0,
+                
+                health_score: parseFloat(rawSignal['Health Score'] || rawSignal.health_score) || 0,
+                at_risk_cat: rawSignal.at_risk_cat || '',
+                account_gpa: rawSignal['Account GPA'] || rawSignal.account_gpa || '',
+                account_gpa_numeric: parseFloat(rawSignal['Account GPA Numeric'] || rawSignal.account_gpa_numeric) || 0,
+                prior_account_gpa_numeric: parseFloat(rawSignal['Prior Account GPA Numeric']) || 0,
+                gpa_trend_180_day: rawSignal['180 Day GPA Trend '] || rawSignal['180 Day GPA Trend'] || '',
+                
+                industry: rawSignal['Industry (Domo)'] || '',
+                customer_tenure_years: parseFloat(rawSignal['Customer Tenure (Years)']) || 0,
+                type_of_next_renewal: rawSignal['Type of Next Renewal'] || '',
+                data_source: rawSignal['Data Source'] || ''
+            },
+            
+            // Usage metrics object
+            usage_metrics: rawSignal.usage_metrics || {
+                total_lifetime_billings: parseFloat(rawSignal['Total Lifetime Billings'] || rawSignal.total_lifetime_billings) || 0,
+                daily_active_users: parseInt(rawSignal['Daily Active Users (DAU)'] || rawSignal.daily_active_users) || 0,
+                weekly_active_users: parseInt(rawSignal['Weekly Active Users (WAU)'] || rawSignal.weekly_active_users) || 0,
+                monthly_active_users: parseInt(rawSignal['Monthly Active Users (MAU)'] || rawSignal.monthly_active_users) || 0,
+                total_data_sets: parseInt(rawSignal['Total Data Sets']) || 0,
+                total_rows: parseInt(rawSignal['Total Rows']) || 0,
+                dataflows: parseInt(rawSignal['Dataflows']) || 0,
+                cards: parseInt(rawSignal['Cards']) || 0,
+                is_consumption: rawSignal['is Consumption'] === 'TRUE' || rawSignal['is Consumption'] === 'true'
+            },
+            
+            // Financial object
+            financial: rawSignal.financial || {
+                next_renewal_date: rawSignal['Next Renewal Date'] || '',
+                bks_status_grouping: rawSignal.bks_status_grouping || '',
+                bks_fq: rawSignal.bks_fq || '',
+                rank: parseInt(rawSignal.rank) || 0,
+                bks_renewal_baseline_usd: parseFloat(rawSignal.bks_renewal_baseline_usd) || 0,
+                bks_forecast_new: parseFloat(rawSignal.bks_forecast_new) || 0,
+                bks_forecast_delta: parseFloat(rawSignal.bks_forecast_delta) || 0,
+                pacing_percentage: parseFloat(rawSignal['% Pacing']) || 0
+            },
+            
+            // Ownership object
+            ownership: rawSignal.ownership || {
+                ae: rawSignal['AE'] || '',
+                csm: rawSignal['CSM'] || '',
+                ae_email: rawSignal['AE Email'] || '',
+                csm_manager: rawSignal['CSM Manager'] || '',
+                rvp: rawSignal['RVP'] || '',
+                avp: rawSignal['AVP'] || '',
+                level_3_leader: rawSignal['level 3 leader'] || '',
+                account_owner: rawSignal['Account Owner'] || ''
+            },
+            
+            // Top-level metrics for quick access
+            at_risk_cat: rawSignal.at_risk_cat || '',
+            account_gpa: rawSignal['Account GPA'] || rawSignal.account_gpa || '',
+            health_score: parseFloat(rawSignal['Health Score'] || rawSignal.health_score) || 0,
+            daily_active_users: parseInt(rawSignal['Daily Active Users (DAU)'] || rawSignal.daily_active_users) || 0,
+            weekly_active_users: parseInt(rawSignal['Weekly Active Users (WAU)'] || rawSignal.weekly_active_users) || 0,
+            monthly_active_users: parseInt(rawSignal['Monthly Active Users (MAU)'] || rawSignal.monthly_active_users) || 0,
+            total_lifetime_billings: parseFloat(rawSignal['Total Lifetime Billings'] || rawSignal.total_lifetime_billings) || 0,
+            bks_renewal_baseline_usd: parseFloat(rawSignal.bks_renewal_baseline_usd) || 0
+        };
+    }
+    
+    /**
+     * Extract RecommendedAction entity from raw signal data
+     */
+    static extractRecommendedActionFromSignal(rawSignal) {
+        const accountId = rawSignal.account_id || rawSignal['account id'];
+        const actionId = rawSignal.action_id;
+        
+        // Extract plays from signal
+        const plays = [];
+        if (rawSignal.plays && Array.isArray(rawSignal.plays)) {
+            plays.push(...rawSignal.plays);
+        } else {
+            // Build plays from individual fields
+            for (let i = 1; i <= 3; i++) {
+                const playId = rawSignal[`play_${i}`];
+                if (playId) {
+                    plays.push({
+                        id: playId,
+                        name: rawSignal[`Play ${i} Name`] || '',
+                        description: rawSignal[`Play ${i} Description`] || '',
+                        full_description: rawSignal[`play_${i}_description`] || '',
+                        play_type: rawSignal[`play_${i}_play_type`] || '',
+                        initiating_role: rawSignal[`play_${i}_initiating_role`] || '',
+                        executing_role: rawSignal[`play_${i}_executing_role`] || '',
+                        doc_location: rawSignal[`play_${i}_doc_location`] || ''
+                    });
+                }
+            }
+        }
+        
+        return {
+            action_id: actionId,
+            account_id: accountId,
+            recommended_action: rawSignal.recommended_action || '',
+            signal_rationale: rawSignal.signal_rationale || '',
+            call_date: rawSignal.call_date || '',
+            plays: plays
+        };
+    }
+    
+    /**
+     * Extract normalized Signal entity (without embedded data)
+     */
+    static extractNormalizedSignal(rawSignal) {
+        return {
+            signal_id: rawSignal.id || rawSignal['Signal Id'] || `signal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            account_id: rawSignal.account_id || rawSignal['account id'],
+            action_id: rawSignal.action_id || '',
+            
+            // Signal-specific fields only
+            category: rawSignal.category || '',
+            code: rawSignal.code || '',
+            name: rawSignal.name || '',
+            summary: rawSignal.summary || '',
+            rationale: rawSignal.rationale || '',
+            priority: rawSignal.priority || 'Medium',
+            confidence: parseFloat(rawSignal.confidence) || 0,
+            signal_confidence: parseFloat(rawSignal.signal_confidence) || 0,
+            signal_polarity: rawSignal.signal_polarity || rawSignal['Signal Polarity'] || 'Enrichment',
+            
+            // AI context (signal-specific)
+            ai_signal_context: rawSignal.ai_signal_context || rawSignal['AI Signal Context'] || '',
+            ai_account_signal_context: rawSignal.ai_account_signal_context || rawSignal['AI Account Signal Context'] || '',
+            ai_account_signal_context_rationale: rawSignal.ai_account_signal_context_rationale || rawSignal['AI Account Signal Context Rationale'] || '',
+            
+            // Call context (signal-specific)
+            call_context: rawSignal.call_context || {
+                call_id: rawSignal.call_id || '',
+                call_date: rawSignal.call_date || '',
+                call_url: rawSignal['Call URL'] || '',
+                call_title: rawSignal['Call Title'] || '',
+                call_scheduled_date: rawSignal['Call Scheduled Date'] || '',
+                call_attendees: rawSignal['Call Attendees'] || '',
+                call_recap: rawSignal['Call Recap'] || ''
+            },
+            
+            created_at: rawSignal.created_at || rawSignal.created_date || new Date().toISOString(),
+            
+            // UI state (not from CSV)
+            isViewed: false,
+            feedback: null
+        };
+    }
+    
+    /**
+     * Process Promise.allSettled result
      */
     static processResult(result, name, defaultValue) {
         if (result.status === 'fulfilled') {
@@ -76,16 +407,16 @@ class SignalsRepository {
     }
     
     /**
-     * Load signals from API or fallback to CSV
+     * Load raw signals from API or CSV
      */
-    static async loadSignals() {
+    static async loadRawSignals() {
         try {
             console.log('📡 Loading signals...');
             const response = await domo.get('/data/v1/signals');
             
             if (response && response.length > 0) {
                 console.log(`✅ Loaded ${response.length} signals from Domo API`);
-                return this.parseDomoResponse(response);
+                return response;
             } else {
                 console.warn('⚠️ No signals from API, using CSV fallback');
                 return await this.loadMasterCSV();
@@ -104,7 +435,6 @@ class SignalsRepository {
         try {
             console.log('Loading master CSV data...');
             
-            // Fetch the master CSV file with cache-busting
             const cacheBuster = `?v=${Date.now()}`;
             const response = await fetch(`./data.csv${cacheBuster}`);
             
@@ -115,451 +445,23 @@ class SignalsRepository {
             const csvText = await response.text();
             console.log('Master CSV loaded successfully, length:', csvText.length);
             
-            // Log complete header row without truncation
-            const firstNewlineIndex = csvText.indexOf('\n');
-            const headerRow = csvText.slice(0, firstNewlineIndex);
-            console.log('Complete CSV headers (' + firstNewlineIndex + ' chars):', headerRow);
-            
-            // Parse the CSV
             const parsedData = this.parseCSV(csvText);
             console.log(`Parsed ${parsedData.length} records from master CSV`);
-            
-            // Log unmapped fields discovered across multiple records
-            if (parsedData.length > 0) {
-                const allUnmappedFields = new Set();
-                const sampleSize = Math.min(100, parsedData.length);
-                
-                // Aggregate unmapped fields from first 100 records
-                for (let i = 0; i < sampleSize; i++) {
-                    if (parsedData[i].extras) {
-                        Object.keys(parsedData[i].extras).forEach(field => allUnmappedFields.add(field));
-                    }
-                }
-                
-                const unmappedFieldsArray = Array.from(allUnmappedFields).sort();
-                if (unmappedFieldsArray.length > 0) {
-                    console.log(`🆕 Discovered ${unmappedFieldsArray.length} unmapped CSV columns across ${sampleSize} records:`, unmappedFieldsArray);
-                } else {
-                    console.log(`✅ All CSV columns are properly mapped to the data model (checked ${sampleSize} records)`);
-                }
-            }
             
             return parsedData;
         } catch (error) {
             console.error('Error loading master CSV:', error);
-            // Fall back to sample data if CSV loading fails
-            return this.getSampleData();
+            return [];
         }
     }
     
     /**
-     * Known fields that we explicitly map in parseDomoResponse
-     */
-    static KNOWN_FIELDS = new Set([
-        // Core signal fields
-        'id', 'Signal Id', 'account_id', 'Account Id', 'account id', 'account_name', 'category', 'code', 'name', 'summary', 'rationale', 'priority', 'confidence', 'action_context',
-        
-        // Account metrics and status
-        'at_risk_cat', 'account_gpa', 'Account GPA', 'Account GPA Table Card Column', 'account_gpa_numeric', 'Account GPA Numeric', 'health_score', 'Health Score',
-        
-        // Financial metrics
-        'total_lifetime_billings', 'Total Lifetime Billings', 'bks_renewal_baseline_usd', 'bks_forecast_new', 'bks_forecast_delta', 'bks_status_grouping', 'pacing_percent', '% Pacing', 'bks_fq', 'rank',
-        
-        // Usage metrics
-        'daily_active_users', 'Daily Active Users (DAU)', 'weekly_active_users', 'Weekly Active Users (WAU)', 'monthly_active_users', 'Monthly Active Users (MAU)',
-        'total_data_sets', 'Total Data Sets', 'total_rows', 'Total Rows', 'dataflows', 'Dataflows', 'cards', 'Cards', 'is_consumption', 'is Consumption',
-        
-        // Account information
-        'industry', 'Industry (Domo)', 'customer_tenure_years', 'Customer Tenure (Years)', 'type_of_next_renewal', 'Type of Next Renewal', 'numeric_grade', 'Numeric Grade',
-        
-        // GPA component values (numeric)
-        'relationship_value', 'Relationship - Value', 'content_creation_value', 'Content Creation - Value', 'user_engagement_value', 'User Engagement - Value',
-        'support_value', 'Support - Value', 'commercial_value', 'Commercial - Value', 'education_value', 'Education - Value',
-        'platform_utilization_value', 'Platform Utilization - Value', 'value_realization_value', 'Value Realization - Value',
-        
-        // GPA component grades (letter grades)
-        'Relationship', 'Content Creation', 'User Engagement', 'Support', 'Commercial', 'Education', 'Platform Utilization', 'Value Realization',
-        
-        // Historical metrics
-        'prior_account_gpa_numeric', 'Prior Account GPA Numeric', 'Prior Value', 'day_180_gpa_trend', '180 Day GPA Trend', 'Data Source',
-        
-        // Account ownership and contacts
-        'account_owner', 'Account Owner', 'avp', 'AVP', 'rvp', 'RVP', 'ae', 'AE', 'csm', 'CSM', 'ae_email', 'AE Email', 'CSM Manager', 'level 3 leader', 'next_renewal_date', 'Next Renewal Date',
-        
-        // AI and recommendation fields
-        'recommended_action', 'signal_rationale', 'signal_confidence', 'action_id',
-        'AI Signal Context', 'AI Account Signal Context', 'AI Account Signal Context Rationale', 'Account Action Context', 'Account Action Context Rationale',
-        
-        // CS Play basic fields
-        'play_1', 'play_2', 'play_3', 'Play 1 Name', 'Play 1 Description', 'Play 2 Name', 'Play 2 Description', 'Play 3 Name', 'Play 3 Description',
-        
-        // CS Play detailed metadata
-        'play_1_description', 'play_1_play_type', 'play_1_initiating_role', 'play_1_executing_role', 'play_1_doc_location',
-        'play_2_description', 'play_2_play_type', 'play_2_initiating_role', 'play_2_executing_role', 'play_2_doc_location', 
-        'play_3_description', 'play_3_play_type', 'play_3_initiating_role', 'play_3_executing_role', 'play_3_doc_location',
-        
-        // Call information
-        'call_id', 'call_date', 'call_title', 'call_outcome',
-        
-        // Signal polarity and timestamps
-        'Signal Polarity', 'signal_polarity', 'created_at', 'created_date'
-    ]);
-
-    /**
-     * Parse comprehensive record into signal format with all 100+ fields
-     */
-    static parseComprehensiveRecord(record) {
-        if (!record) return null;
-        
-        // If it's an array, process first element
-        if (Array.isArray(record)) {
-            if (record.length === 0) return null;
-            record = record[0];
-        }
-        
-        return {
-            // Core Signal Identity
-            id: record['Signal Id'] || record.id || `signal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            account_id: record['account_id'] || record['account id'],
-            account_name: record['account_name'],
-            
-            // Signal Properties
-            category: record['category'],
-            code: record['code'],
-            name: record['name'],
-            summary: record['summary'],
-            rationale: record['rationale'],
-            priority: record['priority'],
-            confidence: parseFloat(record['confidence']) || 0,
-            action_context: record['action_context'],
-            
-            // Enhanced Signal Data (including Signal Polarity!)
-            signal_confidence: parseFloat(record['signal_confidence']) || 0,
-            signal_polarity: record['Signal Polarity'] || 'Enrichment', // KEY NEW FIELD!
-            recommended_action: record['recommended_action'] || '',
-            signal_rationale: record['signal_rationale'] || '',
-            action_id: record['action_id'] || '',
-            created_at: record['created_at'] || new Date().toISOString(),
-            
-            // AI Enhancement Layer
-            ai_signal_context: record['AI Signal Context'] || '',
-            ai_account_signal_context: record['AI Account Signal Context'] || '',
-            ai_account_signal_context_rationale: record['AI Account Signal Context Rationale'] || '',
-            account_action_context: record['Account Action Context'] || '',
-            account_action_context_rationale: record['Account Action Context Rationale'] || '',
-            
-            // Playbook System (3 Plays)
-            plays: [
-                record['play_1'] ? {
-                    id: record['play_1'],
-                    name: record['Play 1 Name'] || '',
-                    description: record['Play 1 Description'] || '',
-                    full_description: record['play_1_description'] || '',
-                    play_type: record['play_1_play_type'] || '',
-                    initiating_role: record['play_1_initiating_role'] || '',
-                    executing_role: record['play_1_executing_role'] || '',
-                    doc_location: record['play_1_doc_location'] || ''
-                } : null,
-                record['play_2'] ? {
-                    id: record['play_2'],
-                    name: record['Play 2 Name'] || '',
-                    description: record['Play 2 Description'] || '',
-                    full_description: record['play_2_description'] || '',
-                    play_type: record['play_2_play_type'] || '',
-                    initiating_role: record['play_2_initiating_role'] || '',
-                    executing_role: record['play_2_executing_role'] || '',
-                    doc_location: record['play_2_doc_location'] || ''
-                } : null,
-                record['play_3'] ? {
-                    id: record['play_3'],
-                    name: record['Play 3 Name'] || '',
-                    description: record['Play 3 Description'] || '',
-                    full_description: record['play_3_description'] || '',
-                    play_type: record['play_3_play_type'] || '',
-                    initiating_role: record['play_3_initiating_role'] || '',
-                    executing_role: record['play_3_executing_role'] || '',
-                    doc_location: record['play_3_doc_location'] || ''
-                } : null
-            ].filter(play => play !== null),
-            
-            // Account Health Metrics
-            account_metrics: {
-                relationship: record['Relationship'] || '',
-                content_creation: record['Content Creation'] || '',
-                user_engagement: record['User Engagement'] || '',
-                support: record['Support'] || '',
-                commercial: record['Commercial'] || '',
-                education: record['Education'] || '',
-                platform_utilization: record['Platform Utilization'] || '',
-                value_realization: record['Value Realization'] || '',
-                
-                // Numeric values
-                relationship_value: parseFloat(record['Relationship - Value']) || 0,
-                content_creation_value: parseFloat(record['Content Creation - Value']) || 0,
-                user_engagement_value: parseFloat(record['User Engagement - Value']) || 0,
-                support_value: parseFloat(record['Support - Value']) || 0,
-                commercial_value: parseFloat(record['Commercial - Value']) || 0,
-                education_value: parseFloat(record['Education - Value']) || 0,
-                platform_utilization_value: parseFloat(record['Platform Utilization - Value']) || 0,
-                value_realization_value: parseFloat(record['Value Realization - Value']) || 0,
-                
-                // Overall health
-                health_score: parseFloat(record['Health Score']) || 0,
-                at_risk_cat: record['at_risk_cat'] || '',
-                account_gpa: record['Account GPA'] || '',
-                account_gpa_numeric: parseFloat(record['Account GPA Numeric']) || 0,
-                prior_account_gpa_numeric: parseFloat(record['Prior Account GPA Numeric']) || 0,
-                gpa_trend_180_day: record['180 Day GPA Trend '] || record['180 Day GPA Trend'] || '',
-                
-                // Account details
-                industry: record['Industry (Domo)'] || '',
-                customer_tenure_years: parseFloat(record['Customer Tenure (Years)']) || 0,
-                type_of_next_renewal: record['Type of Next Renewal'] || '',
-                data_source: record['Data Source'] || ''
-            },
-            
-            // Usage Analytics
-            usage_metrics: {
-                total_lifetime_billings: parseFloat(record['Total Lifetime Billings']) || 0,
-                daily_active_users: parseInt(record['Daily Active Users (DAU)']) || 0,
-                weekly_active_users: parseInt(record['Weekly Active Users (WAU)']) || 0,
-                monthly_active_users: parseInt(record['Monthly Active Users (MAU)']) || 0,
-                total_data_sets: parseInt(record['Total Data Sets']) || 0,
-                total_rows: parseInt(record['Total Rows']) || 0,
-                dataflows: parseInt(record['Dataflows']) || 0,
-                cards: parseInt(record['Cards']) || 0,
-                is_consumption: record['is Consumption'] === 'TRUE' || record['is Consumption'] === 'true'
-            },
-            
-            // Financial/Renewal Data
-            financial: {
-                next_renewal_date: record['Next Renewal Date'] || '',
-                bks_status_grouping: record['bks_status_grouping'] || '',
-                bks_fq: record['bks_fq'] || '',
-                rank: parseInt(record['rank']) || 0,
-                bks_renewal_baseline_usd: parseFloat(record['bks_renewal_baseline_usd']) || 0,
-                bks_forecast_new: parseFloat(record['bks_forecast_new']) || 0,
-                bks_forecast_delta: parseFloat(record['bks_forecast_delta']) || 0,
-                pacing_percentage: parseFloat(record['% Pacing']) || 0
-            },
-            
-            // Team Ownership
-            ownership: {
-                ae: record['AE'] || '',
-                csm: record['CSM'] || '',
-                ae_email: record['AE Email'] || '',
-                csm_manager: record['CSM Manager'] || '',
-                rvp: record['RVP'] || '',
-                avp: record['AVP'] || '',
-                level_3_leader: record['level 3 leader'] || '',
-                account_owner: record['Account Owner'] || ''
-            },
-            
-            // Call/Meeting Context
-            call_context: {
-                call_id: record['call_id'] || '',
-                call_date: record['call_date'] || '',
-                call_url: record['Call URL'] || '',
-                call_title: record['Call Title'] || '',
-                call_scheduled_date: record['Call Scheduled Date'] || '',
-                call_attendees: record['Call Attendees'] || '',
-                call_recap: record['Call Recap'] || ''
-            },
-            
-            // Legacy compatibility fields (kept for backward compatibility)
-            at_risk_cat: record['at_risk_cat'] || '',
-            account_gpa: record['Account GPA'] || '',
-            health_score: parseFloat(record['Health Score']) || 0,
-            daily_active_users: parseInt(record['Daily Active Users (DAU)']) || 0,
-            weekly_active_users: parseInt(record['Weekly Active Users (WAU)']) || 0,
-            monthly_active_users: parseInt(record['Monthly Active Users (MAU)']) || 0,
-            total_lifetime_billings: parseFloat(record['Total Lifetime Billings']) || 0,
-            bks_renewal_baseline_usd: parseFloat(record['bks_renewal_baseline_usd']) || 0,
-            
-            // Metadata
-            created_date: record['created_at'] || record['created_date'] || new Date().toISOString(),
-            isViewed: false,
-            feedback: null,
-            
-            // Capture any unmapped fields for discovery
-            extras: Object.fromEntries(
-                Object.entries(record)
-                    .filter(([key]) => !this.KNOWN_FIELDS.has(key))
-                    .filter(([key, value]) => value !== '' && value != null)
-            )
-        };
-    }
-    
-    /**
-     * Parse Domo API response into signals format
-     */
-    static parseDomoResponse(response) {
-        // Transform Domo response data into our comprehensive signal format
-        return response.map(item => this.parseComprehensiveRecord(item)).filter(signal => signal !== null);
-    }
-    
-    /**
-     * Legacy parseDomoResponse for backward compatibility
-     * @deprecated Use parseComprehensiveRecord instead
-     */
-    static parseLegacyDomoResponse(response) {
-        // Transform Domo response data into our signal format
-        return response.map(item => ({
-            id: item['Signal Id'] || item.id || `signal_${Math.random().toString(36).substr(2, 9)}`,
-            account_id: item['Account Id'] || item.account_id,
-            account_name: item.account_name,
-            category: item.category,
-            code: item.code,
-            name: item.name,
-            summary: item.summary,
-            rationale: item.rationale,
-            priority: item.priority,
-            confidence: parseFloat(item.confidence) || 0,
-            action_context: item.action_context,
-            
-            // Account metrics
-            at_risk_cat: item.at_risk_cat || 'Healthy',
-            account_gpa: item['Account GPA'] || item.account_gpa,
-            account_gpa_numeric: parseFloat(item['Account GPA Numeric'] || item.account_gpa_numeric) || 0,
-            health_score: parseFloat(item['Health Score'] || item.health_score) || 0,
-            
-            // Business metrics
-            total_lifetime_billings: parseFloat(item['Total Lifetime Billings'] || item.total_lifetime_billings) || 0,
-            bks_renewal_baseline_usd: parseFloat(item.bks_renewal_baseline_usd) || 0,
-            bks_forecast_new: parseFloat(item.bks_forecast_new) || 0,
-            bks_forecast_delta: parseFloat(item.bks_forecast_delta) || 0,
-            bks_status_grouping: item.bks_status_grouping || '',
-            pacing_percent: parseFloat(item['% Pacing'] || item.pacing_percent) || 0,
-            bks_fq: item.bks_fq || '',
-            
-            // Usage metrics
-            daily_active_users: parseInt(item['Daily Active Users (DAU)'] || item.daily_active_users) || 0,
-            weekly_active_users: parseInt(item['Weekly Active Users (WAU)'] || item.weekly_active_users) || 0,
-            monthly_active_users: parseInt(item['Monthly Active Users (MAU)'] || item.monthly_active_users) || 0,
-            total_data_sets: parseInt(item['Total Data Sets'] || item.total_data_sets) || 0,
-            total_rows: parseInt(item['Total Rows'] || item.total_rows) || 0,
-            dataflows: parseInt(item.Dataflows || item.dataflows) || 0,
-            cards: parseInt(item.Cards || item.cards) || 0,
-            is_consumption: item['is Consumption'] === 'true' || item.is_consumption === true,
-            
-            // Additional fields
-            industry: item['Industry (Domo)'] || item.industry || 'Unknown',
-            customer_tenure_years: parseInt(item['Customer Tenure (Years)'] || item.customer_tenure_years) || 0,
-            type_of_next_renewal: item['Type of Next Renewal'] || item.type_of_next_renewal || '',
-            numeric_grade: parseFloat(item['Numeric Grade'] || item.numeric_grade) || 0,
-            account_gpa_table_card_column: item['Account GPA Table Card Column'] || item.account_gpa_table_card_column || '',
-            data_source: item['Data Source'] || item.data_source || '',
-            rank: parseInt(item.rank) || 0,
-            
-            // GPA component scores (numeric values)
-            relationship_value: parseFloat(item['Relationship - Value'] || item.relationship_value) || 0,
-            content_creation_value: parseFloat(item['Content Creation - Value'] || item.content_creation_value) || 0,
-            user_engagement_value: parseFloat(item['User Engagement - Value'] || item.user_engagement_value) || 0,
-            support_value: parseFloat(item['Support - Value'] || item.support_value) || 0,
-            commercial_value: parseFloat(item['Commercial - Value'] || item.commercial_value) || 0,
-            education_value: parseFloat(item['Education - Value'] || item.education_value) || 0,
-            platform_utilization_value: parseFloat(item['Platform Utilization - Value'] || item.platform_utilization_value) || 0,
-            value_realization_value: parseFloat(item['Value Realization - Value'] || item.value_realization_value) || 0,
-            
-            // GPA component grades (letter grades)
-            relationship_grade: item['Relationship'] || item.relationship_grade || '',
-            content_creation_grade: item['Content Creation'] || item.content_creation_grade || '',
-            user_engagement_grade: item['User Engagement'] || item.user_engagement_grade || '',
-            support_grade: item['Support'] || item.support_grade || '',
-            commercial_grade: item['Commercial'] || item.commercial_grade || '',
-            education_grade: item['Education'] || item.education_grade || '',
-            platform_utilization_grade: item['Platform Utilization'] || item.platform_utilization_grade || '',
-            value_realization_grade: item['Value Realization'] || item.value_realization_grade || '',
-            
-            // Historical metrics
-            prior_account_gpa_numeric: parseFloat(item['Prior Account GPA Numeric'] || item.prior_account_gpa_numeric) || 0,
-            prior_value: parseFloat(item['Prior Value'] || item.prior_value) || 0,
-            day_180_gpa_trend: parseFloat(item['180 Day GPA Trend'] || item.day_180_gpa_trend) || 0,
-            
-            // Account ownership and contacts
-            account_owner: item['Account Owner'] || item.account_owner || '',
-            avp: item['AVP'] || item.avp || '',
-            rvp: item['RVP'] || item.rvp || '',
-            ae: item['AE'] || item.ae || '',
-            csm: item['CSM'] || item.csm || '',
-            ae_email: item['AE Email'] || item.ae_email || '',
-            csm_manager: item['CSM Manager'] || item.csm_manager || '',
-            level_3_leader: item['level 3 leader'] || item.level_3_leader || '',
-            next_renewal_date: item['Next Renewal Date'] || item.next_renewal_date || '',
-            
-            // Recommendation and action fields
-            recommended_action: item.recommended_action || '',
-            signal_rationale: item.signal_rationale || '',
-            signal_confidence: item.signal_confidence || '',
-            action_id: item.action_id || '',
-            
-            // AI context fields
-            ai_signal_context: item['AI Signal Context'] || item.ai_signal_context || '',
-            ai_account_signal_context: item['AI Account Signal Context'] || item.ai_account_signal_context || '',
-            ai_account_signal_context_rationale: item['AI Account Signal Context Rationale'] || item.ai_account_signal_context_rationale || '',
-            account_action_context: item['Account Action Context'] || item.account_action_context || '',
-            account_action_context_rationale: item['Account Action Context Rationale'] || item.account_action_context_rationale || '',
-            
-            // CS Play basic fields
-            play_1: item.play_1 || '',
-            play_2: item.play_2 || '',
-            play_3: item.play_3 || '',
-            'Play 1 Name': item['Play 1 Name'] || '',
-            'Play 1 Description': item['Play 1 Description'] || '',
-            'Play 2 Name': item['Play 2 Name'] || '',
-            'Play 2 Description': item['Play 2 Description'] || '',
-            'Play 3 Name': item['Play 3 Name'] || '',
-            'Play 3 Description': item['Play 3 Description'] || '',
-            
-            // CS Play detailed metadata
-            play_1_description: item.play_1_description || '',
-            play_1_play_type: item.play_1_play_type || '',
-            play_1_initiating_role: item.play_1_initiating_role || '',
-            play_1_executing_role: item.play_1_executing_role || '',
-            play_1_doc_location: item.play_1_doc_location || '',
-            play_2_description: item.play_2_description || '',
-            play_2_play_type: item.play_2_play_type || '',
-            play_2_initiating_role: item.play_2_initiating_role || '',
-            play_2_executing_role: item.play_2_executing_role || '',
-            play_2_doc_location: item.play_2_doc_location || '',
-            play_3_description: item.play_3_description || '',
-            play_3_play_type: item.play_3_play_type || '',
-            play_3_initiating_role: item.play_3_initiating_role || '',
-            play_3_executing_role: item.play_3_executing_role || '',
-            play_3_doc_location: item.play_3_doc_location || '',
-            
-            // Call information
-            call_id: item.call_id || '',
-            call_date: item.call_date || '',
-            call_title: item.call_title || '',
-            call_outcome: item.call_outcome || '',
-            
-            // New fields from comprehensive dataset
-            signal_polarity: item['Signal Polarity'] || item.signal_polarity || '',
-            
-            // Support both created_at (from new CSV) and created_date (legacy)
-            created_date: item.created_at || item.created_date || new Date().toISOString(),
-            created_at: item.created_at || item.created_date || new Date().toISOString(),
-            isViewed: false,
-            feedback: null,
-            
-            // Capture any unmapped fields for discovery
-            extras: Object.fromEntries(
-                Object.entries(item)
-                    .filter(([key]) => !this.KNOWN_FIELDS.has(key))
-                    .filter(([key, value]) => value !== '' && value != null)
-            )
-        }));
-    }
-    
-    /**
-     * Parse CSV text into signals data using stateful tokenizer
+     * Parse CSV text into raw data
      */
     static parseCSV(csvText) {
-        console.log('🔍 Starting stateful CSV parsing with multi-line field support...');
+        console.log('🔍 Parsing CSV with stateful tokenizer...');
         const startTime = performance.now();
         
-        // Use stateful tokenizer to properly handle quoted newlines
         const rows = this.tokenizeCSV(csvText);
         
         if (rows.length === 0) {
@@ -569,15 +471,8 @@ class SignalsRepository {
         
         const headers = rows[0];
         console.log(`📋 Parsed ${headers.length} header columns from CSV`);
-        console.log('📊 CSV parsing stats:', {
-            totalRows: rows.length,
-            dataRows: rows.length - 1,
-            columns: headers.length
-        });
         
         const data = [];
-        const discoveredFields = new Set();
-        const sampleSize = Math.min(100, rows.length - 1); // Check first 100 data rows for field discovery
         
         for (let i = 1; i < rows.length; i++) {
             const values = rows[i];
@@ -588,34 +483,19 @@ class SignalsRepository {
                 const header = headers[j];
                 const value = values[j] || '';
                 row[header] = value;
-                
-                // Track field discovery for first 100 records
-                if (i <= sampleSize && value !== '' && value != null) {
-                    discoveredFields.add(header);
-                }
             }
 
-            // Transform to comprehensive signal format with new fields
-            const signal = this.parseComprehensiveRecord(row);
-            
-            // Only override ID if not present - preserve actual dates from CSV
-            if (!signal.id) {
-                signal.id = row['Signal Id'] || `signal-${i}`;
-            }
-
-            data.push(signal);
+            data.push(row);
         }
         
         const parseTime = performance.now() - startTime;
         console.log(`⚡ CSV parsing completed in ${parseTime.toFixed(2)}ms`);
-        console.log(`🆕 Discovered ${discoveredFields.size} total fields across first ${sampleSize} records`);
         
         return data;
     }
     
     /**
-     * Stateful CSV tokenizer that properly handles quoted newlines and multi-line fields
-     * This replaces parseCSVLine and handles the entire CSV content as a stream
+     * Stateful CSV tokenizer
      */
     static tokenizeCSV(csvText) {
         const rows = [];
@@ -624,7 +504,7 @@ class SignalsRepository {
         let inQuotes = false;
         let i = 0;
         
-        console.log('🔄 Tokenizing CSV with stateful parser...');
+        console.log('🔄 Tokenizing CSV...');
         
         while (i < csvText.length) {
             const char = csvText[i];
@@ -632,43 +512,35 @@ class SignalsRepository {
             
             if (char === '"') {
                 if (inQuotes && nextChar === '"') {
-                    // Handle escaped quotes: "" inside quoted field becomes "
                     currentField += '"';
-                    i += 2; // Skip both quotes
+                    i += 2;
                     continue;
                 } else {
-                    // Toggle quote state
                     inQuotes = !inQuotes;
                 }
             } else if (char === ',' && !inQuotes) {
-                // Field separator - end current field
                 currentRow.push(currentField);
                 currentField = '';
             } else if ((char === '\n' || char === '\r') && !inQuotes) {
-                // Row separator - end current row (only when not in quotes)
                 currentRow.push(currentField);
                 
                 if (currentRow.some(field => field.trim() !== '')) {
-                    // Only add non-empty rows
                     rows.push(currentRow);
                 }
                 
                 currentRow = [];
                 currentField = '';
                 
-                // Handle \r\n line endings
                 if (char === '\r' && nextChar === '\n') {
-                    i++; // Skip the \n
+                    i++;
                 }
             } else {
-                // Regular character - add to current field
                 currentField += char;
             }
             
             i++;
         }
         
-        // Handle the last field and row if not empty
         if (currentField !== '' || currentRow.length > 0) {
             currentRow.push(currentField);
             if (currentRow.some(field => field.trim() !== '')) {
@@ -676,31 +548,12 @@ class SignalsRepository {
             }
         }
         
-        console.log(`✅ Tokenized ${rows.length} rows (including header)`);
+        console.log(`✅ Tokenized ${rows.length} rows`);
         return rows;
     }
     
     /**
-     * Legacy method kept for compatibility - now delegates to tokenizeCSV
-     * @deprecated Use tokenizeCSV for new implementations
-     */
-    static parseCSVLine(line) {
-        console.warn('⚠️ parseCSVLine is deprecated - use tokenizeCSV for proper multi-line support');
-        return this.tokenizeCSV(line + '\n')[0] || [];
-    }
-    
-    /**
-     * Generate a random recent date for demo purposes
-     */
-    static getRandomRecentDate() {
-        const now = new Date();
-        const daysAgo = Math.floor(Math.random() * 7);
-        const date = new Date(now - daysAgo * 24 * 60 * 60 * 1000);
-        return date.toISOString();
-    }
-    
-    /**
-     * Load user interactions from API with proper fallback
+     * Load interactions from API or fallback
      */
     static async loadInteractions() {
         try {
@@ -708,21 +561,30 @@ class SignalsRepository {
             const response = await domo.get('/domo/datastores/v1/collections/SignalAI.Interactions/documents');
             
             if (response && response.length > 0) {
-                console.log(`✅ Loaded ${response.length} interactions from Domo API`);
-                return response;
+                console.log(`✅ Loaded ${response.length} interactions from API`);
+                // Extract content from wrapper if needed
+                return response.map(item => item.content || item);
             } else {
-                console.warn('⚠️ No interactions from API, using fallback data');
-                return this.getDefaultInteractions();
+                console.log('📦 Using default interactions (empty)');
+                return [];
             }
         } catch (error) {
             console.error('❌ Failed to load interactions from API:', error);
             console.log('📁 Loading fallback interactions...');
-            return this.getDefaultInteractions();
+            return this.loadFallbackInteractions();
         }
     }
     
     /**
-     * Load comments from API with proper fallback
+     * Load fallback interactions
+     */
+    static loadFallbackInteractions() {
+        console.log('📦 Using default interactions (empty)');
+        return [];
+    }
+    
+    /**
+     * Load comments from API or fallback
      */
     static async loadComments() {
         try {
@@ -730,485 +592,126 @@ class SignalsRepository {
             const response = await domo.get('/domo/datastores/v1/collections/SignalAI.Comments/documents');
             
             if (response && response.length > 0) {
-                console.log(`✅ Loaded ${response.length} comments from Domo API`);
-                return response;
+                console.log(`✅ Loaded ${response.length} comments from API`);
+                // Extract content from wrapper if needed
+                return response.map(item => item.content || item);
             } else {
-                console.warn('⚠️ No comments from API, using fallback data');
-                return this.getDefaultComments();
+                console.log('📦 Using default comments (empty)');
+                return [];
             }
         } catch (error) {
             console.error('❌ Failed to load comments from API:', error);
             console.log('📁 Loading fallback comments...');
-            return this.getDefaultComments();
+            return this.loadFallbackComments();
         }
     }
     
     /**
-     * Load action plans from API with local persistence integration
+     * Load fallback comments
+     */
+    static loadFallbackComments() {
+        console.log('📦 Using default comments (empty)');
+        return [];
+    }
+    
+    /**
+     * Load action plans from API or fallback
      */
     static async loadActionPlans() {
-        let apiPlans = [];
-        let localPlans = [];
-        
         try {
             console.log('📋 Loading action plans...');
-            
-            // First, try the API
             const response = await domo.get('/domo/datastores/v1/collections/SignalAI.ActionPlans/documents');
             
             if (response && response.length > 0) {
                 console.log(`✅ Loaded ${response.length} action plans from API`);
-                apiPlans = response;
-            }
-            
-            // If no API plans, try fallback JSON file
-            if (apiPlans.length === 0) {
-                console.log('📁 No action plans in API, checking for fallback file...');
-                const fallbackResponse = await fetch('./action-plans-fallback.json?v=' + Date.now());
-                
-                if (fallbackResponse.ok) {
-                    const fallbackData = await fallbackResponse.json();
-                    if (fallbackData && fallbackData.length > 0) {
-                        console.log(`✅ Loaded ${fallbackData.length} action plans from fallback file`);
-                        apiPlans = fallbackData;
-                    }
-                }
-            }
-            
-        } catch (error) {
-            console.error('Failed to load action plans from API:', error);
-            
-            // Try the fallback file as a last resort
-            try {
-                const fallbackResponse = await fetch('./action-plans-fallback.json?v=' + Date.now());
-                if (fallbackResponse.ok) {
-                    const fallbackData = await fallbackResponse.json();
-                    if (fallbackData && fallbackData.length > 0) {
-                        console.log(`✅ Loaded ${fallbackData.length} action plans from fallback (error recovery)`);
-                        apiPlans = fallbackData;
-                    }
-                }
-            } catch (fallbackError) {
-                console.error('Failed to load fallback action plans:', fallbackError);
-            }
-        }
-        
-        // Load local persistence as additional source (integration with ActionPlansService)
-        try {
-            const localActionPlansData = localStorage.getItem('signalsai_action_plans');
-            if (localActionPlansData) {
-                const localPlansMap = JSON.parse(localActionPlansData);
-                localPlans = Object.values(localPlansMap);
-                
-                if (localPlans.length > 0) {
-                    console.log(`📦 Found ${localPlans.length} locally persisted action plans`);
-                }
+                // Extract content from wrapper if needed
+                return response.map(item => item.content || item);
+            } else {
+                throw new Error('No action plans from API');
             }
         } catch (error) {
-            console.warn('Could not load locally persisted action plans:', error);
+            console.log('Failed to load action plans from API:', error);
+            return await this.loadFallbackActionPlans();
         }
-        
-        // Merge API/fallback plans with local plans, avoiding duplicates by ID
-        const allPlans = [...apiPlans];
-        const apiPlanIds = new Set(apiPlans.map(plan => plan.id));
-        
-        // Add local plans that don't exist in API plans
-        localPlans.forEach(localPlan => {
-            if (!apiPlanIds.has(localPlan.id)) {
-                allPlans.push(localPlan);
-                console.log(`🔄 Hydrating locally persisted plan: ${localPlan.id}`);
-            }
-        });
-        
-        if (allPlans.length > 0) {
-            console.log(`✅ Total action plans loaded: ${allPlans.length} (${apiPlans.length} from API/fallback, ${allPlans.length - apiPlans.length} local-only)`);
-        }
-        
-        return allPlans;
     }
     
     /**
-     * Load user info from API with proper fallback
+     * Load fallback action plans
+     */
+    static async loadFallbackActionPlans() {
+        try {
+            const cacheBuster = `?v=${Date.now()}`;
+            const response = await fetch(`./action-plans-fallback.json${cacheBuster}`);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to load fallback action plans: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log(`✅ Loaded ${data.length} action plans from fallback (error recovery)`);
+            
+            // Transform the fallback data to match expected format
+            return data.map(plan => ({
+                id: plan.recordId || plan.id,
+                accountId: plan.accountId,
+                actionId: plan.actionId,
+                title: plan.title,
+                status: plan.status || 'pending',
+                createdAt: plan.createdAt || new Date().toISOString(),
+                updatedAt: plan.updatedAt || new Date().toISOString(),
+                planTitle: plan.planTitle || `Action Plan - ${plan.accountId}`,
+                description: plan.description || '',
+                plays: plan.plays || [],
+                priority: plan.priority || 'medium',
+                dueDate: plan.dueDate,
+                actionItems: plan.actionItems || [],
+                assignee: plan.assignee,
+                createdBy: plan.createdBy,
+                createdByUserId: plan.createdByUserId,
+                lastUpdatedBy: plan.lastUpdatedBy,
+                lastUpdatedByUserId: plan.lastUpdatedByUserId
+            }));
+        } catch (error) {
+            console.error('Failed to load fallback action plans:', error);
+            return [];
+        }
+    }
+    
+    /**
+     * Load user info from API or fallback
      */
     static async loadUserInfo() {
         try {
             console.log('👤 Loading user info from Domo API...');
-            const response = await domo.get('/domo/environment/v1/');
+            const response = await domo.env;
             
             if (response && response.userId) {
-                console.log('✅ Loaded user info from Domo API:', response.userName);
+                console.log('✅ Loaded user info from Domo environment');
                 return {
                     userId: response.userId,
-                    userName: response.userName || 'Current User',
-                    email: response.userEmail || ''
+                    userName: response.userName || 'Current User'
                 };
             } else {
-                console.warn('⚠️ No user info from API, using fallback data');
-                return this.getDefaultUserInfo();
+                throw new Error('No user info from Domo environment');
             }
         } catch (error) {
             console.error('❌ Failed to load user info from API:', error);
             console.log('📁 Loading fallback user info...');
-            return this.getDefaultUserInfo();
+            return this.loadFallbackUserInfo();
         }
     }
     
     /**
-     * Get sample data for fallback
+     * Load fallback user info
      */
-    static getSampleData() {
-        console.log('Using sample data fallback...');
-        return [
-            {
-                id: 'sample-001',
-                account_id: 'ACC001',
-                account_name: 'Sample Account',
-                category: 'Architecture',
-                code: 'ARCH-01',
-                name: 'Sample Signal',
-                summary: 'This is a sample signal for demo purposes',
-                rationale: 'Sample rationale text',
-                priority: 'High',
-                confidence: 0.9,
-                action_context: 'Sample action context',
-                at_risk_cat: 'Healthy',
-                account_gpa: 'B',
-                account_gpa_numeric: 3.0,
-                health_score: 0.75,
-                total_lifetime_billings: 100000,
-                bks_renewal_baseline_usd: 50000,
-                industry: 'Technology',
-                customer_tenure_years: 3,
-                daily_active_users: 10,
-                weekly_active_users: 50,
-                monthly_active_users: 100,
-                created_date: new Date().toISOString(),
-                isViewed: false,
-                feedback: null
-            }
-        ];
-    }
-    
-    /**
-     * Save user feedback interaction (like/not-accurate)
-     * @param {string} signalId - Signal ID
-     * @param {string} interactionType - Type of interaction ('like', 'not-accurate', 'viewed')
-     * @param {string} userId - User ID
-     * @returns {Promise} - Promise that resolves with result
-     */
-    static async saveFeedbackInteraction(signalId, interactionType, userId = 'user-1') {
-        try {
-            console.log(`💾 SignalsRepository: Saving feedback ${interactionType} for signal ${signalId}`);
-            
-            // Create interaction object
-            const interaction = {
-                id: `interaction_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                signalId: signalId,
-                type: interactionType,
-                userId: userId,
-                timestamp: new Date().toISOString(),
-                createdAt: new Date().toISOString()
-            };
-            
-            // Try to save to Domo API
-            try {
-                const response = await domo.post('/domo/datastores/v1/collections/SignalAI.Interactions/documents', interaction);
-                console.log('✅ Interaction saved to API:', response);
-                return {
-                    success: true,
-                    data: response || interaction
-                };
-            } catch (apiError) {
-                // API failed but we can still return success for optimistic updates
-                console.warn('⚠️ API save failed, but continuing with optimistic update:', apiError);
-                return {
-                    success: true,
-                    data: interaction
-                };
-            }
-            
-        } catch (error) {
-            console.error('❌ SignalsRepository: Failed to save feedback:', error);
-            
-            return {
-                success: false,
-                error: error.message || 'Failed to save feedback'
-            };
-        }
-    }
-    
-    /**
-     * Save a new comment
-     * @param {Object} comment - Comment data
-     * @returns {Promise} - Promise that resolves with saved comment
-     */
-    static async saveComment(comment) {
-        try {
-            console.log('💾 SignalsRepository: Saving comment...');
-            
-            // Ensure comment has all required fields
-            const commentToSave = {
-                id: comment.id || `comment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                signalId: comment.signalId,
-                accountId: comment.accountId,
-                text: comment.text,
-                author: comment.author || 'Current User',
-                authorId: comment.userId || 'user-1',
-                timestamp: comment.timestamp || new Date().toISOString(),
-                createdAt: comment.createdAt || new Date().toISOString(),
-                updatedAt: comment.updatedAt || new Date().toISOString()
-            };
-            
-            // Try to save to Domo API
-            try {
-                const response = await domo.post('/domo/datastores/v1/collections/SignalAI.Comments/documents', commentToSave);
-                console.log('✅ Comment saved to API:', response);
-                return {
-                    success: true,
-                    data: response || commentToSave
-                };
-            } catch (apiError) {
-                // API failed but we can still return success for optimistic updates
-                console.warn('⚠️ API save failed, but continuing with optimistic update:', apiError);
-                return {
-                    success: true,
-                    data: commentToSave
-                };
-            }
-            
-        } catch (error) {
-            console.error('❌ SignalsRepository: Failed to save comment:', error);
-            
-            return {
-                success: false,
-                error: error.message || 'Failed to save comment'
-            };
-        }
-    }
-    
-    /**
-     * Update an existing comment
-     * @param {string} commentId - Comment ID to update
-     * @param {Object} updates - Comment updates
-     * @returns {Promise} - Promise that resolves with updated comment
-     */
-    static async updateComment(commentId, updates) {
-        try {
-            console.log(`💾 SignalsRepository: Updating comment ${commentId}...`);
-            
-            // Try to update via Domo API
-            try {
-                const response = await domo.put(`/domo/datastores/v1/collections/SignalAI.Comments/documents/${commentId}`, updates);
-                console.log('✅ Comment updated in API:', response);
-                return {
-                    success: true,
-                    data: response || { ...updates, id: commentId }
-                };
-            } catch (apiError) {
-                console.warn('⚠️ API update failed, but continuing with optimistic update:', apiError);
-                return {
-                    success: true,
-                    data: { ...updates, id: commentId }
-                };
-            }
-            
-        } catch (error) {
-            console.error('❌ SignalsRepository: Failed to update comment:', error);
-            
-            return {
-                success: false,
-                error: error.message || 'Failed to update comment'
-            };
-        }
-    }
-    
-    /**
-     * Delete a comment
-     * @param {string} commentId - Comment ID to delete
-     * @returns {Promise} - Promise that resolves with result
-     */
-    static async deleteComment(commentId) {
-        try {
-            console.log(`💾 SignalsRepository: Deleting comment ${commentId}...`);
-            
-            // Try to delete via Domo API
-            try {
-                const response = await domo.delete(`/domo/datastores/v1/collections/SignalAI.Comments/documents/${commentId}`);
-                console.log('✅ Comment deleted from API');
-                return {
-                    success: true,
-                    data: { deleted: true, commentId }
-                };
-            } catch (apiError) {
-                console.warn('⚠️ API delete failed, but continuing with optimistic update:', apiError);
-                return {
-                    success: true,
-                    data: { deleted: true, commentId }
-                };
-            }
-            
-        } catch (error) {
-            console.error('❌ SignalsRepository: Failed to delete comment:', error);
-            
-            return {
-                success: false,
-                error: error.message || 'Failed to delete comment'
-            };
-        }
-    }
-    
-    /**
-     * Save a new action plan
-     * @param {Object} plan - Action plan data
-     * @returns {Promise} - Promise that resolves with saved plan
-     */
-    static async saveActionPlan(plan) {
-        try {
-            console.log('💾 SignalsRepository: Saving action plan...');
-            
-            // Ensure plan has all required fields
-            const planToSave = {
-                id: plan.id || `plan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                signalId: plan.signalId,
-                accountId: plan.accountId,
-                title: plan.title,
-                description: plan.description || '',
-                tasks: plan.tasks || [],
-                status: plan.status || 'active',
-                userId: plan.userId || 'user-1',
-                createdAt: plan.createdAt || new Date().toISOString(),
-                updatedAt: plan.updatedAt || new Date().toISOString()
-            };
-            
-            // Try to save to Domo API
-            try {
-                const response = await domo.post('/domo/datastores/v1/collections/SignalAI.ActionPlans/documents', planToSave);
-                console.log('✅ Action plan saved to API:', response);
-                return {
-                    success: true,
-                    data: response || planToSave
-                };
-            } catch (apiError) {
-                console.warn('⚠️ API save failed, but continuing with optimistic update:', apiError);
-                return {
-                    success: true,
-                    data: planToSave
-                };
-            }
-            
-        } catch (error) {
-            console.error('❌ SignalsRepository: Failed to save action plan:', error);
-            
-            return {
-                success: false,
-                error: error.message || 'Failed to save action plan'
-            };
-        }
-    }
-    
-    /**
-     * Update an existing action plan
-     * @param {string} planId - Plan ID to update
-     * @param {Object} updates - Plan updates
-     * @returns {Promise} - Promise that resolves with updated plan
-     */
-    static async updateActionPlan(planId, updates) {
-        try {
-            console.log(`💾 SignalsRepository: Updating action plan ${planId}...`);
-            
-            // Try to update via Domo API
-            try {
-                const response = await domo.put(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${planId}`, updates);
-                console.log('✅ Action plan updated in API:', response);
-                return {
-                    success: true,
-                    data: response || { ...updates, id: planId }
-                };
-            } catch (apiError) {
-                console.warn('⚠️ API update failed, but continuing with optimistic update:', apiError);
-                return {
-                    success: true,
-                    data: { ...updates, id: planId }
-                };
-            }
-            
-        } catch (error) {
-            console.error('❌ SignalsRepository: Failed to update action plan:', error);
-            
-            return {
-                success: false,
-                error: error.message || 'Failed to update action plan'
-            };
-        }
-    }
-    
-    /**
-     * Delete an action plan
-     * @param {string} planId - Plan ID to delete
-     * @returns {Promise} - Promise that resolves with result
-     */
-    static async deleteActionPlan(planId) {
-        try {
-            console.log(`💾 SignalsRepository: Deleting action plan ${planId}...`);
-            
-            // Try to delete via Domo API
-            try {
-                const response = await domo.delete(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${planId}`);
-                console.log('✅ Action plan deleted from API');
-                return {
-                    success: true,
-                    data: { deleted: true, planId }
-                };
-            } catch (apiError) {
-                console.warn('⚠️ API delete failed, but continuing with optimistic update:', apiError);
-                return {
-                    success: true,
-                    data: { deleted: true, planId }
-                };
-            }
-            
-        } catch (error) {
-            console.error('❌ SignalsRepository: Failed to delete action plan:', error);
-            
-            return {
-                success: false,
-                error: error.message || 'Failed to delete action plan'
-            };
-        }
-    }
-    
-    /**
-     * Get default interactions for fallback
-     */
-    static getDefaultInteractions() {
-        console.log('📦 Using default interactions (empty)');
-        // Return empty array for now - in production, you could load from a JSON file
-        // or return some sample interactions for demo purposes
-        return [];
-    }
-    
-    /**
-     * Get default comments for fallback
-     */
-    static getDefaultComments() {
-        console.log('📦 Using default comments (empty)');
-        // Return empty array for now - in production, you could load from a JSON file
-        // or return some sample comments for demo purposes
-        return [];
-    }
-    
-    /**
-     * Get default user info for fallback
-     */
-    static getDefaultUserInfo() {
+    static loadFallbackUserInfo() {
         console.log('📦 Using default user info');
         return {
             userId: 'user-1',
-            userName: 'Current User',
-            email: 'user@example.com'
+            userName: 'Current User'
         };
     }
 }
 
-// Make globally available
+// Make it globally available
 window.SignalsRepository = SignalsRepository;

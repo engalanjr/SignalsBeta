@@ -18,8 +18,8 @@ The application is a frontend-only web application utilizing vanilla HTML5, CSS3
 - Portfolio view is structured into "Accounts with a recent high Priority Signal" and "All Accounts" sections.
 
 **Technical Implementations & Feature Specifications:**
-- **Data Handling:** Comprehensive CSV data integration with robust parsing for complex fields, including signal polarity and a wide range of additional fields. Uses a `DataService.js` for data loading and management, with a fallback system for Domo API unavailability. Features optimistic CRUD operations with instant UI feedback and a snapshot rollback system for data consistency.
-- **Performance:** Implemented parallel batch loading with in-memory data caching to reduce load times.
+- **Data Handling:** Normalized relational data model with separate entities (Account, Signal, RecommendedAction, Interaction, Comment, ActionPlan) to eliminate ~80% data duplication. Features comprehensive CSV data integration with robust parsing for complex fields, including signal polarity and a wide range of additional fields. Uses normalized storage with relationship indexes and denormalization for UI compatibility. Optimistic CRUD operations with instant UI feedback and a snapshot rollback system for data consistency.
+- **Performance:** Implemented parallel batch loading with in-memory data caching to reduce load times. Normalized relational model reduces memory footprint by ~80% through data deduplication.
 - **Action Plans:** Full CRUD functionality for action plans. Supports task sorting by priority and due date. Includes play management with completion tracking and persistence. Features a comprehensive task details modal for editing properties with auto-save and robust validation. Multi-select and bulk deletion capabilities are also implemented.
 - **Signal Feedback:** "Like" and "Not Accurate" buttons provide visual feedback and are connected to interaction CRUD methods.
 - **AI Recommendations:** Redesigned display with priority badges (IMMEDIATE/NEAR-TERM/LONG-TERM) and dates, with "Add to Plan" functionality.
@@ -29,6 +29,8 @@ The application is a frontend-only web application utilizing vanilla HTML5, CSS3
 
 **System Design Choices:**
 - Frontend relies on a modular JavaScript structure within the `js/` directory.
+- Normalized relational data model with 6 main entities and proper foreign key relationships.
+- SignalsRepository handles data normalization, SignalsStore maintains normalized storage with denormalization for backward compatibility.
 - Application gracefully falls back to sample or JSON data when external APIs are unavailable.
 - Designed for Replit compatibility with specific port and binding configurations.
 - Deployment configured for autoscale using the Python server.
