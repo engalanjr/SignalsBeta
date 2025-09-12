@@ -82,8 +82,10 @@ class ActionsRenderer {
         // First, process any action plans loaded from Domo API during initialization
         console.log(`Processing ${app.actionPlans.size} action plans from app state...`);
         
-        // 🔧 FIX: Ensure DataService.actionPlans is synchronized
-        DataService.actionPlans.length = 0; // Clear existing
+        // 🔧 FIX: Ensure DataService.actionPlans is synchronized (if available)
+        if (window.DataService && Array.isArray(window.DataService.actionPlans)) {
+            DataService.actionPlans.length = 0; // Clear existing
+        }
         
         for (let [planId, planData] of app.actionPlans) {
             // Extract account ID from plan data (since map key is now planId, not accountId)
@@ -104,8 +106,10 @@ class ActionsRenderer {
                 id: planId // Ensure ID matches the Map key
             };
             
-            // 🔧 FIX: Sync to DataService.actionPlans for auto-save
-            DataService.actionPlans.push(normalizedPlanData);
+            // 🔧 FIX: Sync to DataService.actionPlans for auto-save (if available)
+            if (window.DataService && Array.isArray(window.DataService.actionPlans)) {
+                DataService.actionPlans.push(normalizedPlanData);
+            }
 
             actionPlans.push({
                 accountId: accountId,
@@ -147,8 +151,10 @@ class ActionsRenderer {
                 // Store the fallback plans in the app's action plans map
                 console.log('Storing loaded action plans in app state...');
                 
-                // Clear DataService array first to avoid duplicates
-                DataService.actionPlans.length = 0;
+                // Clear DataService array first to avoid duplicates (if available)
+                if (window.DataService && Array.isArray(window.DataService.actionPlans)) {
+                    DataService.actionPlans.length = 0;
+                }
                 fallbackPlans.forEach(plan => {
                     if (plan.accountId && app.actionPlans) {
                         // Use unique plan ID as key instead of accountId to avoid overwrites
@@ -181,7 +187,9 @@ class ActionsRenderer {
                             ...actualPlanData,
                             id: planId // Ensure ID is set for DataService array lookup
                         };
-                        DataService.actionPlans.push(dataServicePlan);
+                        if (window.DataService && Array.isArray(window.DataService.actionPlans)) {
+                            DataService.actionPlans.push(dataServicePlan);
+                        }
                         
                         console.log(`Stored action plan with ID ${planId} for account: ${plan.accountName} (${plan.accountId})`);
                     }

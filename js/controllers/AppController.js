@@ -205,15 +205,11 @@ class AppController {
                 // Handle actions tab if ActionsRenderer exists
                 if (typeof ActionsRenderer !== 'undefined') {
                     console.log('📋 Rendering Actions tab');
-                    // For now, use the existing ActionsRenderer until it's converted
-                    ActionsRenderer.renderActions({
-                        actionPlans: state.actionPlans,
-                        accounts: state.accounts
-                    }).catch(error => {
-                        console.error('Error rendering actions:', error);
+                    ActionsRenderer.renderActions(this.app).catch(error => {
+                        console.error('🚨 ERROR rendering actions:', error);
                     });
                 } else {
-                    console.error('ActionsRenderer not available');
+                    console.error('🚨 CRITICAL: ActionsRenderer not available');
                 }
                 break;
             default:
