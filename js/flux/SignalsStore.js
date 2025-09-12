@@ -30,7 +30,7 @@ class SignalsStore extends Store {
             // View state with filters
             viewState: {
                 filters: {
-                    priority: 'all',
+                    signalType: 'all',
                     category: 'all',
                     searchText: ''
                 },
@@ -769,9 +769,12 @@ class SignalsStore extends Store {
         // Apply filters to signals array
         let filtered = [...signals];
         
-        // Apply priority filter
-        if (filters.priority && filters.priority !== 'all' && filters.priority !== '') {
-            filtered = filtered.filter(signal => signal.priority === filters.priority);
+        // Apply signal type filter (based on signal polarity)
+        if (filters.signalType && filters.signalType !== 'all' && filters.signalType !== '') {
+            filtered = filtered.filter(signal => {
+                const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                return polarity.toLowerCase() === filters.signalType.toLowerCase();
+            });
         }
         
         // Apply category filter

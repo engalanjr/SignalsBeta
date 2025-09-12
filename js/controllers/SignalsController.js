@@ -45,18 +45,18 @@ class SignalsController {
         const categoryFilter = document.getElementById('categoryFilter');
         if (categoryFilter) {
             categoryFilter.addEventListener('change', () => {
-                const priority = document.getElementById('priorityFilter')?.value || 'all';
+                const signalType = document.getElementById('signalTypeFilter')?.value || 'all';
                 const category = categoryFilter.value;
-                dispatcher.dispatch(Actions.applyFilters({ priority, category }));
+                dispatcher.dispatch(Actions.applyFilters({ signalType, category }));
             });
         }
         
-        const priorityFilter = document.getElementById('priorityFilter');
-        if (priorityFilter) {
-            priorityFilter.addEventListener('change', () => {
+        const signalTypeFilter = document.getElementById('signalTypeFilter');
+        if (signalTypeFilter) {
+            signalTypeFilter.addEventListener('change', () => {
                 const category = document.getElementById('categoryFilter')?.value || 'all';
-                const priority = priorityFilter.value;
-                dispatcher.dispatch(Actions.applyFilters({ priority, category }));
+                const signalType = signalTypeFilter.value;
+                dispatcher.dispatch(Actions.applyFilters({ signalType, category }));
             });
         }
     }
