@@ -849,33 +849,36 @@ class PortfolioRenderer {
             if (signal) {
                 // console.log('Loading CS Plays for drawer action:', actionId, 'for account:', signal.account_id);
                 
-                // Extract play 1 with enhanced data
-                if (signal.play_1_name && signal.play_1_name.trim() && 
-                    signal.play_1_name !== 'N/A' && signal.play_1_name !== '') {
+                // Extract play 1 with enhanced data - check both space and underscore versions
+                const play1Name = signal['Play 1 Name'] || signal.play_1_name || signal.play_1;
+                if (play1Name && play1Name.trim() && 
+                    play1Name !== 'N/A' && play1Name !== '') {
                     csPlays.push({
-                        title: signal.play_1_name.trim(),
-                        description: signal.play_1_description || signal.play_1 || 'No description available',
-                        executingRole: signal.play_1_executing_role || 'Not specified'
+                        title: play1Name.trim(),
+                        description: signal['Play 1 Description'] || signal.play_1_description || signal.play_1 || 'No description available',
+                        executingRole: signal.play_1_executing_role || signal['Owner Name'] || 'Adoption Consulting'
                     });
                 }
                 
-                // Extract play 2 with enhanced data
-                if (signal.play_2_name && signal.play_2_name.trim() && 
-                    signal.play_2_name !== 'N/A' && signal.play_2_name !== '') {
+                // Extract play 2 with enhanced data - check both space and underscore versions
+                const play2Name = signal['Play 2 Name'] || signal.play_2_name || signal.play_2;
+                if (play2Name && play2Name.trim() && 
+                    play2Name !== 'N/A' && play2Name !== '') {
                     csPlays.push({
-                        title: signal.play_2_name.trim(),
-                        description: signal.play_2_description || signal.play_2 || 'No description available',
-                        executingRole: signal.play_2_executing_role || 'Not specified'
+                        title: play2Name.trim(),
+                        description: signal['Play 2 Description'] || signal.play_2_description || signal.play_2 || 'No description available',
+                        executingRole: signal.play_2_executing_role || signal['Owner Name'] || 'Adoption Consulting'
                     });
                 }
                 
-                // Extract play 3 with enhanced data
-                if (signal.play_3_name && signal.play_3_name.trim() && 
-                    signal.play_3_name !== 'N/A' && signal.play_3_name !== '') {
+                // Extract play 3 with enhanced data - check both space and underscore versions
+                const play3Name = signal['Play 3 Name'] || signal.play_3_name || signal.play_3;
+                if (play3Name && play3Name.trim() && 
+                    play3Name !== 'N/A' && play3Name !== '') {
                     csPlays.push({
-                        title: signal.play_3_name.trim(),
-                        description: signal.play_3_description || signal.play_3 || 'No description available',
-                        executingRole: signal.play_3_executing_role || 'Not specified'
+                        title: play3Name.trim(),
+                        description: signal['Play 3 Description'] || signal.play_3_description || signal.play_3 || 'No description available',
+                        executingRole: signal.play_3_executing_role || signal['Owner Name'] || 'Adoption Consulting'
                     });
                 }
             }
