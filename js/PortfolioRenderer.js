@@ -206,14 +206,14 @@ class PortfolioRenderer {
     }
 
     static renderAccountCard(account, actionPlans, comments, filterPolarities = null) {
-        // Count Risk and Opportunity signals
-        const riskSignals = account.signals.filter(s => {
+        // Count Risk and Opportunity recommended actions (not signals)
+        const riskActions = account.signals.filter(s => {
             const polarity = s.signal_polarity || s['Signal Polarity'] || '';
-            return polarity === 'Risk';
+            return polarity === 'Risk' && s.recommended_action && s.recommended_action.trim() && s.recommended_action !== 'No actions specified';
         }).length;
-        const opportunitySignals = account.signals.filter(s => {
+        const opportunityActions = account.signals.filter(s => {
             const polarity = s.signal_polarity || s['Signal Polarity'] || '';
-            return polarity === 'Opportunity';
+            return polarity === 'Opportunity' && s.recommended_action && s.recommended_action.trim() && s.recommended_action !== 'No actions specified';
         }).length;
         const totalSignals = account.signals.length;
 
@@ -264,7 +264,7 @@ class PortfolioRenderer {
                         </div>
                         <div class="account-name-info">
                             <h3 class="account-name">${SecurityUtils.sanitizeHTML(account.name)}</h3>
-                            <div class="account-stats">${riskSignals} Risk signals, ${opportunitySignals} Opportunity signals</div>
+                            <div class="account-stats">${riskActions} Risks, ${opportunityActions} Opportunities</div>
                         </div>
                     </div>
                     <div class="account-actions-section">
