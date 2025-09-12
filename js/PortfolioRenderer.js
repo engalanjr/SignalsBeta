@@ -807,11 +807,21 @@ class PortfolioRenderer {
         // Find the signal with this action_id to get its specific plays
         let csPlays = [];
         
-        if (actionId && window.app && window.app.data) {
-            const signal = window.app.data.find(s => s.action_id === actionId);
+        console.log('loadDrawerCSPlays called with actionId:', actionId);
+        
+        // Get signals from the SignalsStore
+        const state = window.signalsStore?.getState();
+        const signals = state?.signals || [];
+        
+        console.log('SignalsStore exists:', !!window.signalsStore);
+        console.log('Signals from store:', signals.length);
+        
+        if (actionId && signals.length > 0) {
+            const signal = signals.find(s => s.action_id === actionId);
+            console.log('Found signal:', signal);
             
             if (signal) {
-                // console.log('Loading CS Plays for drawer action:', actionId, 'for account:', signal.account_id);
+                console.log('Loading CS Plays for drawer action:', actionId, 'for account:', signal.account_id);
                 
                 // Extract play 1 with enhanced data - check both space and underscore versions
                 const play1Name = signal['Play 1 Name'] || signal.play_1_name || signal.play_1;
@@ -854,7 +864,7 @@ class PortfolioRenderer {
             return;
         }
         
-        // console.log('Final drawer csPlays array:', csPlays);
+        console.log('Final drawer csPlays array:', csPlays);
         
         // Show message if no plays found, otherwise show checkboxes
         if (csPlays.length === 0) {

@@ -200,6 +200,29 @@ class SignalsRepository {
             ae_email: item.ae_email || '',
             next_renewal_date: item.next_renewal_date || '',
             
+            // Recommendation and action fields
+            recommended_action: item.recommended_action || '',
+            signal_rationale: item.signal_rationale || '',
+            signal_confidence: item.signal_confidence || '',
+            action_id: item.action_id || '',
+            
+            // CS Play fields
+            play_1: item.play_1 || '',
+            play_2: item.play_2 || '',
+            play_3: item.play_3 || '',
+            'Play 1 Name': item['Play 1 Name'] || '',
+            'Play 1 Description': item['Play 1 Description'] || '',
+            'Play 2 Name': item['Play 2 Name'] || '',
+            'Play 2 Description': item['Play 2 Description'] || '',
+            'Play 3 Name': item['Play 3 Name'] || '',
+            'Play 3 Description': item['Play 3 Description'] || '',
+            
+            // Call information
+            call_id: item.call_id || '',
+            call_date: item.call_date || '',
+            call_title: item.call_title || '',
+            call_outcome: item.call_outcome || '',
+            
             // Computed fields
             created_date: item.created_date || new Date().toISOString(),
             isViewed: false,
