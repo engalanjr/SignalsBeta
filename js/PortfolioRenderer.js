@@ -11,20 +11,58 @@ class PortfolioRenderer {
         // Get all accounts
         const allAccounts = Array.from(accounts.values());
 
-        // Filter accounts with recent high priority signals
-        const accountsWithHighPrioritySignals = allAccounts
-            .filter(account => account.signals.some(signal => signal.priority === 'High'))
+        // Filter accounts with recent high priority Risk or Opportunity signals
+        const accountsWithRiskOrOpportunitySignals = allAccounts
+            .filter(account => account.signals.some(signal => {
+                const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                return signal.priority === 'High' && (polarity === 'Risk' || polarity === 'Opportunity');
+            }))
             .map(account => {
-                // Find the most recent high priority signal's call_date for sorting
-                const highPrioritySignals = account.signals.filter(signal => signal.priority === 'High');
-                const mostRecentHighPriorityDate = Math.max(
-                    ...highPrioritySignals.map(signal => new Date(signal.call_date || signal.created_date).getTime())
-                );
-                return { ...account, mostRecentHighPriorityDate };
+                // Find the most recent high priority Risk/Opportunity signal for sorting
+                const qualifyingSignals = account.signals.filter(signal => {
+                    const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                    return signal.priority === 'High' && (polarity === 'Risk' || polarity === 'Opportunity');
+                });
+                
+                // Sort qualifying signals by polarity priority (Risk > Opportunity) then by call_date DESC
+                const sortedQualifyingSignals = qualifyingSignals.sort((a, b) => {
+                    const polarityA = a.signal_polarity || a['Signal Polarity'] || '';
+                    const polarityB = b.signal_polarity || b['Signal Polarity'] || '';
+                    const polarityOrder = { 'Risk': 2, 'Opportunity': 1 };
+                    const polarityScoreA = polarityOrder[polarityA] || 0;
+                    const polarityScoreB = polarityOrder[polarityB] || 0;
+                    
+                    if (polarityScoreA !== polarityScoreB) {
+                        return polarityScoreB - polarityScoreA; // Risk before Opportunity
+                    }
+                    
+                    // Same polarity, sort by call_date DESC
+                    const dateA = new Date(a.call_date || a.created_date);
+                    const dateB = new Date(b.call_date || b.created_date);
+                    return dateB - dateA;
+                });
+                
+                const mostRecentQualifyingDate = sortedQualifyingSignals.length > 0 
+                    ? new Date(sortedQualifyingSignals[0].call_date || sortedQualifyingSignals[0].created_date).getTime()
+                    : 0;
+                const topSignalPolarity = sortedQualifyingSignals.length > 0 
+                    ? (sortedQualifyingSignals[0].signal_polarity || sortedQualifyingSignals[0]['Signal Polarity'] || '')
+                    : '';
+                    
+                return { ...account, mostRecentQualifyingDate, topSignalPolarity };
             })
             .sort((a, b) => {
-                // Sort by most recent high priority signal date (descending)
-                return b.mostRecentHighPriorityDate - a.mostRecentHighPriorityDate;
+                const polarityOrder = { 'Risk': 2, 'Opportunity': 1 };
+                const polarityScoreA = polarityOrder[a.topSignalPolarity] || 0;
+                const polarityScoreB = polarityOrder[b.topSignalPolarity] || 0;
+                
+                // First sort by signal polarity (Risk before Opportunity)
+                if (polarityScoreA !== polarityScoreB) {
+                    return polarityScoreB - polarityScoreA;
+                }
+                
+                // Same polarity, sort by most recent qualifying signal date (descending)
+                return b.mostRecentQualifyingDate - a.mostRecentQualifyingDate;
             });
 
         // Sort all accounts alphabetically
@@ -34,13 +72,13 @@ class PortfolioRenderer {
 
         let html = '';
 
-        // Render "Accounts with recent high Priority Signal" section
-        if (accountsWithHighPrioritySignals.length > 0) {
+        // Render "Accounts with a recent Risk or Opportunity Identified" section
+        if (accountsWithRiskOrOpportunitySignals.length > 0) {
             html += `
                 <div class="portfolio-section">
-                    <h3 class="portfolio-section-header">Accounts with a recent high Priority Signal</h3>
+                    <h3 class="portfolio-section-header">Accounts with a recent Risk or Opportunity Identified</h3>
                     <div class="portfolio-section-content">
-                        ${accountsWithHighPrioritySignals.map(account => this.renderAccountCard(account, actionPlans, comments)).join('')}
+                        ${accountsWithRiskOrOpportunitySignals.map(account => this.renderAccountCard(account, actionPlans, comments)).join('')}
                     </div>
                 </div>
             `;
