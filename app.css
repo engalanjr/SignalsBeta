@@ -1313,9 +1313,9 @@ body {
 
 .recommendation-list-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 1rem;
-    padding: 0.5rem 0;
+    padding: 0.75rem 0;
     border-bottom: 1px solid var(--neutral-gray-100);
 }
 
@@ -1332,6 +1332,9 @@ body {
     letter-spacing: 0.5px;
     white-space: nowrap;
     flex-shrink: 0;
+    min-width: 80px;
+    text-align: center;
+    margin-top: 2px;
 }
 
 .recommendation-priority-badge.priority-high {
@@ -1360,19 +1363,26 @@ body {
     font-size: 0.8rem;
     color: var(--neutral-gray-500);
     white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 65px;
+    text-align: right;
+    margin-top: 4px;
 }
 
 .recommendation-action-button {
-    margin-left: auto;
+    flex-shrink: 0;
+    min-width: 110px;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .btn-add-to-plan {
     background: var(--domo-blue);
     color: white;
     border: none;
-    padding: 0.4rem 0.75rem;
+    padding: 0.35rem 0.7rem;
     border-radius: 4px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 500;
     cursor: pointer;
     transition: background 0.2s ease;
@@ -1385,9 +1395,10 @@ body {
 
 .btn-added-status {
     color: var(--healthy-green);
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    padding: 0.4rem 0.75rem;
+    white-space: nowrap;
+    text-align: right;
 }
 
 .no-recommendations-message {
@@ -2402,13 +2413,15 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
+    min-width: 0;
 }
 
 .recommendation-text {
     font-size: 0.95rem;
     font-weight: 500;
     color: var(--neutral-gray-800);
+    line-height: 1.4;
 }
 
 .recommendation-rationale {
@@ -2416,6 +2429,7 @@ body {
     font-style: italic;
     color: var(--neutral-gray-600);
     line-height: 1.3;
+    padding-left: 0;
 }
 
 .plays-section {
