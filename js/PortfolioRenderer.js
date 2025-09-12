@@ -442,7 +442,8 @@ class PortfolioRenderer {
         if (uniqueActions.length > 0) {
             return {
                 priority: highPrioritySignals.length > 0 ? 'immediate' : 'near-term',
-                actions: uniqueActions
+                actions: uniqueActions,
+                actionMap: actionMap  // Include the action map for polarity lookup
             };
         }
 
@@ -662,13 +663,9 @@ class PortfolioRenderer {
                 const actionId = signal.action_id;
                 const priority = signal.priority || 'Medium';
                 
-                // Get urgency level based on priority
-                const urgencyMap = {
-                    'High': 'IMMEDIATE',
-                    'Medium': 'NEAR-TERM',
-                    'Low': 'LONG-TERM'
-                };
-                const urgency = urgencyMap[priority] || 'NEAR-TERM';
+                // Get Signal Polarity from signal
+                const signalPolarity = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
+                const polarityClass = signalPolarity.toLowerCase();
                 
                 if (!actionDataMap.has(action)) {
                     const actionData = {
@@ -676,7 +673,8 @@ class PortfolioRenderer {
                         actionId: actionId,
                         accountId: account.id,
                         priority: priority,
-                        urgency: urgency,
+                        signalPolarity: signalPolarity,
+                        polarityClass: polarityClass,
                         rationale: signal.signal_rationale || ''
                     };
                     actionDataMap.set(action, actionData);
@@ -694,8 +692,8 @@ class PortfolioRenderer {
                 
                 return `
                     <div class="recommendation-list-item">
-                        <div class="recommendation-priority-badge priority-${data.priority.toLowerCase()}">
-                            ${data.urgency}
+                        <div class="polarity-badge polarity-${data.polarityClass}">
+                            ${data.signalPolarity.toUpperCase()}
                         </div>
                         <div class="recommendation-content">
                             <div class="recommendation-text">
