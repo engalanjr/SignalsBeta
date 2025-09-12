@@ -345,7 +345,8 @@ class SignalsRepository {
             account_id: accountId,
             recommended_action: rawSignal.recommended_action || '',
             signal_rationale: rawSignal.signal_rationale || '',
-            call_date: rawSignal.call_date || '',
+            // Use Call Scheduled Date as primary source, fallback to call_date
+            call_date: rawSignal['Call Scheduled Date'] || rawSignal.call_date || '',
             plays: plays
         };
     }
@@ -378,7 +379,8 @@ class SignalsRepository {
             // Call context (signal-specific)
             call_context: rawSignal.call_context || {
                 call_id: rawSignal.call_id || '',
-                call_date: rawSignal.call_date || '',
+                // Use Call Scheduled Date as primary source, fallback to call_date
+                call_date: rawSignal['Call Scheduled Date'] || rawSignal.call_date || '',
                 call_url: rawSignal['Call URL'] || '',
                 call_title: rawSignal['Call Title'] || '',
                 call_scheduled_date: rawSignal['Call Scheduled Date'] || '',
