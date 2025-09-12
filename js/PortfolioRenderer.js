@@ -76,7 +76,7 @@ class PortfolioRenderer {
         if (accountsWithRiskOrOpportunitySignals.length > 0) {
             html += `
                 <div class="portfolio-section">
-                    <h3 class="portfolio-section-header">Accounts with a recent Risk or Opportunity Identified</h3>
+                    <h3 class="portfolio-section-header">Accounts with Risk or Opportunity Identified</h3>
                     <div class="portfolio-section-content">
                         ${accountsWithRiskOrOpportunitySignals.map(account => this.renderAccountCard(account, actionPlans, comments)).join('')}
                     </div>
@@ -206,7 +206,15 @@ class PortfolioRenderer {
     }
 
     static renderAccountCard(account, actionPlans, comments) {
-        const highPriorityCount = account.signals.filter(s => s.priority === 'High').length;
+        // Count Risk and Opportunity signals
+        const riskSignals = account.signals.filter(s => {
+            const polarity = s.signal_polarity || s['Signal Polarity'] || '';
+            return polarity === 'Risk';
+        }).length;
+        const opportunitySignals = account.signals.filter(s => {
+            const polarity = s.signal_polarity || s['Signal Polarity'] || '';
+            return polarity === 'Opportunity';
+        }).length;
         const totalSignals = account.signals.length;
 
         // Sort signals by Priority (High > Medium > Low), then by call_date DESC within each priority
@@ -256,7 +264,7 @@ class PortfolioRenderer {
                         </div>
                         <div class="account-name-info">
                             <h3 class="account-name">${SecurityUtils.sanitizeHTML(account.name)}</h3>
-                            <div class="account-stats">${totalSignals} signals • ${highPriorityCount} high priority</div>
+                            <div class="account-stats">${riskSignals} Risk signals, ${opportunitySignals} Opportunity signals</div>
                         </div>
                     </div>
                     <div class="account-actions-section">
