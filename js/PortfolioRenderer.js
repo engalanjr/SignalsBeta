@@ -679,7 +679,19 @@ class PortfolioRenderer {
         
         // Use the AI-generated recommendations from account.aiRecommendation
         if (account.aiRecommendation && account.aiRecommendation.actions && account.aiRecommendation.actions.length > 0) {
-            return account.aiRecommendation.actions.map(action => `
+            return account.aiRecommendation.actions.map((action, index) => {
+                // Try to find a matching signal with an action_id for this recommendation
+                let matchingSignal = account.signals.find(signal => 
+                    signal.recommended_action && 
+                    signal.recommended_action.includes(action.substring(0, 20)) &&
+                    signal.action_id
+                );
+                
+                // Use matching signal's action_id if found, otherwise create a unique AI recommendation ID
+                const actionId = matchingSignal?.action_id || `ai-rec-${account.id}-${index}`;
+                const escapedAction = action.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                
+                return `
                 <div class="recommendation-list-item">
                     <div class="recommendation-priority-badge priority-medium">
                         NEAR-TERM
@@ -691,12 +703,17 @@ class PortfolioRenderer {
                         ${FormatUtils.formatDateSimple(new Date())}
                     </div>
                     <div class="recommendation-action-button">
-                        <button class="btn-add-to-plan" onclick="alert('Add functionality needs signal association')">
+                        <button class="btn-add-to-plan" 
+                            data-action-id="${actionId}" 
+                            data-action-title="${escapedAction}" 
+                            data-account-id="${account.id}" 
+                            onclick="PortfolioRenderer.openAddToPlanDrawer('${actionId}', '${escapedAction}', '${account.id}')">
                             Add to Plan
                         </button>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
         
         // Only show "No recommendations" if truly no recommendations exist
