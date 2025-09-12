@@ -156,20 +156,52 @@ class SignalsRepository {
      * Known fields that we explicitly map in parseDomoResponse
      */
     static KNOWN_FIELDS = new Set([
-        'id', 'Signal Id', 'account_id', 'Account Id', 'account_name', 'category', 'code', 'name', 'summary', 'rationale', 'priority', 'confidence', 'action_context',
-        'at_risk_cat', 'account_gpa', 'Account GPA', 'account_gpa_numeric', 'Account GPA Numeric', 'health_score', 'Health Score',
-        'total_lifetime_billings', 'Total Lifetime Billings', 'bks_renewal_baseline_usd', 'bks_forecast_new', 'bks_forecast_delta', 'bks_status_grouping', 'pacing_percent', '% Pacing', 'bks_fq',
+        // Core signal fields
+        'id', 'Signal Id', 'account_id', 'Account Id', 'account id', 'account_name', 'category', 'code', 'name', 'summary', 'rationale', 'priority', 'confidence', 'action_context',
+        
+        // Account metrics and status
+        'at_risk_cat', 'account_gpa', 'Account GPA', 'Account GPA Table Card Column', 'account_gpa_numeric', 'Account GPA Numeric', 'health_score', 'Health Score',
+        
+        // Financial metrics
+        'total_lifetime_billings', 'Total Lifetime Billings', 'bks_renewal_baseline_usd', 'bks_forecast_new', 'bks_forecast_delta', 'bks_status_grouping', 'pacing_percent', '% Pacing', 'bks_fq', 'rank',
+        
+        // Usage metrics
         'daily_active_users', 'Daily Active Users (DAU)', 'weekly_active_users', 'Weekly Active Users (WAU)', 'monthly_active_users', 'Monthly Active Users (MAU)',
         'total_data_sets', 'Total Data Sets', 'total_rows', 'Total Rows', 'dataflows', 'Dataflows', 'cards', 'Cards', 'is_consumption', 'is Consumption',
+        
+        // Account information
         'industry', 'Industry (Domo)', 'customer_tenure_years', 'Customer Tenure (Years)', 'type_of_next_renewal', 'Type of Next Renewal', 'numeric_grade', 'Numeric Grade',
+        
+        // GPA component values (numeric)
         'relationship_value', 'Relationship - Value', 'content_creation_value', 'Content Creation - Value', 'user_engagement_value', 'User Engagement - Value',
         'support_value', 'Support - Value', 'commercial_value', 'Commercial - Value', 'education_value', 'Education - Value',
         'platform_utilization_value', 'Platform Utilization - Value', 'value_realization_value', 'Value Realization - Value',
-        'prior_account_gpa_numeric', 'Prior Account GPA Numeric', 'day_180_gpa_trend', '180 Day GPA Trend',
-        'account_owner', 'avp', 'rvp', 'ae', 'csm', 'ae_email', 'next_renewal_date',
+        
+        // GPA component grades (letter grades)
+        'Relationship', 'Content Creation', 'User Engagement', 'Support', 'Commercial', 'Education', 'Platform Utilization', 'Value Realization',
+        
+        // Historical metrics
+        'prior_account_gpa_numeric', 'Prior Account GPA Numeric', 'Prior Value', 'day_180_gpa_trend', '180 Day GPA Trend', 'Data Source',
+        
+        // Account ownership and contacts
+        'account_owner', 'Account Owner', 'avp', 'AVP', 'rvp', 'RVP', 'ae', 'AE', 'csm', 'CSM', 'ae_email', 'AE Email', 'CSM Manager', 'level 3 leader', 'next_renewal_date', 'Next Renewal Date',
+        
+        // AI and recommendation fields
         'recommended_action', 'signal_rationale', 'signal_confidence', 'action_id',
+        'AI Signal Context', 'AI Account Signal Context', 'AI Account Signal Context Rationale', 'Account Action Context', 'Account Action Context Rationale',
+        
+        // CS Play basic fields
         'play_1', 'play_2', 'play_3', 'Play 1 Name', 'Play 1 Description', 'Play 2 Name', 'Play 2 Description', 'Play 3 Name', 'Play 3 Description',
+        
+        // CS Play detailed metadata
+        'play_1_description', 'play_1_play_type', 'play_1_initiating_role', 'play_1_executing_role', 'play_1_doc_location',
+        'play_2_description', 'play_2_play_type', 'play_2_initiating_role', 'play_2_executing_role', 'play_2_doc_location', 
+        'play_3_description', 'play_3_play_type', 'play_3_initiating_role', 'play_3_executing_role', 'play_3_doc_location',
+        
+        // Call information
         'call_id', 'call_date', 'call_title', 'call_outcome',
+        
+        // Signal polarity and timestamps
         'Signal Polarity', 'signal_polarity', 'created_at', 'created_date'
     ]);
 
@@ -221,8 +253,11 @@ class SignalsRepository {
             customer_tenure_years: parseInt(item['Customer Tenure (Years)'] || item.customer_tenure_years) || 0,
             type_of_next_renewal: item['Type of Next Renewal'] || item.type_of_next_renewal || '',
             numeric_grade: parseFloat(item['Numeric Grade'] || item.numeric_grade) || 0,
+            account_gpa_table_card_column: item['Account GPA Table Card Column'] || item.account_gpa_table_card_column || '',
+            data_source: item['Data Source'] || item.data_source || '',
+            rank: parseInt(item.rank) || 0,
             
-            // GPA component scores
+            // GPA component scores (numeric values)
             relationship_value: parseFloat(item['Relationship - Value'] || item.relationship_value) || 0,
             content_creation_value: parseFloat(item['Content Creation - Value'] || item.content_creation_value) || 0,
             user_engagement_value: parseFloat(item['User Engagement - Value'] || item.user_engagement_value) || 0,
@@ -232,18 +267,31 @@ class SignalsRepository {
             platform_utilization_value: parseFloat(item['Platform Utilization - Value'] || item.platform_utilization_value) || 0,
             value_realization_value: parseFloat(item['Value Realization - Value'] || item.value_realization_value) || 0,
             
+            // GPA component grades (letter grades)
+            relationship_grade: item['Relationship'] || item.relationship_grade || '',
+            content_creation_grade: item['Content Creation'] || item.content_creation_grade || '',
+            user_engagement_grade: item['User Engagement'] || item.user_engagement_grade || '',
+            support_grade: item['Support'] || item.support_grade || '',
+            commercial_grade: item['Commercial'] || item.commercial_grade || '',
+            education_grade: item['Education'] || item.education_grade || '',
+            platform_utilization_grade: item['Platform Utilization'] || item.platform_utilization_grade || '',
+            value_realization_grade: item['Value Realization'] || item.value_realization_grade || '',
+            
             // Historical metrics
             prior_account_gpa_numeric: parseFloat(item['Prior Account GPA Numeric'] || item.prior_account_gpa_numeric) || 0,
+            prior_value: parseFloat(item['Prior Value'] || item.prior_value) || 0,
             day_180_gpa_trend: parseFloat(item['180 Day GPA Trend'] || item.day_180_gpa_trend) || 0,
             
-            // Account ownership
-            account_owner: item.account_owner || '',
-            avp: item.avp || '',
-            rvp: item.rvp || '',
-            ae: item.ae || '',
-            csm: item.csm || '',
-            ae_email: item.ae_email || '',
-            next_renewal_date: item.next_renewal_date || '',
+            // Account ownership and contacts
+            account_owner: item['Account Owner'] || item.account_owner || '',
+            avp: item['AVP'] || item.avp || '',
+            rvp: item['RVP'] || item.rvp || '',
+            ae: item['AE'] || item.ae || '',
+            csm: item['CSM'] || item.csm || '',
+            ae_email: item['AE Email'] || item.ae_email || '',
+            csm_manager: item['CSM Manager'] || item.csm_manager || '',
+            level_3_leader: item['level 3 leader'] || item.level_3_leader || '',
+            next_renewal_date: item['Next Renewal Date'] || item.next_renewal_date || '',
             
             // Recommendation and action fields
             recommended_action: item.recommended_action || '',
@@ -251,7 +299,14 @@ class SignalsRepository {
             signal_confidence: item.signal_confidence || '',
             action_id: item.action_id || '',
             
-            // CS Play fields
+            // AI context fields
+            ai_signal_context: item['AI Signal Context'] || item.ai_signal_context || '',
+            ai_account_signal_context: item['AI Account Signal Context'] || item.ai_account_signal_context || '',
+            ai_account_signal_context_rationale: item['AI Account Signal Context Rationale'] || item.ai_account_signal_context_rationale || '',
+            account_action_context: item['Account Action Context'] || item.account_action_context || '',
+            account_action_context_rationale: item['Account Action Context Rationale'] || item.account_action_context_rationale || '',
+            
+            // CS Play basic fields
             play_1: item.play_1 || '',
             play_2: item.play_2 || '',
             play_3: item.play_3 || '',
@@ -261,6 +316,23 @@ class SignalsRepository {
             'Play 2 Description': item['Play 2 Description'] || '',
             'Play 3 Name': item['Play 3 Name'] || '',
             'Play 3 Description': item['Play 3 Description'] || '',
+            
+            // CS Play detailed metadata
+            play_1_description: item.play_1_description || '',
+            play_1_play_type: item.play_1_play_type || '',
+            play_1_initiating_role: item.play_1_initiating_role || '',
+            play_1_executing_role: item.play_1_executing_role || '',
+            play_1_doc_location: item.play_1_doc_location || '',
+            play_2_description: item.play_2_description || '',
+            play_2_play_type: item.play_2_play_type || '',
+            play_2_initiating_role: item.play_2_initiating_role || '',
+            play_2_executing_role: item.play_2_executing_role || '',
+            play_2_doc_location: item.play_2_doc_location || '',
+            play_3_description: item.play_3_description || '',
+            play_3_play_type: item.play_3_play_type || '',
+            play_3_initiating_role: item.play_3_initiating_role || '',
+            play_3_executing_role: item.play_3_executing_role || '',
+            play_3_doc_location: item.play_3_doc_location || '',
             
             // Call information
             call_id: item.call_id || '',
