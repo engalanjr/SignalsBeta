@@ -206,9 +206,203 @@ class SignalsRepository {
     ]);
 
     /**
+     * Parse comprehensive record into signal format with all 100+ fields
+     */
+    static parseComprehensiveRecord(record) {
+        if (!record) return null;
+        
+        // If it's an array, process first element
+        if (Array.isArray(record)) {
+            if (record.length === 0) return null;
+            record = record[0];
+        }
+        
+        return {
+            // Core Signal Identity
+            id: record['Signal Id'] || record.id || `signal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            account_id: record['account_id'] || record['account id'],
+            account_name: record['account_name'],
+            
+            // Signal Properties
+            category: record['category'],
+            code: record['code'],
+            name: record['name'],
+            summary: record['summary'],
+            rationale: record['rationale'],
+            priority: record['priority'],
+            confidence: parseFloat(record['confidence']) || 0,
+            action_context: record['action_context'],
+            
+            // Enhanced Signal Data (including Signal Polarity!)
+            signal_confidence: parseFloat(record['signal_confidence']) || 0,
+            signal_polarity: record['Signal Polarity'] || 'Enrichment', // KEY NEW FIELD!
+            recommended_action: record['recommended_action'] || '',
+            signal_rationale: record['signal_rationale'] || '',
+            action_id: record['action_id'] || '',
+            created_at: record['created_at'] || new Date().toISOString(),
+            
+            // AI Enhancement Layer
+            ai_signal_context: record['AI Signal Context'] || '',
+            ai_account_signal_context: record['AI Account Signal Context'] || '',
+            ai_account_signal_context_rationale: record['AI Account Signal Context Rationale'] || '',
+            account_action_context: record['Account Action Context'] || '',
+            account_action_context_rationale: record['Account Action Context Rationale'] || '',
+            
+            // Playbook System (3 Plays)
+            plays: [
+                record['play_1'] ? {
+                    id: record['play_1'],
+                    name: record['Play 1 Name'] || '',
+                    description: record['Play 1 Description'] || '',
+                    full_description: record['play_1_description'] || '',
+                    play_type: record['play_1_play_type'] || '',
+                    initiating_role: record['play_1_initiating_role'] || '',
+                    executing_role: record['play_1_executing_role'] || '',
+                    doc_location: record['play_1_doc_location'] || ''
+                } : null,
+                record['play_2'] ? {
+                    id: record['play_2'],
+                    name: record['Play 2 Name'] || '',
+                    description: record['Play 2 Description'] || '',
+                    full_description: record['play_2_description'] || '',
+                    play_type: record['play_2_play_type'] || '',
+                    initiating_role: record['play_2_initiating_role'] || '',
+                    executing_role: record['play_2_executing_role'] || '',
+                    doc_location: record['play_2_doc_location'] || ''
+                } : null,
+                record['play_3'] ? {
+                    id: record['play_3'],
+                    name: record['Play 3 Name'] || '',
+                    description: record['Play 3 Description'] || '',
+                    full_description: record['play_3_description'] || '',
+                    play_type: record['play_3_play_type'] || '',
+                    initiating_role: record['play_3_initiating_role'] || '',
+                    executing_role: record['play_3_executing_role'] || '',
+                    doc_location: record['play_3_doc_location'] || ''
+                } : null
+            ].filter(play => play !== null),
+            
+            // Account Health Metrics
+            account_metrics: {
+                relationship: record['Relationship'] || '',
+                content_creation: record['Content Creation'] || '',
+                user_engagement: record['User Engagement'] || '',
+                support: record['Support'] || '',
+                commercial: record['Commercial'] || '',
+                education: record['Education'] || '',
+                platform_utilization: record['Platform Utilization'] || '',
+                value_realization: record['Value Realization'] || '',
+                
+                // Numeric values
+                relationship_value: parseFloat(record['Relationship - Value']) || 0,
+                content_creation_value: parseFloat(record['Content Creation - Value']) || 0,
+                user_engagement_value: parseFloat(record['User Engagement - Value']) || 0,
+                support_value: parseFloat(record['Support - Value']) || 0,
+                commercial_value: parseFloat(record['Commercial - Value']) || 0,
+                education_value: parseFloat(record['Education - Value']) || 0,
+                platform_utilization_value: parseFloat(record['Platform Utilization - Value']) || 0,
+                value_realization_value: parseFloat(record['Value Realization - Value']) || 0,
+                
+                // Overall health
+                health_score: parseFloat(record['Health Score']) || 0,
+                at_risk_cat: record['at_risk_cat'] || '',
+                account_gpa: record['Account GPA'] || '',
+                account_gpa_numeric: parseFloat(record['Account GPA Numeric']) || 0,
+                prior_account_gpa_numeric: parseFloat(record['Prior Account GPA Numeric']) || 0,
+                gpa_trend_180_day: record['180 Day GPA Trend '] || record['180 Day GPA Trend'] || '',
+                
+                // Account details
+                industry: record['Industry (Domo)'] || '',
+                customer_tenure_years: parseFloat(record['Customer Tenure (Years)']) || 0,
+                type_of_next_renewal: record['Type of Next Renewal'] || '',
+                data_source: record['Data Source'] || ''
+            },
+            
+            // Usage Analytics
+            usage_metrics: {
+                total_lifetime_billings: parseFloat(record['Total Lifetime Billings']) || 0,
+                daily_active_users: parseInt(record['Daily Active Users (DAU)']) || 0,
+                weekly_active_users: parseInt(record['Weekly Active Users (WAU)']) || 0,
+                monthly_active_users: parseInt(record['Monthly Active Users (MAU)']) || 0,
+                total_data_sets: parseInt(record['Total Data Sets']) || 0,
+                total_rows: parseInt(record['Total Rows']) || 0,
+                dataflows: parseInt(record['Dataflows']) || 0,
+                cards: parseInt(record['Cards']) || 0,
+                is_consumption: record['is Consumption'] === 'TRUE' || record['is Consumption'] === 'true'
+            },
+            
+            // Financial/Renewal Data
+            financial: {
+                next_renewal_date: record['Next Renewal Date'] || '',
+                bks_status_grouping: record['bks_status_grouping'] || '',
+                bks_fq: record['bks_fq'] || '',
+                rank: parseInt(record['rank']) || 0,
+                bks_renewal_baseline_usd: parseFloat(record['bks_renewal_baseline_usd']) || 0,
+                bks_forecast_new: parseFloat(record['bks_forecast_new']) || 0,
+                bks_forecast_delta: parseFloat(record['bks_forecast_delta']) || 0,
+                pacing_percentage: parseFloat(record['% Pacing']) || 0
+            },
+            
+            // Team Ownership
+            ownership: {
+                ae: record['AE'] || '',
+                csm: record['CSM'] || '',
+                ae_email: record['AE Email'] || '',
+                csm_manager: record['CSM Manager'] || '',
+                rvp: record['RVP'] || '',
+                avp: record['AVP'] || '',
+                level_3_leader: record['level 3 leader'] || '',
+                account_owner: record['Account Owner'] || ''
+            },
+            
+            // Call/Meeting Context
+            call_context: {
+                call_id: record['call_id'] || '',
+                call_date: record['call_date'] || '',
+                call_url: record['Call URL'] || '',
+                call_title: record['Call Title'] || '',
+                call_scheduled_date: record['Call Scheduled Date'] || '',
+                call_attendees: record['Call Attendees'] || '',
+                call_recap: record['Call Recap'] || ''
+            },
+            
+            // Legacy compatibility fields (kept for backward compatibility)
+            at_risk_cat: record['at_risk_cat'] || '',
+            account_gpa: record['Account GPA'] || '',
+            health_score: parseFloat(record['Health Score']) || 0,
+            daily_active_users: parseInt(record['Daily Active Users (DAU)']) || 0,
+            weekly_active_users: parseInt(record['Weekly Active Users (WAU)']) || 0,
+            monthly_active_users: parseInt(record['Monthly Active Users (MAU)']) || 0,
+            total_lifetime_billings: parseFloat(record['Total Lifetime Billings']) || 0,
+            bks_renewal_baseline_usd: parseFloat(record['bks_renewal_baseline_usd']) || 0,
+            
+            // Metadata
+            created_date: record['created_at'] || record['created_date'] || new Date().toISOString(),
+            isViewed: false,
+            feedback: null,
+            
+            // Capture any unmapped fields for discovery
+            extras: Object.fromEntries(
+                Object.entries(record)
+                    .filter(([key]) => !this.KNOWN_FIELDS.has(key))
+                    .filter(([key, value]) => value !== '' && value != null)
+            )
+        };
+    }
+    
+    /**
      * Parse Domo API response into signals format
      */
     static parseDomoResponse(response) {
+        // Transform Domo response data into our comprehensive signal format
+        return response.map(item => this.parseComprehensiveRecord(item)).filter(signal => signal !== null);
+    }
+    
+    /**
+     * Legacy parseDomoResponse for backward compatibility
+     * @deprecated Use parseComprehensiveRecord instead
+     */
+    static parseLegacyDomoResponse(response) {
         // Transform Domo response data into our signal format
         return response.map(item => ({
             id: item['Signal Id'] || item.id || `signal_${Math.random().toString(36).substr(2, 9)}`,
@@ -401,14 +595,13 @@ class SignalsRepository {
                 }
             }
 
-            // Transform to signal format using parseDomoResponse for consistency
-            const signal = this.parseDomoResponse([row])[0];
+            // Transform to comprehensive signal format with new fields
+            const signal = this.parseComprehensiveRecord(row);
             
             // Only override ID if not present - preserve actual dates from CSV
             if (!signal.id) {
                 signal.id = row['Signal Id'] || `signal-${i}`;
             }
-            // Note: Removed created_date override - let parseDomoResponse handle actual CSV dates
 
             data.push(signal);
         }
