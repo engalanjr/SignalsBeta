@@ -613,12 +613,20 @@ body {
 
 /* Signal Polarity Pill */
 .polarity-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 0.25rem 0.75rem;
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
-    margin-left: 0.5rem;
+    white-space: nowrap;
+    width: auto;
+    max-width: none;
+    text-overflow: clip;
+    overflow: visible;
+    margin: 0;
 }
 
 .polarity-risk {
@@ -634,6 +642,13 @@ body {
 .polarity-enrichment {
     background: #4169E1; /* Royal Blue */
     color: #FFFFFF;
+}
+
+/* Polarity column wrapper for centering */
+.polarity-col {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 /* Category Badge */
@@ -1346,9 +1361,15 @@ body {
     display: grid;
     grid-template-columns: 90px 1fr 70px 110px;
     gap: 15px;
-    align-items: start;
-    padding: 0.75rem 0;
+    align-items: center;
+    padding: 0.75rem;
     border-bottom: 1px solid var(--neutral-gray-100);
+    background: var(--domo-blue-light);
+    border-left: 3px solid var(--domo-blue);
+    border-radius: 8px;
+    margin: 0 -1rem;
+    padding-left: 1.75rem;
+    padding-right: 1.75rem;
 }
 
 .recommendation-list-item:last-child {
@@ -1394,13 +1415,16 @@ body {
     color: var(--neutral-gray-500);
     white-space: nowrap;
     text-align: center;
-    margin-top: 4px;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .recommendation-action-button {
     display: flex;
     justify-content: flex-end;
-    align-items: flex-start;
+    align-items: center;
 }
 
 .btn-add-to-plan {

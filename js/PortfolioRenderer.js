@@ -709,8 +709,10 @@ class PortfolioRenderer {
                 
                 return `
                     <div class="recommendation-list-item">
-                        <div class="polarity-badge polarity-${data.polarityClass}">
-                            ${data.signalPolarity.toUpperCase()}
+                        <div class="polarity-col">
+                            <div class="polarity-badge polarity-${data.polarityClass}">
+                                ${data.signalPolarity.toUpperCase()}
+                            </div>
                         </div>
                         <div class="recommendation-content">
                             <div class="recommendation-text">
