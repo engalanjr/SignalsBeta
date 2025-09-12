@@ -78,7 +78,7 @@ class PortfolioRenderer {
                 <div class="portfolio-section">
                     <h3 class="portfolio-section-header">Accounts with Risk or Opportunity Identified</h3>
                     <div class="portfolio-section-content">
-                        ${accountsWithRiskOrOpportunitySignals.map(account => this.renderAccountCard(account, actionPlans, comments)).join('')}
+                        ${accountsWithRiskOrOpportunitySignals.map(account => this.renderAccountCard(account, actionPlans, comments, ['Risk', 'Opportunity'])).join('')}
                     </div>
                 </div>
             `;
@@ -205,7 +205,7 @@ class PortfolioRenderer {
         }
     }
 
-    static renderAccountCard(account, actionPlans, comments) {
+    static renderAccountCard(account, actionPlans, comments, filterPolarities = null) {
         // Count Risk and Opportunity signals
         const riskSignals = account.signals.filter(s => {
             const polarity = s.signal_polarity || s['Signal Polarity'] || '';
@@ -311,7 +311,7 @@ class PortfolioRenderer {
                         </div>
 
                         <div class="recommendations-list-container">
-                            ${this.getMergedRecommendationsAndRationale(account)}
+                            ${this.getMergedRecommendationsAndRationale(account, filterPolarities)}
                         </div>
                     </div>
 
@@ -649,11 +649,20 @@ class PortfolioRenderer {
         }
     }
 
-    static getMergedRecommendationsAndRationale(account) {
+    static getMergedRecommendationsAndRationale(account, filterPolarities = null) {
         const actionDataMap = new Map();
         
+        // Filter signals by polarity if specified
+        let signalsToProcess = account.signals;
+        if (filterPolarities && Array.isArray(filterPolarities)) {
+            signalsToProcess = account.signals.filter(signal => {
+                const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                return filterPolarities.includes(polarity);
+            });
+        }
+        
         // Create map of recommended_action to data object with priority, date, and action_id
-        account.signals.forEach((signal, index) => {
+        signalsToProcess.forEach((signal, index) => {
             // Extra validation to ensure signal belongs to this account
             if (signal.account_id !== account.id) {
                 console.error(`ERROR: Signal ${signal.id} has account_id ${signal.account_id} but is in account ${account.id} signals array!`);
