@@ -676,9 +676,13 @@ class PortfolioRenderer {
                 signal.action_id.trim()) {
                 
                 const action = signal.recommended_action.trim();
-                const date = signal.created_date || signal.call_date;
                 const actionId = signal.action_id;
                 const priority = signal.priority || 'Medium';
+                
+                // Get the date from the RecommendedAction object (when the action was created)
+                const signalsStore = window.signalsStore;
+                const recommendedAction = signalsStore?.normalizedData?.recommendedActions?.get(actionId);
+                const date = recommendedAction?.created_at || signal.call_date || signal.created_date || '';
                 
                 // Get Signal Polarity from signal
                 const signalPolarity = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';

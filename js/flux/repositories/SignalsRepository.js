@@ -347,6 +347,9 @@ class SignalsRepository {
             signal_rationale: rawSignal.signal_rationale || '',
             // Use Call Scheduled Date as primary source, fallback to call_date
             call_date: rawSignal['Call Scheduled Date'] || rawSignal.call_date || '',
+            // Add created_at field - when the recommended action was created
+            // Due to CSV corruption, the timestamp ended up in the play_3 field
+            created_at: rawSignal.play_3 || rawSignal.created_at || '',
             plays: plays
         };
     }
