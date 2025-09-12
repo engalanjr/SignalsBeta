@@ -1311,6 +1311,12 @@ body {
     gap: 0.75rem;
 }
 
+.recommendations-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
 .recommendation-list-item {
     display: grid;
     grid-template-columns: 90px 1fr 70px 110px;
@@ -3183,8 +3189,76 @@ body {
 .linkedin-comments-section {
     margin-top: 1rem;
     background: var(--neutral-white);
-    border-radius: 0;
-    padding: 0;
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid var(--neutral-gray-200);
+}
+
+/* Account Comments Section Styling */
+.account-comments-section {
+    margin-top: 1rem;
+    background: var(--neutral-white);
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid var(--neutral-gray-200);
+}
+
+/* Comment Input Styling */
+.account-comment-input {
+    width: 100%;
+    min-height: 40px;
+    padding: 0.75rem;
+    border: 1px solid var(--neutral-gray-300);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    resize: vertical;
+    font-family: inherit;
+    background: white;
+    box-sizing: border-box;
+}
+
+.account-comment-input:focus {
+    outline: none;
+    border-color: var(--domo-blue);
+    box-shadow: 0 0 0 2px rgba(0, 125, 186, 0.1);
+}
+
+.account-comment-input::placeholder {
+    color: var(--neutral-gray-500);
+    font-style: normal;
+}
+
+/* Add Comment Section Container */
+.add-comment-section {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+/* Add Comment Button - Target the actual classes used */
+.add-comment-section .btn.btn-primary {
+    background: var(--domo-blue);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.add-comment-section .btn.btn-primary:hover {
+    background: var(--domo-blue-dark);
+}
+
+.add-comment-section .btn.btn-primary:disabled {
+    background: var(--neutral-gray-300);
+    cursor: not-allowed;
 }
 
 .comments-header {

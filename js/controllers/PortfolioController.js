@@ -55,7 +55,7 @@ class PortfolioController {
     
     isPortfolioAction(action) {
         const portfolioActions = [
-            'toggle-account-signals', 'show-more-signals', 'show-less-signals', 'view-signal'
+            'toggle-account-signals', 'show-more-signals', 'show-less-signals', 'view-signal', 'add-account-comment'
         ];
         return portfolioActions.includes(action);
     }
@@ -80,6 +80,10 @@ class PortfolioController {
                     dispatcher.dispatch(Actions.markSignalAsViewed(signalId));
                     dispatcher.dispatch(Actions.openSignalDetails(signalId));
                 }
+                break;
+                
+            case 'add-account-comment':
+                this.handleAddAccountComment(accountId, target);
                 break;
                 
             default:
