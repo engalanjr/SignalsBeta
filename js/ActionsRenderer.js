@@ -4,6 +4,12 @@ class ActionsRenderer {
     static async renderActions(app) {
         const container = document.getElementById('actionsList');
         if (!container) return;
+        
+        // Guard against undefined app/state
+        if (!app) {
+            console.error('ActionsRenderer.renderActions called without state/app');
+            return;
+        }
 
         // Update overview statistics
         this.updateActionsOverview(app);
@@ -28,6 +34,11 @@ class ActionsRenderer {
     }
 
     static updateActionsOverview(app) {
+        // Ensure actionPlans Map exists before accessing
+        if (!app.actionPlans || !(app.actionPlans instanceof Map)) {
+            console.warn('⚠️ app.actionPlans not initialized as Map, using empty array');
+            app.actionPlans = new Map();
+        }
         const actionPlans = Array.from(app.actionPlans.values());
 
         // Update total actions count
@@ -79,6 +90,12 @@ class ActionsRenderer {
     static async getFormattedActionPlans(app) {
         const actionPlans = [];
 
+        // Ensure actionPlans Map exists before accessing
+        if (!app.actionPlans || !(app.actionPlans instanceof Map)) {
+            console.warn('⚠️ app.actionPlans not initialized as Map, initializing empty Map');
+            app.actionPlans = new Map();
+        }
+
         // First, process any action plans loaded from Domo API during initialization
         console.log(`Processing ${app.actionPlans.size} action plans from app state...`);
         
@@ -90,15 +107,16 @@ class ActionsRenderer {
         for (let [planId, planData] of app.actionPlans) {
             // Extract account ID from plan data (since map key is now planId, not accountId)
             const accountId = planData.accountId;
-            const account = app.accounts.get(accountId);
-            if (!account) {
-                console.warn(`Skipping plan ${planId} - account ${accountId} not found in app.accounts`);
-                console.log(`Available account IDs in app.accounts:`, Array.from(app.accounts.keys()));
-                console.log(`Plan data:`, { planId, accountId, planTitle: planData.title });
+            
+            // Handle missing app.accounts gracefully - use fallback from planData
+            const account = (app.accounts && app.accounts.get) ? app.accounts.get(accountId) : null;
+            if (!account && !planData.accountName) {
+                console.warn(`Skipping plan ${planId} - no account data available for ${accountId}`);
                 continue;
             }
 
-            const highPrioritySignals = account.signals.filter(s => s.priority === 'High');
+            // Handle missing account.signals gracefully
+            const highPrioritySignals = (account && account.signals) ? account.signals.filter(s => s.priority === 'High') : [];
             
             // 🔧 FIX: Normalize planData to include canonical ID
             const normalizedPlanData = {
@@ -216,19 +234,22 @@ class ActionsRenderer {
                 const formattedFallbackPlans = [];
                 for (let [planId, planData] of app.actionPlans) {
                     const accountId = planData.accountId;
-                    const account = app.accounts.get(accountId);
-                    if (!account) {
-                        console.warn(`Skipping plan ${planId} - account ${accountId} not found`);
+                    
+                    // Handle missing app.accounts gracefully 
+                    const account = (app.accounts && app.accounts.get) ? app.accounts.get(accountId) : null;
+                    if (!account && !planData.accountName) {
+                        console.warn(`Skipping plan ${planId} - no account data available for ${accountId}`);
                         continue;
                     }
                     
-                    const highPrioritySignals = account.signals.filter(s => s.priority === 'High');
+                    // Handle missing account.signals gracefully
+                    const highPrioritySignals = (account && account.signals) ? account.signals.filter(s => s.priority === 'High') : [];
                     
                     formattedFallbackPlans.push({
                         accountId: accountId,
-                        accountName: account.name,
-                        accountHealth: this.getHealthFromRiskCategory(account.at_risk_cat),
-                        signalsCount: account.signals.length,
+                        accountName: account?.name || planData.accountName || `Account ${accountId}`,
+                        accountHealth: this.getHealthFromRiskCategory(account?.at_risk_cat || 'Unknown'),
+                        signalsCount: (account && account.signals) ? account.signals.length : 0,
                         highPriorityCount: highPrioritySignals.length,
                         renewalBaseline: this.getRandomRenewalValue(),
                         status: planData.status || 'Pending',

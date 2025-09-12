@@ -205,7 +205,8 @@ class AppController {
                 // Handle actions tab if ActionsRenderer exists
                 if (typeof ActionsRenderer !== 'undefined') {
                     console.log('📋 Rendering Actions tab');
-                    ActionsRenderer.renderActions(this.app).catch(error => {
+                    const state = signalsStore.getState();
+                    ActionsRenderer.renderActions(state).catch(error => {
                         console.error('🚨 ERROR rendering actions:', error);
                     });
                 } else {
