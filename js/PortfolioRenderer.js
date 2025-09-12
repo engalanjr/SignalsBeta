@@ -867,49 +867,54 @@ class PortfolioRenderer {
     }
 
     static loadDrawerCSPlays(actionId) {
-        // Find the signal with this action_id to get its specific plays
+        // Find plays for this action_id from the normalized data model
         let csPlays = [];
         
-        // Get signals from the SignalsStore
-        const state = window.signalsStore?.getState();
-        const signals = state?.signals || [];
-        
-        if (actionId && signals.length > 0) {
-            const signal = signals.find(s => s.action_id === actionId);
+        // Get the normalized store directly to access recommended actions
+        const store = window.signalsStore;
+        if (!store || !actionId) {
+            console.warn('Cannot load plays: store or actionId not available');
+        } else {
+            // Try to get the recommended action from normalized data
+            let recommendedAction = null;
             
-            if (signal) {
+            // Check if we have the getRecommendedAction method
+            if (store.getRecommendedAction && typeof store.getRecommendedAction === 'function') {
+                recommendedAction = store.getRecommendedAction(actionId);
+            } else if (store.normalizedData && store.normalizedData.recommendedActions) {
+                // Direct access to normalized data
+                recommendedAction = store.normalizedData.recommendedActions.get(actionId);
+            }
+            
+            // If we found the recommended action, extract its plays
+            if (recommendedAction && recommendedAction.plays && Array.isArray(recommendedAction.plays)) {
+                csPlays = recommendedAction.plays.filter(play => 
+                    play && play.name && play.name.trim() && 
+                    play.name !== 'N/A' && play.name !== ''
+                ).map(play => ({
+                    title: play.name || play.title || '',
+                    description: play.description || play.full_description || 'No description available',
+                    executingRole: play.executing_role || play.executingRole || 'Adoption Consulting'
+                }));
+            } else {
+                // Fallback: Try to find plays from denormalized signals
+                const state = store.getState ? store.getState() : store.state;
+                const signals = state?.signals || [];
                 
-                // Extract play 1 with enhanced data - check both space and underscore versions
-                const play1Name = signal['Play 1 Name'] || signal.play_1_name || signal.play_1;
-                if (play1Name && play1Name.trim() && 
-                    play1Name !== 'N/A' && play1Name !== '') {
-                    csPlays.push({
-                        title: play1Name.trim(),
-                        description: signal['Play 1 Description'] || signal.play_1_description || signal.play_1 || 'No description available',
-                        executingRole: signal.play_1_executing_role || signal['Owner Name'] || 'Adoption Consulting'
-                    });
-                }
-                
-                // Extract play 2 with enhanced data - check both space and underscore versions
-                const play2Name = signal['Play 2 Name'] || signal.play_2_name || signal.play_2;
-                if (play2Name && play2Name.trim() && 
-                    play2Name !== 'N/A' && play2Name !== '') {
-                    csPlays.push({
-                        title: play2Name.trim(),
-                        description: signal['Play 2 Description'] || signal.play_2_description || signal.play_2 || 'No description available',
-                        executingRole: signal.play_2_executing_role || signal['Owner Name'] || 'Adoption Consulting'
-                    });
-                }
-                
-                // Extract play 3 with enhanced data - check both space and underscore versions
-                const play3Name = signal['Play 3 Name'] || signal.play_3_name || signal.play_3;
-                if (play3Name && play3Name.trim() && 
-                    play3Name !== 'N/A' && play3Name !== '') {
-                    csPlays.push({
-                        title: play3Name.trim(),
-                        description: signal['Play 3 Description'] || signal.play_3_description || signal.play_3 || 'No description available',
-                        executingRole: signal.play_3_executing_role || signal['Owner Name'] || 'Adoption Consulting'
-                    });
+                if (signals.length > 0) {
+                    const signal = signals.find(s => s.action_id === actionId);
+                    
+                    if (signal && signal.plays && Array.isArray(signal.plays)) {
+                        // Use plays array from denormalized signal
+                        csPlays = signal.plays.filter(play => 
+                            play && play.name && play.name.trim() && 
+                            play.name !== 'N/A' && play.name !== ''
+                        ).map(play => ({
+                            title: play.name || play.title || '',
+                            description: play.description || play.full_description || 'No description available',
+                            executingRole: play.executing_role || play.executingRole || 'Adoption Consulting'
+                        }));
+                    }
                 }
             }
         }

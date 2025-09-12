@@ -406,6 +406,14 @@ class SignalsStore extends Store {
         });
     }
     
+    getRecommendedAction(actionId) {
+        return this.normalizedData.recommendedActions.get(actionId);
+    }
+    
+    getRecommendedActions() {
+        return Array.from(this.normalizedData.recommendedActions.values());
+    }
+    
     getComments(targetId) {
         // Check both signal and account comments
         const signalCommentIds = this.indexes.commentsBySignal.get(targetId) || new Set();

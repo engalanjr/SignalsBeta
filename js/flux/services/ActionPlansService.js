@@ -75,14 +75,14 @@ class ActionPlansService {
     
     /**
      * Create a new action plan with optimistic updates
-     * @param {string} signalId - Signal ID
+     * @param {string} actionId - Action ID (recommended action ID)
      * @param {string} accountId - Account ID (required for direct association)
      * @param {string} title - Plan title
      * @param {string} description - Plan description
      * @param {Array} tasks - Array of tasks (optional)
      * @param {string} userId - User ID (optional)
      */
-    static async createActionPlan(signalId, accountId, title, description, tasks = [], userId = null) {
+    static async createActionPlan(actionId, accountId, title, description, tasks = [], userId = null) {
         const dispatcher = this.getDispatcher();
         const signalsStore = this.getSignalsStore();
         
@@ -112,20 +112,20 @@ class ActionPlansService {
             return null;
         }
     
-        console.log(`🎯 ActionPlansService: Creating action plan for signal ${signalId}`);
+        console.log(`🎯 ActionPlansService: Creating action plan for action ${actionId}`);
         
-        // Dispatch optimistic request action
-        const requestAction = Actions.requestActionPlan(signalId, title.trim(), description?.trim() || '', tasks, userId);
+        // Dispatch optimistic request action (using actionId instead of signalId)
+        const requestAction = Actions.requestActionPlan(actionId, title.trim(), description?.trim() || '', tasks, userId);
         dispatcher.dispatch(requestAction);
         
         const operationId = requestAction.payload.operationId; // Store in broader scope for catch block
         
         try {
-            // Create plan object for API with proper ID (accountId now passed directly)
+            // Create plan object for API with proper ID (using actionId instead of signalId)
             const planData = {
                 id: `plan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                signalId,
-                accountId, // Use directly passed accountId instead of fragile inference
+                actionId,  // Store the action ID (recommended action)
+                accountId, // Use directly passed accountId
                 title: title.trim(),
                 description: description?.trim() || '',
                 tasks: tasks || [],
