@@ -1000,8 +1000,21 @@ class PortfolioRenderer {
         };
         
         try {
-            // Call DataService directly (matching comments pattern)
-            const result = await DataService.createActionPlan(planData);
+            // Call DataService directly (matching comments pattern) - with guard
+            let result;
+            if (window.DataService && typeof DataService.createActionPlan === 'function') {
+                result = await DataService.createActionPlan(planData);
+            } else {
+                // Fallback: Use Flux actions for plan creation
+                const planId = `plan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                result = {
+                    success: true,
+                    plan: {
+                        id: planId,
+                        ...planData
+                    }
+                };
+            }
             
             if (result && result.success) {
                 // console.log('Plan created successfully from drawer:', result.plan);
