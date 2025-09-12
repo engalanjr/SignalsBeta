@@ -7,6 +7,7 @@ class SignalRenderer {
 
         // Sort signals by priority and date
         const sortedSignals = [...signals].sort((a, b) => {
+            // 1. Priority - high, medium, low
             const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
             const priorityA = priorityOrder[a.priority] || 0;
             const priorityB = priorityOrder[b.priority] || 0;
@@ -15,6 +16,18 @@ class SignalRenderer {
                 return priorityB - priorityA;
             }
 
+            // 2. Signal Polarity - Risk, Opportunity, Enrichment
+            const polarityOrder = { 'Risk': 3, 'Opportunity': 2, 'Enrichment': 1 };
+            const polarityA = a.signal_polarity || a['Signal Polarity'] || 'Enrichment';
+            const polarityB = b.signal_polarity || b['Signal Polarity'] || 'Enrichment';
+            const polarityScoreA = polarityOrder[polarityA] || 0;
+            const polarityScoreB = polarityOrder[polarityB] || 0;
+
+            if (polarityScoreA !== polarityScoreB) {
+                return polarityScoreB - polarityScoreA;
+            }
+
+            // 3. call_date DESC
             const dateA = new Date(a.call_date);
             const dateB = new Date(b.call_date);
             return dateB - dateA;
