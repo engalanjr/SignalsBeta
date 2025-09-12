@@ -37,6 +37,7 @@ The application runs on port 5000 using a Python HTTP server that:
 - Application gracefully falls back to sample data when Domo APIs are unavailable
 
 ## Recent Changes
+- **Comprehensive Data Model Enhancement (Sept 12, 2025)**: Successfully integrated comprehensive CSV dataset with Signal Polarity and 90+ additional fields. Enhanced data model to include Signal Polarity field, implemented robust CSV tokenizer for multi-line quoted fields, added 'created_at' field support alongside 'created_date', created systematic field discovery system to identify unmapped columns across first 100 records, and replaced sample data with production-ready dataset containing complex business signals with proper date preservation and data integrity.
 - **AI Recommendations Enhanced Display (Sept 12, 2025)**: Redesigned AI Recommendations section with clean list layout showing priority badges (IMMEDIATE/NEAR-TERM/LONG-TERM), dates, and smart "Add to Plan" / "Added X days ago" buttons that track action plan status
 - **Fixed Toolbox of Plays Display (Sept 12, 2025)**: Corrected field name mismatch to properly display CS plays from CSV data - now shows play titles, descriptions, and "Adoption Consulting" as play owner with checkboxes in the Add to Plan drawer
 - **Fixed Add to Plan Button Error (Sept 12, 2025)**: Removed placeholder alert and properly connected button to open drawer with signal data, enabling full action plan creation workflow
