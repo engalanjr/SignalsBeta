@@ -114,11 +114,35 @@ class SignalsRepository {
             
             const csvText = await response.text();
             console.log('Master CSV loaded successfully, length:', csvText.length);
-            console.log('First few lines of CSV:', csvText.substring(0, 500));
+            
+            // Log complete header row without truncation
+            const firstNewlineIndex = csvText.indexOf('\n');
+            const headerRow = csvText.slice(0, firstNewlineIndex);
+            console.log('Complete CSV headers (' + firstNewlineIndex + ' chars):', headerRow);
             
             // Parse the CSV
             const parsedData = this.parseCSV(csvText);
             console.log(`Parsed ${parsedData.length} records from master CSV`);
+            
+            // Log unmapped fields discovered across multiple records
+            if (parsedData.length > 0) {
+                const allUnmappedFields = new Set();
+                const sampleSize = Math.min(100, parsedData.length);
+                
+                // Aggregate unmapped fields from first 100 records
+                for (let i = 0; i < sampleSize; i++) {
+                    if (parsedData[i].extras) {
+                        Object.keys(parsedData[i].extras).forEach(field => allUnmappedFields.add(field));
+                    }
+                }
+                
+                const unmappedFieldsArray = Array.from(allUnmappedFields).sort();
+                if (unmappedFieldsArray.length > 0) {
+                    console.log(`🆕 Discovered ${unmappedFieldsArray.length} unmapped CSV columns across ${sampleSize} records:`, unmappedFieldsArray);
+                } else {
+                    console.log(`✅ All CSV columns are properly mapped to the data model (checked ${sampleSize} records)`);
+                }
+            }
             
             return parsedData;
         } catch (error) {
@@ -128,6 +152,27 @@ class SignalsRepository {
         }
     }
     
+    /**
+     * Known fields that we explicitly map in parseDomoResponse
+     */
+    static KNOWN_FIELDS = new Set([
+        'id', 'Signal Id', 'account_id', 'Account Id', 'account_name', 'category', 'code', 'name', 'summary', 'rationale', 'priority', 'confidence', 'action_context',
+        'at_risk_cat', 'account_gpa', 'Account GPA', 'account_gpa_numeric', 'Account GPA Numeric', 'health_score', 'Health Score',
+        'total_lifetime_billings', 'Total Lifetime Billings', 'bks_renewal_baseline_usd', 'bks_forecast_new', 'bks_forecast_delta', 'bks_status_grouping', 'pacing_percent', '% Pacing', 'bks_fq',
+        'daily_active_users', 'Daily Active Users (DAU)', 'weekly_active_users', 'Weekly Active Users (WAU)', 'monthly_active_users', 'Monthly Active Users (MAU)',
+        'total_data_sets', 'Total Data Sets', 'total_rows', 'Total Rows', 'dataflows', 'Dataflows', 'cards', 'Cards', 'is_consumption', 'is Consumption',
+        'industry', 'Industry (Domo)', 'customer_tenure_years', 'Customer Tenure (Years)', 'type_of_next_renewal', 'Type of Next Renewal', 'numeric_grade', 'Numeric Grade',
+        'relationship_value', 'Relationship - Value', 'content_creation_value', 'Content Creation - Value', 'user_engagement_value', 'User Engagement - Value',
+        'support_value', 'Support - Value', 'commercial_value', 'Commercial - Value', 'education_value', 'Education - Value',
+        'platform_utilization_value', 'Platform Utilization - Value', 'value_realization_value', 'Value Realization - Value',
+        'prior_account_gpa_numeric', 'Prior Account GPA Numeric', 'day_180_gpa_trend', '180 Day GPA Trend',
+        'account_owner', 'avp', 'rvp', 'ae', 'csm', 'ae_email', 'next_renewal_date',
+        'recommended_action', 'signal_rationale', 'signal_confidence', 'action_id',
+        'play_1', 'play_2', 'play_3', 'Play 1 Name', 'Play 1 Description', 'Play 2 Name', 'Play 2 Description', 'Play 3 Name', 'Play 3 Description',
+        'call_id', 'call_date', 'call_title', 'call_outcome',
+        'Signal Polarity', 'signal_polarity', 'created_at', 'created_date'
+    ]);
+
     /**
      * Parse Domo API response into signals format
      */
@@ -223,83 +268,160 @@ class SignalsRepository {
             call_title: item.call_title || '',
             call_outcome: item.call_outcome || '',
             
-            // Computed fields
-            created_date: item.created_date || new Date().toISOString(),
+            // New fields from comprehensive dataset
+            signal_polarity: item['Signal Polarity'] || item.signal_polarity || '',
+            
+            // Support both created_at (from new CSV) and created_date (legacy)
+            created_date: item.created_at || item.created_date || new Date().toISOString(),
+            created_at: item.created_at || item.created_date || new Date().toISOString(),
             isViewed: false,
-            feedback: null
+            feedback: null,
+            
+            // Capture any unmapped fields for discovery
+            extras: Object.fromEntries(
+                Object.entries(item)
+                    .filter(([key]) => !this.KNOWN_FIELDS.has(key))
+                    .filter(([key, value]) => value !== '' && value != null)
+            )
         }));
     }
     
     /**
-     * Parse CSV text into signals data
+     * Parse CSV text into signals data using stateful tokenizer
      */
     static parseCSV(csvText) {
-        const lines = csvText.trim().split('\n');
-        const headers = lines[0].split(',');
+        console.log('🔍 Starting stateful CSV parsing with multi-line field support...');
+        const startTime = performance.now();
+        
+        // Use stateful tokenizer to properly handle quoted newlines
+        const rows = this.tokenizeCSV(csvText);
+        
+        if (rows.length === 0) {
+            console.warn('⚠️ No rows found in CSV');
+            return [];
+        }
+        
+        const headers = rows[0];
+        console.log(`📋 Parsed ${headers.length} header columns from CSV`);
+        console.log('📊 CSV parsing stats:', {
+            totalRows: rows.length,
+            dataRows: rows.length - 1,
+            columns: headers.length
+        });
+        
         const data = [];
-
-        for (let i = 1; i < lines.length; i++) {
-            const values = this.parseCSVLine(lines[i]);
+        const discoveredFields = new Set();
+        const sampleSize = Math.min(100, rows.length - 1); // Check first 100 data rows for field discovery
+        
+        for (let i = 1; i < rows.length; i++) {
+            const values = rows[i];
             const row = {};
 
+            // Build row object from headers and values
             for (let j = 0; j < headers.length; j++) {
-                row[headers[j]] = values[j] || '';
+                const header = headers[j];
+                const value = values[j] || '';
+                row[header] = value;
+                
+                // Track field discovery for first 100 records
+                if (i <= sampleSize && value !== '' && value != null) {
+                    discoveredFields.add(header);
+                }
             }
 
-            // Transform to our signal format using parseDomoResponse for consistency
+            // Transform to signal format using parseDomoResponse for consistency
             const signal = this.parseDomoResponse([row])[0];
             
-            // Override with CSV-specific fields
-            signal.id = row['Signal Id'] || `signal-${i}`;
-            signal.created_date = this.getRandomRecentDate();
+            // Only override ID if not present - preserve actual dates from CSV
+            if (!signal.id) {
+                signal.id = row['Signal Id'] || `signal-${i}`;
+            }
+            // Note: Removed created_date override - let parseDomoResponse handle actual CSV dates
 
             data.push(signal);
         }
-
+        
+        const parseTime = performance.now() - startTime;
+        console.log(`⚡ CSV parsing completed in ${parseTime.toFixed(2)}ms`);
+        console.log(`🆕 Discovered ${discoveredFields.size} total fields across first ${sampleSize} records`);
+        
         return data;
     }
     
     /**
-     * Parse a single CSV line handling quoted fields
+     * Stateful CSV tokenizer that properly handles quoted newlines and multi-line fields
+     * This replaces parseCSVLine and handles the entire CSV content as a stream
      */
-    static parseCSVLine(line) {
-        const result = [];
-        let current = '';
+    static tokenizeCSV(csvText) {
+        const rows = [];
+        let currentRow = [];
+        let currentField = '';
         let inQuotes = false;
-
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
-            const nextChar = line[i + 1];
-
+        let i = 0;
+        
+        console.log('🔄 Tokenizing CSV with stateful parser...');
+        
+        while (i < csvText.length) {
+            const char = csvText[i];
+            const nextChar = csvText[i + 1];
+            
             if (char === '"') {
                 if (inQuotes && nextChar === '"') {
-                    // Handle escaped quotes inside quoted field
-                    current += '"';
-                    i++; // Skip the next quote
+                    // Handle escaped quotes: "" inside quoted field becomes "
+                    currentField += '"';
+                    i += 2; // Skip both quotes
+                    continue;
                 } else {
                     // Toggle quote state
                     inQuotes = !inQuotes;
                 }
             } else if (char === ',' && !inQuotes) {
-                // Remove surrounding quotes if present
-                let value = current.trim();
-                if (value.startsWith('"') && value.endsWith('"')) {
-                    value = value.slice(1, -1);
+                // Field separator - end current field
+                currentRow.push(currentField);
+                currentField = '';
+            } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                // Row separator - end current row (only when not in quotes)
+                currentRow.push(currentField);
+                
+                if (currentRow.some(field => field.trim() !== '')) {
+                    // Only add non-empty rows
+                    rows.push(currentRow);
                 }
-                result.push(value);
-                current = '';
+                
+                currentRow = [];
+                currentField = '';
+                
+                // Handle \r\n line endings
+                if (char === '\r' && nextChar === '\n') {
+                    i++; // Skip the \n
+                }
             } else {
-                current += char;
+                // Regular character - add to current field
+                currentField += char;
+            }
+            
+            i++;
+        }
+        
+        // Handle the last field and row if not empty
+        if (currentField !== '' || currentRow.length > 0) {
+            currentRow.push(currentField);
+            if (currentRow.some(field => field.trim() !== '')) {
+                rows.push(currentRow);
             }
         }
-
-        // Handle the last field
-        let value = current.trim();
-        if (value.startsWith('"') && value.endsWith('"')) {
-            value = value.slice(1, -1);
-        }
-        result.push(value);
-        return result;
+        
+        console.log(`✅ Tokenized ${rows.length} rows (including header)`);
+        return rows;
+    }
+    
+    /**
+     * Legacy method kept for compatibility - now delegates to tokenizeCSV
+     * @deprecated Use tokenizeCSV for new implementations
+     */
+    static parseCSVLine(line) {
+        console.warn('⚠️ parseCSVLine is deprecated - use tokenizeCSV for proper multi-line support');
+        return this.tokenizeCSV(line + '\n')[0] || [];
     }
     
     /**
