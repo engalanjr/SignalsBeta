@@ -293,6 +293,8 @@ class SignalsStore extends Store {
         return {
             ...signal,
             id: signal.signal_id,
+            signal: signal.code || signal.signal || '',  // Add signal field for WhitespaceRenderer
+            signal_code: signal.code || signal.signal_code || '',  // Add signal_code field for compatibility
             
             // Merge account data (for backward compatibility)
             account_name: account?.account_name || signal.account_name,

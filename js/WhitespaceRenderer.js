@@ -50,7 +50,7 @@ class WhitespaceRenderer {
             app.signals.forEach(signal => {
                 const accountId = signal.account_id;
                 const accountName = signal.account_name || `Account ${accountId}`;
-                const signalCode = signal.signal || signal.signal_code || 'UNKNOWN';
+                const signalCode = signal.code || signal.signal || signal.signal_code || 'UNKNOWN';
                 
                 // Track all signal codes
                 allSignalCodes.add(signalCode);
