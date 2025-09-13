@@ -39,34 +39,34 @@ class SignalRenderer {
             return dateB - dateA;
         });
 
-        // Filter signals based on any user interaction
-        const newSignals = sortedSignals.filter(signal => !this.hasUserInteraction(signal, viewState, interactions, actionPlans));
-        const viewedSignals = sortedSignals.filter(signal => this.hasUserInteraction(signal, viewState, interactions, actionPlans));
-
-        let html = '';
-
-        // Add new signals section header
-        html += this.renderNewSignalsHeader(newSignals.length);
-
-        newSignals.forEach(signal => {
-            html += this.renderSignalCard(signal, comments, true);
-        });
-
-        if (newSignals.length > 0 && viewedSignals.length > 0) {
-            html += this.renderSeparator();
-        }
-
-        viewedSignals.forEach(signal => {
-            html += this.renderSignalCard(signal, comments, false);
-        });
-
-        // Check if we should use virtual scrolling (for large datasets)
+        // Check FIRST if we should use virtual scrolling to avoid pre-rendering
         const shouldUseVirtualScroll = sortedSignals.length > 100;
         
         if (shouldUseVirtualScroll) {
+            // Use virtual scrolling for large datasets
             this.renderWithVirtualScroll(sortedSignals, viewState, comments, interactions, actionPlans);
         } else {
-            // For small datasets, use traditional rendering
+            // Only build HTML for small datasets
+            const newSignals = sortedSignals.filter(signal => !this.hasUserInteraction(signal, viewState, interactions, actionPlans));
+            const viewedSignals = sortedSignals.filter(signal => this.hasUserInteraction(signal, viewState, interactions, actionPlans));
+
+            let html = '';
+
+            // Add new signals section header
+            html += this.renderNewSignalsHeader(newSignals.length);
+
+            newSignals.forEach(signal => {
+                html += this.renderSignalCard(signal, comments, true);
+            });
+
+            if (newSignals.length > 0 && viewedSignals.length > 0) {
+                html += this.renderSeparator();
+            }
+
+            viewedSignals.forEach(signal => {
+                html += this.renderSignalCard(signal, comments, false);
+            });
+
             container.innerHTML = html;
             this.attachEventListeners(container);
         }
