@@ -4,12 +4,18 @@ class WhitespaceRenderer {
     /**
      * Main render method for Whitespace view
      */
-    static async renderWhitespace(app) {
+    static async renderWhitespace(state) {
         try {
             console.log('🎯 Rendering Whitespace heatmap view');
             
+            // Get data from Flux store state
+            const signals = state.signals || [];
+            const accounts = state.accounts || new Map();
+            
+            console.log(`🔍 Processing ${signals.length} signals and ${accounts.size} accounts`);
+            
             // Process signals into matrix format
-            const { matrix, signalTypes, accounts, stats } = this.processSignalsMatrix(app.signals, app.accounts);
+            const { matrix, signalTypes, accountNames, stats } = this.processSignalsMatrix(signals, accounts);
             
             console.log(`📊 Processed ${stats.totalAccounts} accounts, ${stats.totalSignalTypes} signal types, ${stats.totalOccurrences} total occurrences`);
             
@@ -30,7 +36,7 @@ class WhitespaceRenderer {
             }
             
             // Render the heatmap content
-            whitespaceTab.innerHTML = this.generateWhitespaceHTML(matrix, signalTypes, accounts, stats);
+            whitespaceTab.innerHTML = this.generateWhitespaceHTML(matrix, signalTypes, accountNames, stats);
             
             // Setup basic interactivity
             this.setupEventListeners();
@@ -55,10 +61,21 @@ class WhitespaceRenderer {
         
         let totalOccurrences = 0;
         
-        // Process each signal
-        for (let [signalId, signal] of signals) {
+        // Process each signal from the signals array
+        for (let signal of signals) {
+            if (!signal || !signal.account_id) {
+                continue; // Skip invalid signals
+            }
+            
             const accountId = signal.account_id;
-            const accountName = accounts.get(accountId)?.name || `Account ${accountId}`;
+            
+            // Get account name from accounts Map or use fallback
+            let accountName = `Account ${accountId}`;
+            if (accounts && accounts.get && accounts.get(accountId)) {
+                accountName = accounts.get(accountId).name || accountName;
+            } else if (signal.account_name) {
+                accountName = signal.account_name;
+            }
             
             // Create signal type key (combining category and name for uniqueness)
             const signalKey = signal.code ? 
@@ -69,7 +86,7 @@ class WhitespaceRenderer {
             accountSet.add(accountName);
             
             // Store polarity for this signal type
-            signalPolarities[signalKey] = signal.signal_polarity;
+            signalPolarities[signalKey] = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
             
             // Initialize matrix structure
             if (!matrix[accountName]) {
@@ -79,7 +96,7 @@ class WhitespaceRenderer {
             if (!matrix[accountName][signalKey]) {
                 matrix[accountName][signalKey] = {
                     count: 0,
-                    polarity: signal.signal_polarity,
+                    polarity: signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment',
                     accountId: accountId
                 };
             }
@@ -102,7 +119,7 @@ class WhitespaceRenderer {
         return {
             matrix,
             signalTypes: Array.from(signalTypes).sort(),
-            accounts: Array.from(accountSet).sort(),
+            accountNames: Array.from(accountSet).sort(),
             stats,
             signalPolarities
         };
@@ -111,7 +128,7 @@ class WhitespaceRenderer {
     /**
      * Generate the HTML structure for the Whitespace view
      */
-    static generateWhitespaceHTML(matrix, signalTypes, accounts, stats) {
+    static generateWhitespaceHTML(matrix, signalTypes, accountNames, stats) {
         return `
             <div class="whitespace-container">
                 <div class="whitespace-header">
@@ -147,7 +164,7 @@ class WhitespaceRenderer {
                 
                 <div class="whitespace-content">
                     <div class="heatmap-wrapper">
-                        ${this.generateHeatmapTable(matrix, signalTypes, accounts)}
+                        ${this.generateHeatmapTable(matrix, signalTypes, accountNames)}
                     </div>
                 </div>
                 
@@ -192,7 +209,7 @@ class WhitespaceRenderer {
     /**
      * Generate the heatmap table HTML
      */
-    static generateHeatmapTable(matrix, signalTypes, accounts) {
+    static generateHeatmapTable(matrix, signalTypes, accountNames) {
         let tableHTML = `
             <table class="heatmap-table">
                 <thead>
@@ -209,7 +226,7 @@ class WhitespaceRenderer {
         `;
         
         // Generate rows for each account
-        accounts.forEach(accountName => {
+        accountNames.forEach(accountName => {
             tableHTML += `<tr>`;
             tableHTML += `<td class="account-name">${SecurityUtils.sanitizeHTML(accountName)}</td>`;
             
