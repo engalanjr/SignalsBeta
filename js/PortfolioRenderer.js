@@ -790,6 +790,51 @@ class PortfolioRenderer {
     }
 
 
+    /**
+     * Get related calls for a specific action ID
+     * @param {string} actionId - The action ID to find related calls for
+     * @param {Object} account - The account object containing signals
+     * @returns {Array} Array of unique call objects with title, date, attendees, and related signals
+     */
+    static getRelatedCallsForAction(actionId, account) {
+        if (!actionId || !account || !account.signals) {
+            return [];
+        }
+        
+        const callsMap = new Map(); // Use Map to ensure unique calls by title
+        
+        // Find all signals with this actionId
+        account.signals.forEach(signal => {
+            if (signal.action_id === actionId && signal.call_context) {
+                const callContext = signal.call_context;
+                const callTitle = callContext.call_title;
+                
+                // Only include calls that have a title
+                if (callTitle && callTitle.trim()) {
+                    if (!callsMap.has(callTitle)) {
+                        callsMap.set(callTitle, {
+                            title: callTitle,
+                            date: callContext.call_date || callContext.call_scheduled_date || '',
+                            attendees: callContext.call_attendees || '',
+                            recap: callContext.call_recap || '',
+                            relatedSignals: []
+                        });
+                    }
+                    
+                    // Add this signal to the related signals list
+                    callsMap.get(callTitle).relatedSignals.push({
+                        id: signal.signal_id,
+                        name: signal.name,
+                        priority: signal.priority,
+                        polarity: signal.signal_polarity
+                    });
+                }
+            }
+        });
+        
+        return Array.from(callsMap.values());
+    }
+
     static formatTenure(years) {
         if (years < 1) {
             const months = Math.round(years * 12);
