@@ -284,9 +284,6 @@ class PortfolioRenderer {
                     </div>
                     <div class="account-actions-section">
                         ${account.health === 'critical' ? '<span class="critical-badge">critical</span>' : ''}
-                        <button class="btn btn-secondary view-details-btn" data-action="toggle-account-signals" data-account-id="${account.id}" onclick="event.stopPropagation();">
-                            View Details
-                        </button>
                     </div>
                 </div>
 
