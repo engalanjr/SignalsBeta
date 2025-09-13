@@ -215,18 +215,6 @@ class ActionsRenderer {
                     }
                 });
                 
-                // Validate and fix loaded action plans
-                console.log('Validating loaded action plans...');
-                const validationResults = ActionPlansService.validateActionPlanAssociations(app);
-                
-                if (validationResults.fixed > 0) {
-                    console.log(`Auto-fixed ${validationResults.fixed} action plans with missing associations`);
-                }
-                
-                if (validationResults.invalid > 0) {
-                    console.warn(`Found ${validationResults.invalid} action plans with validation issues`);
-                }
-                
                 // 🔧 CRITICAL FIX: Return same wrapper structure as Domo path
                 // Instead of returning raw fallbackPlans, rebuild from app.actionPlans for consistency
                 console.log('Rebuilding formatted plans from app.actionPlans for consistent structure...');
