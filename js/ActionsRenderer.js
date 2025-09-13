@@ -217,7 +217,7 @@ class ActionsRenderer {
                 
                 // Validate and fix loaded action plans
                 console.log('Validating loaded action plans...');
-                const validationResults = ActionPlanService.validateActionPlanAssociations(app);
+                const validationResults = ActionPlansService.validateActionPlanAssociations(app);
                 
                 if (validationResults.fixed > 0) {
                     console.log(`Auto-fixed ${validationResults.fixed} action plans with missing associations`);
@@ -874,7 +874,7 @@ class ActionsRenderer {
                 planData.status = newStatus;
                 
                 // Update the entire plan with the new status
-                const updateResult = await ActionPlanService.updateActionPlan(planId, {
+                const updateResult = await ActionPlansService.updateActionPlan(planId, {
                     status: newStatus,
                     updatedAt: new Date().toISOString()
                 }, app);
@@ -1131,7 +1131,7 @@ class ActionsRenderer {
                     };
 
                     // Use ActionPlanService CRUD to update the plan
-                    const result = await ActionPlanService.updateActionPlan(planData.id, updatedPlanData, window.app);
+                    const result = await ActionPlansService.updateActionPlan(planData.id, updatedPlanData, window.app);
                     
                     if (result && result.success) {
                         console.log(`Successfully deleted ${sortedTasks.length} tasks from action plan ${planData.id}`);
@@ -2024,7 +2024,7 @@ class ActionsRenderer {
             // 🔧 FIX: Use canonical planId from modal context
             const planId = window.currentActionPlanData.planId;
             console.log(`🔧 [FIX] Auto-saving with canonical planId: ${planId}`);
-            const result = await ActionPlanService.updateActionPlan(planId, updateData, window.app);
+            const result = await ActionPlansService.updateActionPlan(planId, updateData, window.app);
             
             if (result && result.success) {
                 console.log(`✅ Successfully auto-saved ${propertyName}:`, result);
@@ -2234,7 +2234,7 @@ class ActionsRenderer {
                 return;
             }
             
-            const result = await ActionPlanService.updateActionPlan(planKey, updateData, window.app);
+            const result = await ActionPlansService.updateActionPlan(planKey, updateData, window.app);
             
             if (result && result.success) {
                 console.log('Successfully updated play completion status');
@@ -2346,16 +2346,16 @@ class ActionsRenderer {
             
             console.log('Updating action plan with CRUD method:', planData.id, updateData);
             
-            // Use ActionPlanService to update the action plan
+            // Use ActionPlansService to update the action plan
             const app = window.app || { 
                 actionPlans: new Map(),
                 showSuccessMessage: (msg) => this.showTaskUpdateSuccess(msg),
                 showErrorMessage: (msg) => this.showTaskUpdateError(msg)
             };
             
-            // Import ActionPlanService dynamically if not already available
-            const ActionPlanService = window.ActionPlanService || 
-                (await import('./services/ActionPlanService.js')).default;
+            // Import ActionPlansService dynamically if not already available
+            const ActionPlansService = window.ActionPlansService || 
+                (await import('./flux/services/ActionPlansService.js')).default;
             
             // Always update the visual display and local data first
             this.updateTaskRowDisplay(taskId, { dueDate, priority, assignee, status });
@@ -2379,7 +2379,7 @@ class ActionsRenderer {
             
             // Try to save to backend - log errors but don't show them to user
             try {
-                const updatedPlan = await ActionPlanService.updateActionPlan(planData.id, updateData, app);
+                const updatedPlan = await ActionPlansService.updateActionPlan(planData.id, updateData, app);
                 if (updatedPlan) {
                     console.log('Task details successfully saved to backend:', updatedPlan.id);
                 } else {
