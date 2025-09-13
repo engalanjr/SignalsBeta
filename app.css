@@ -1375,7 +1375,7 @@ body {
 
 .recommendation-list-item {
     display: grid;
-    grid-template-columns: 1fr 70px 110px;
+    grid-template-columns: 90px 1fr 70px 110px;
     gap: 15px;
     align-items: center;
     padding: 0.75rem;
@@ -1754,6 +1754,8 @@ body {
 }
 
 .recommendation-rationale {
+    background: var(--domo-blue-light);
+    border: 1px solid rgba(0, 125, 186, 0.2);
     border-radius: 8px;
     padding: 1rem;
     font-size: 0.85rem;
@@ -1761,21 +1763,6 @@ body {
     line-height: 1.5;
     font-weight: 400;
     margin-left: 1rem;
-}
-
-.recommendation-rationale--opportunities {
-    background: #d4edda;
-    border: 1px solid #c3e6cb;
-}
-
-.recommendation-rationale--risk {
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
-}
-
-.recommendation-rationale--enrichment {
-    background: var(--domo-blue-light);
-    border: 1px solid rgba(0, 125, 186, 0.2);
 }
 
 .recommendation-rationale br {
