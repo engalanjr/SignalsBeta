@@ -1111,6 +1111,7 @@ body {
 
 /* Signals Section */
 .signals-section {
+    display: none; /* Hide Recent Signals section */
     padding: 1.5rem 1.5rem 1rem 1.5rem;
     border-bottom: 1px solid var(--neutral-gray-100);
     background: white;
@@ -1321,9 +1322,10 @@ body {
 
 /* AI Recommendations Section */
 .ai-recommendations-section {
-    padding: 1.5rem 1.5rem 1rem 1.5rem;
-    border-bottom: 1px solid var(--neutral-gray-100);
-    background: white;
+    /* Removed outer container styling - now just a transparent container */
+    padding: 0;
+    border-bottom: none;
+    background: transparent;
 }
 
 .recommendations-header {
