@@ -1048,8 +1048,8 @@ class PortfolioRenderer {
                     <div class="call-modal-signals-title"><strong>Related Signals:</strong></div>
                     <div class="call-modal-signals-list">
                         ${callData.relatedSignals.map(signal => {
-                            // Get signal polarity and normalize it
-                            const polarity = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
+                            // Get signal polarity and normalize it - using 'polarity' field from getRelatedCallsForAction
+                            const polarity = signal.polarity || 'Enrichment';
                             const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
                             const polarityDisplay = normalizedPolarity === 'opportunities' ? 'Opportunity' : 
                                                    normalizedPolarity === 'risk' ? 'Risk' : 'Enrichment';
