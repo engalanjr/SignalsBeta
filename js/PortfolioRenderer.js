@@ -219,30 +219,28 @@ class PortfolioRenderer {
     }
 
     static renderAccountCard(account, actionPlans, comments, filterPolarities = null) {
-        // Count AI Recommendations by polarity (each account has 0-3 AI Recommendations)
-        const uniqueActions = this.getUniqueRecommendedActions(account);
-        const riskActions = uniqueActions.filter(actionText => {
-            // Find signals with this action to determine its polarity
-            const signalsWithAction = account.signals.filter(s => s.recommended_action === actionText);
-            // Get the first signal's polarity (all signals with same action should have same polarity)
-            if (signalsWithAction.length > 0) {
-                const polarity = signalsWithAction[0].signal_polarity || signalsWithAction[0]['Signal Polarity'] || '';
+        // Count distinct action_id values by signal polarity (each account has 0-3 AI Recommendations)
+        const uniqueActionIds = new Set();
+        const riskActionIds = new Set();
+        const opportunityActionIds = new Set();
+        
+        // Extract unique action_ids and categorize by polarity
+        account.signals.forEach(signal => {
+            if (signal.action_id && signal.action_id.trim()) {
+                uniqueActionIds.add(signal.action_id);
+                const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
                 const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
-                return normalizedPolarity === 'risk';
+                
+                if (normalizedPolarity === 'risk') {
+                    riskActionIds.add(signal.action_id);
+                } else if (normalizedPolarity === 'opportunities') {
+                    opportunityActionIds.add(signal.action_id);
+                }
             }
-            return false;
-        }).length;
-        const opportunityActions = uniqueActions.filter(actionText => {
-            // Find signals with this action to determine its polarity
-            const signalsWithAction = account.signals.filter(s => s.recommended_action === actionText);
-            // Get the first signal's polarity (all signals with same action should have same polarity)
-            if (signalsWithAction.length > 0) {
-                const polarity = signalsWithAction[0].signal_polarity || signalsWithAction[0]['Signal Polarity'] || '';
-                const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
-                return normalizedPolarity === 'opportunities';
-            }
-            return false;
-        }).length;
+        });
+        
+        const riskActions = riskActionIds.size;
+        const opportunityActions = opportunityActionIds.size;
         const totalSignals = account.signals.length;
 
         // Sort signals by Priority (High > Medium > Low), then by call_date DESC within each priority
