@@ -103,30 +103,39 @@ class PortfolioRenderer {
 
     static updateDashboardCards(accounts, actionPlans) {
         const allSignals = Array.from(accounts.values()).flatMap(account => account.signals);
-        const highPrioritySignals = allSignals.filter(s => s.priority === 'High');
         const accountsWithSignals = Array.from(accounts.values()).filter(account => account.signals.length > 0);
 
-        // Update Requires Attention count (accounts without action plans)
-        // Create a Set of account IDs that have action plans for efficient lookup
-        const planAccountIds = new Set(
-            Array.from(actionPlans?.values() || [])
-                .map(plan => plan.accountId)
-                .filter(accountId => accountId) // Remove any undefined/null accountIds
+        // Count recommended actions by signal polarity
+        const recommendedActionsWithPolarity = allSignals.filter(signal => 
+            signal.recommended_action && 
+            signal.recommended_action.trim() && 
+            signal.recommended_action !== 'No actions specified' &&
+            signal.action_id &&
+            signal.action_id.trim()
         );
-        
-        const accountsWithoutPlans = Array.from(accounts.values()).filter(account => 
-            !planAccountIds.has(account.id)
-        );
-        const requiresAttentionCount = accountsWithoutPlans.length;
+
+        // Count Risk polarity actions
+        const riskActionsCount = recommendedActionsWithPolarity.filter(signal => {
+            const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+            return polarity.toLowerCase() === 'risk';
+        }).length;
+
+        // Count Opportunities polarity actions  
+        const opportunityActionsCount = recommendedActionsWithPolarity.filter(signal => {
+            const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+            return polarity.toLowerCase() === 'opportunities';
+        }).length;
+
+        // Update Risks count
         const requiresAttentionElement = document.getElementById('requiresAttentionCount');
         if (requiresAttentionElement) {
-            requiresAttentionElement.textContent = requiresAttentionCount;
+            requiresAttentionElement.textContent = riskActionsCount;
         }
 
-        // Update High Priority count
+        // Update Opportunities count
         const highPriorityElement = document.getElementById('highPriorityDashboard');
         if (highPriorityElement) {
-            highPriorityElement.textContent = highPrioritySignals.length;
+            highPriorityElement.textContent = opportunityActionsCount;
         }
 
         // Update Active Accounts count
