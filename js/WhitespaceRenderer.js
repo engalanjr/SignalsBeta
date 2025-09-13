@@ -427,7 +427,7 @@ class WhitespaceRenderer {
                         const maxIntensity = 5; // Adjust based on your data
                         
                         return `
-                            <div class="signal-cell ${dominantPolarity === 'opportunity' ? 'opportunities' : dominantPolarity}" 
+                            <div class="signal-cell ${dominantPolarity}" 
                                  data-intensity="${intensity}"
                                  data-signal-type="${type}"
                                  data-account="${account.name}"

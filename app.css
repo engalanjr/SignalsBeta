@@ -1627,7 +1627,7 @@ body {
     color: white;
 }
 
-.call-modal-signal-priority.polarity-opportunities {
+.call-modal-signal-priority.polarity-opportunity {
     background-color: #38a169;
     color: white;
 }
@@ -2754,7 +2754,7 @@ body {
     background-color: #e53e3e;
 }
 
-.polarity-bubble-opportunities {
+.polarity-bubble-opportunity {
     background-color: #38a169;
 }
 
@@ -5880,7 +5880,7 @@ body {
     background-color: #e53e3e;
 }
 
-.signal-cell.opportunities {
+.signal-cell.opportunity {
     background-color: #38a169;
 }
 
@@ -6029,7 +6029,7 @@ body {
     color: #e53e3e;
 }
 
-.polarity-opportunities {
+.polarity-opportunity {
     color: #38a169;
 }
 
