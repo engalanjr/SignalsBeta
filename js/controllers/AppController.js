@@ -1,7 +1,7 @@
 // AppController - Main application controller for Flux architecture
 class AppController {
     constructor() {
-        this.currentTab = 'whitespace';
+        this.currentTab = 'signal-feed';
         this.isInitialized = false;
         this.controllers = new Map();
         
@@ -195,26 +195,6 @@ class AppController {
         const state = signalsStore.getState();
         
         switch (this.currentTab) {
-            case 'whitespace':
-                // Handle whitespace heat map tab
-                if (typeof WhitespaceRenderer !== 'undefined') {
-                    console.log('🔥 Rendering Whitespace heat map tab');
-                    WhitespaceRenderer.renderWhitespace(window.app || state).then(html => {
-                        const container = document.getElementById('whitespace');
-                        if (container) {
-                            container.innerHTML = html;
-                        }
-                    }).catch(error => {
-                        console.error('🚨 ERROR rendering whitespace heat map:', error);
-                        const container = document.getElementById('whitespace');
-                        if (container) {
-                            container.innerHTML = '<div class="error-state"><h3>Error loading heat map</h3><p>Please try again.</p></div>';
-                        }
-                    });
-                } else {
-                    console.error('🚨 CRITICAL: WhitespaceRenderer not available');
-                }
-                break;
             case 'signal-feed':
                 this.controllers.get('signals')?.render(state);
                 break;
