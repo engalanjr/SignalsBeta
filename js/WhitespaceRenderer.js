@@ -7,7 +7,7 @@ class WhitespaceRenderer {
     /**
      * Render the main Whitespace view with both visualizations
      */
-    static renderWhitespace(app) {
+    static renderWhitespace(state) {
         console.log('🔍 Rendering Whitespace analytics view');
         
         return `
@@ -82,12 +82,12 @@ class WhitespaceRenderer {
     /**
      * Initialize interactive charts after DOM is rendered
      */
-    static async initializeCharts(app) {
+    static async initializeCharts(state) {
         console.log('📊 Initializing Whitespace charts');
         
         try {
             // Process data for visualizations
-            const chartData = this.processAccountData(app);
+            const chartData = this.processAccountData(state);
             
             // Initialize bubble chart
             await this.initializeBubbleChart(chartData);
@@ -108,66 +108,76 @@ class WhitespaceRenderer {
     /**
      * Process account data for visualization
      */
-    static processAccountData(app) {
-        const accountData = [];
+    static processAccountData(state) {
+        const accounts = new Map();
+        const signals = state.signals || [];
         const signalTypes = new Set();
         
-        if (!app.accounts || !app.data) {
-            console.warn('No account or signal data available');
-            return { accounts: accountData, signalTypes: Array.from(signalTypes) };
+        if (!signals || signals.length === 0) {
+            console.warn('No signal data available');
+            return { accounts: [], signalTypes: [] };
         }
 
-        // Process each account
-        for (let [accountId, account] of app.accounts) {
-            if (!account.signals || account.signals.length === 0) continue;
+        // Process signals data to group by account and calculate metrics
+        for (const signal of signals) {
+            const accountId = signal.account_id;
+            if (!accountId) continue;
             
-            // Calculate signal polarity distribution
-            const polarityCount = { risk: 0, opportunities: 0, enrichment: 0 };
-            const signalsByType = {};
-            let totalSignalMagnitude = 0;
+            if (!accounts.has(accountId)) {
+                accounts.set(accountId, {
+                    id: accountId,
+                    name: signal.account_name || `Account ${accountId}`,
+                    renewalBaseline: parseFloat(signal.bks_renewal_baseline_usd || 0),
+                    signals: [],
+                    polarityCount: { risk: 0, opportunity: 0, enrichment: 0 },
+                    signalsByType: {},
+                    signalMagnitude: 0
+                });
+            }
             
-            account.signals.forEach(signal => {
-                const polarity = FormatUtils.normalizePolarityToCanonical(signal.polarity || 'enrichment');
-                polarityCount[polarity]++;
-                
-                // Group signals by type
-                const signalType = signal.signal_type || signal.type || 'General';
-                signalTypes.add(signalType);
-                
-                if (!signalsByType[signalType]) {
-                    signalsByType[signalType] = { count: 0, polarity: {} };
-                }
-                signalsByType[signalType].count++;
-                signalsByType[signalType].polarity[polarity] = 
-                    (signalsByType[signalType].polarity[polarity] || 0) + 1;
-                
-                // Calculate magnitude (higher for risk/opportunity)
-                totalSignalMagnitude += polarity === 'risk' ? 3 : polarity === 'opportunities' ? 2 : 1;
-            });
+            const account = accounts.get(accountId);
+            account.signals.push(signal);
+            // Count by polarity (normalize polarity values)
+            const polarity = FormatUtils.normalizePolarity(signal.polarity);
+            if (polarity && account.polarityCount.hasOwnProperty(polarity)) {
+                account.polarityCount[polarity]++;
+            }
             
+            // Group signals by type
+            const signalType = signal.signal_type || signal.type || 'General';
+            signalTypes.add(signalType);
+            
+            if (!account.signalsByType[signalType]) {
+                account.signalsByType[signalType] = { count: 0, polarity: {} };
+            }
+            account.signalsByType[signalType].count++;
+            account.signalsByType[signalType].polarity[polarity] = 
+                (account.signalsByType[signalType].polarity[polarity] || 0) + 1;
+            
+            // Calculate magnitude (higher for risk/opportunity)
+            account.signalMagnitude += polarity === 'risk' ? 3 : polarity === 'opportunity' ? 2 : 1;
+        }
+        
+        // Calculate derived metrics for each account
+        const accountArray = [];
+        for (const [accountId, account] of accounts) {
             // Determine dominant polarity
-            const dominantPolarity = Object.keys(polarityCount)
-                .reduce((a, b) => polarityCount[a] > polarityCount[b] ? a : b);
+            const polarityCounts = account.polarityCount;
+            account.dominantPolarity = Object.keys(polarityCounts).reduce((a, b) => 
+                polarityCounts[a] > polarityCounts[b] ? a : b
+            );
             
-            // Get renewal baseline (use actual field from CSV data)
-            const renewalBaseline = parseFloat(account.bks_renewal_baseline_usd) || 0;
+            // Calculate signal count and scores
+            account.signalCount = account.signals.length;
+            account.riskScore = account.signalCount > 0 ? account.polarityCount.risk / account.signalCount : 0;
+            account.opportunityScore = account.signalCount > 0 ? account.polarityCount.opportunity / account.signalCount : 0;
+            account.polarityDistribution = account.polarityCount;
             
-            accountData.push({
-                id: accountId,
-                name: account.name || `Account ${accountId}`,
-                signalCount: account.signals.length,
-                renewalBaseline: renewalBaseline,
-                dominantPolarity: dominantPolarity,
-                polarityDistribution: polarityCount,
-                signalMagnitude: totalSignalMagnitude,
-                signalsByType: signalsByType,
-                riskScore: polarityCount.risk / account.signals.length,
-                opportunityScore: polarityCount.opportunities / account.signals.length
-            });
+            accountArray.push(account);
         }
         
         return { 
-            accounts: accountData.sort((a, b) => b.signalMagnitude - a.signalMagnitude),
+            accounts: accountArray.sort((a, b) => b.signalMagnitude - a.signalMagnitude),
             signalTypes: Array.from(signalTypes).sort()
         };
     }
@@ -187,10 +197,10 @@ class WhitespaceRenderer {
         const chartWidth = canvas.width - (padding * 2);
         const chartHeight = canvas.height - (padding * 2);
         
-        // Calculate scales
-        const maxSignals = Math.max(...accounts.map(a => a.signalCount));
-        const maxRenewal = Math.max(...accounts.map(a => a.renewalBaseline));
-        const maxMagnitude = Math.max(...accounts.map(a => a.signalMagnitude));
+        // Calculate scales with empty state handling
+        const maxSignals = accounts.length > 0 ? Math.max(...accounts.map(a => a.signalCount), 1) : 1;
+        const maxRenewal = accounts.length > 0 ? Math.max(...accounts.map(a => a.renewalBaseline), 1) : 1;
+        const maxMagnitude = accounts.length > 0 ? Math.max(...accounts.map(a => a.signalMagnitude), 1) : 1;
         
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -207,7 +217,7 @@ class WhitespaceRenderer {
             // Set color based on dominant polarity
             const colors = {
                 risk: '#e53e3e',
-                opportunities: '#38a169',
+                opportunity: '#38a169',
                 enrichment: '#718096'
             };
             
@@ -320,7 +330,7 @@ class WhitespaceRenderer {
                     </div>
                     <div class="tooltip-row">
                         <span>Opportunities:</span> 
-                        <strong>${hoveredAccount.polarityDistribution.opportunities}</strong>
+                        <strong>${hoveredAccount.polarityDistribution.opportunity}</strong>
                     </div>
                     <div class="tooltip-row">
                         <span>Dominant Type:</span> 
@@ -417,7 +427,7 @@ class WhitespaceRenderer {
                         const maxIntensity = 5; // Adjust based on your data
                         
                         return `
-                            <div class="signal-cell ${dominantPolarity}" 
+                            <div class="signal-cell ${dominantPolarity === 'opportunity' ? 'opportunities' : dominantPolarity}" 
                                  data-intensity="${intensity}"
                                  data-signal-type="${type}"
                                  data-account="${account.name}"
@@ -590,7 +600,7 @@ class WhitespaceRenderer {
     static formatPolarity(polarity) {
         const formatted = {
             risk: 'Risk',
-            opportunities: 'Opportunity', 
+            opportunity: 'Opportunity', 
             enrichment: 'Enrichment'
         };
         return formatted[polarity] || 'Unknown';
