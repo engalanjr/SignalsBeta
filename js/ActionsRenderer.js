@@ -260,10 +260,12 @@ class ActionsRenderer {
                 });
             }
         } catch (error) {
-            console.error('Failed to load fallback action plans:', error);
+            console.error('🚨 Failed to load fallback action plans:', error);
+            console.log('🔍 In production without fallback file - action plans unavailable for modal');
         }
 
-        // If no action plans from any source, return empty array
+        // 🚨 PRODUCTION ISSUE: If no action plans from any source, return empty array
+        console.log('⚠️ No action plans available - returning empty array');
         return [];
     }
 
@@ -1587,11 +1589,32 @@ class ActionsRenderer {
     }
     
     static async findTaskData(taskId, actionId, app) {
-        // 🔧 FIXED: Work with actual structure from getFormattedActionPlans
+        // 🔧 PRODUCTION FIX: Use cached action plans from app state if available
         console.log('🔍 [FIXED] Finding task using correct plan structure:', { taskId, actionId });
         
-        const formattedActionPlans = await this.getFormattedActionPlans(app);
-        console.log('🔍 [FIXED] Formatted plans structure:', formattedActionPlans.map(p => ({ 
+        // First try to use cached action plans from app state  
+        let formattedActionPlans = [];
+        if (app.actionPlans && app.actionPlans.size > 0) {
+            console.log('🎯 Using cached action plans from app state for modal');
+            
+            // Convert cached app.actionPlans Map to formatted structure
+            for (let [planId, planData] of app.actionPlans) {
+                const accountId = planData.accountId;
+                const account = (app.accounts && app.accounts.get) ? app.accounts.get(accountId) : null;
+                
+                formattedActionPlans.push({
+                    accountId: accountId,
+                    accountName: account?.name || planData.accountName || `Account ${accountId}`,
+                    planData: { ...planData, id: planId }
+                });
+            }
+        } else {
+            // Fallback: Try to fetch action plans (will fail in production without fallback file)
+            console.log('⚠️ No cached action plans, attempting to fetch (likely to fail in production)');
+            formattedActionPlans = await this.getFormattedActionPlans(app);
+        }
+        
+        console.log('🔍 [FIXED] Using plans for modal:', formattedActionPlans.map(p => ({ 
             planDataId: p.planData?.id, 
             actionId: p.planData?.actionId, 
             accountId: p.accountId 
