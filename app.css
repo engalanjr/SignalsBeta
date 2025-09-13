@@ -957,7 +957,7 @@ body {
 }
 
 .financial-metrics-box {
-    background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
+    background: #f8f9fa;
     border: 1px solid var(--domo-blue);
     border-radius: 12px;
     padding: 1rem;
