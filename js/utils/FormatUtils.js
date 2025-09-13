@@ -150,7 +150,7 @@ class FormatUtils {
     /**
      * Normalize polarity text to canonical keys for logic and CSS
      * @param {string} polarity - The polarity value (can be ANY case)
-     * @returns {string} - Canonical key ('risk', 'opportunities', 'enrichment')
+     * @returns {string} - Canonical key ('risk', 'opportunity', 'enrichment')
      */
     static normalizePolarityKey(polarity) {
         if (!polarity || typeof polarity !== 'string') {
@@ -163,8 +163,8 @@ class FormatUtils {
         const polarityMap = {
             'risk': 'risk',
             'risks': 'risk',
-            'opportunity': 'opportunities', 
-            'opportunities': 'opportunities',
+            'opportunity': 'opportunity', 
+            'opportunities': 'opportunity',
             'enrichment': 'enrichment'
         };
         
@@ -187,8 +187,8 @@ class FormatUtils {
         const polarityMap = {
             'risk': 'Risk',
             'risks': 'Risk',
-            'opportunity': 'Opportunities', 
-            'opportunities': 'Opportunities',
+            'opportunity': 'Opportunity', 
+            'opportunities': 'Opportunity',
             'enrichment': 'Enrichment'
         };
         
