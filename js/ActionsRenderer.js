@@ -125,10 +125,41 @@ class ActionsRenderer {
     static async getFormattedActionPlans(app) {
         const actionPlans = [];
 
-        // Ensure actionPlans Map exists before accessing
-        if (!app.actionPlans || !(app.actionPlans instanceof Map)) {
-            console.warn('⚠️ app.actionPlans not initialized as Map, initializing empty Map');
+        // Ensure actionPlans Map exists before accessing - PRESERVE EXISTING DATA
+        if (!app.actionPlans) {
+            console.warn('⚠️ app.actionPlans not initialized, creating new Map');
             app.actionPlans = new Map();
+        } else if (!(app.actionPlans instanceof Map)) {
+            console.warn('⚠️ app.actionPlans exists but not a Map, converting to Map while preserving data');
+            // Preserve existing data when converting to Map
+            const existingData = app.actionPlans;
+            app.actionPlans = new Map();
+            
+            // If it was an object or array with action plan data, try to preserve it
+            if (existingData && typeof existingData === 'object') {
+                console.log('🔧 [CRITICAL FIX] Preserving existing action plan data during Map conversion');
+                
+                // Handle different data structures
+                if (Array.isArray(existingData)) {
+                    // If it's an array, assume each item has an id
+                    existingData.forEach(item => {
+                        if (item && item.id) {
+                            app.actionPlans.set(item.id, item);
+                        }
+                    });
+                } else {
+                    // If it's an object, iterate over its properties
+                    Object.entries(existingData).forEach(([key, value]) => {
+                        if (value && typeof value === 'object') {
+                            app.actionPlans.set(key, value);
+                        }
+                    });
+                }
+                console.log(`🔧 [CRITICAL FIX] Preserved ${app.actionPlans.size} action plans during conversion`);
+            }
+        } else {
+            // app.actionPlans is already a Map - don't touch it!
+            console.log(`🔧 [CRITICAL FIX] app.actionPlans is already a Map with ${app.actionPlans.size} entries - preserving existing data`);
         }
 
         // First, process any action plans loaded from Domo API during initialization
