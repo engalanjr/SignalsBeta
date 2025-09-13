@@ -352,13 +352,24 @@ class WhitespaceRenderer {
         }
 
         // Determine dominant polarity and intensity
-        const { polarity, intensity, count } = this.calculateCellProperties(signalStats);
+        const { polarity, intensity, count, total, polarityCounts } = this.calculateCellProperties(signalStats);
+        const { risk, opportunities, enrichment } = polarityCounts;
+        
+        // Create tooltip showing breakdown by polarity
+        const tooltipParts = [];
+        if (risk > 0) tooltipParts.push(`${risk} Risk`);
+        if (opportunities > 0) tooltipParts.push(`${opportunities} Opportunities`);
+        if (enrichment > 0) tooltipParts.push(`${enrichment} Enrichment`);
+        const tooltip = tooltipParts.join(', ') + ` (${total} total)`;
         
         return `
             <td class="signal-cell ${polarity} intensity-${intensity}" 
                 data-signal-code="${SecurityUtils.sanitizeAttribute(signalCode)}" 
                 data-count="${SecurityUtils.sanitizeAttribute(count)}"
-                title="${SecurityUtils.sanitizeAttribute(count + ' ' + polarity + ' signal' + (count !== 1 ? 's' : ''))}">
+                data-risk="${SecurityUtils.sanitizeAttribute(risk)}"
+                data-opportunities="${SecurityUtils.sanitizeAttribute(opportunities)}"
+                data-enrichment="${SecurityUtils.sanitizeAttribute(enrichment)}"
+                title="${SecurityUtils.sanitizeAttribute(tooltip)}">
                 <span class="signal-count">${SecurityUtils.sanitizeHTML(count)}</span>
             </td>
         `;
@@ -394,16 +405,17 @@ class WhitespaceRenderer {
             count = opportunities;
         }
 
-        // Calculate intensity (1-4 based on count)
+        // Calculate intensity based on the dominant polarity's count (1-5 levels for better granularity)
         let intensity = 1;
-        if (count >= 10) intensity = 4;
+        if (count >= 20) intensity = 5;
+        else if (count >= 10) intensity = 4;
         else if (count >= 5) intensity = 3;
         else if (count >= 2) intensity = 2;
 
         // Ensure polarity is safe for CSS class names
         polarity = SecurityUtils.validateInput(polarity, 'id');
         
-        return { polarity, intensity, count: total };
+        return { polarity, intensity, count, total, polarityCounts: { risk, opportunities, enrichment } };
     }
 
     /**

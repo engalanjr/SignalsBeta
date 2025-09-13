@@ -5977,6 +5977,23 @@ body {
     color: white;
 }
 
+.signal-cell.enrichment.intensity-5 {
+    background-color: #0056b3;
+    color: white;
+}
+
+/* Risk intensity 5 - darkest red */
+.signal-cell.risk.intensity-5 {
+    background-color: #a71e2a;
+    color: white;
+}
+
+/* Opportunities intensity 5 - darkest green */
+.signal-cell.opportunities.intensity-5 {
+    background-color: #1e7e34;
+    color: white;
+}
+
 /* Mobile responsiveness for heat map */
 @media (max-width: 768px) {
     .heat-map-scroll-container {
