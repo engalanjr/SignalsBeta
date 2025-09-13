@@ -632,14 +632,14 @@ body {
 }
 
 .polarity-risk {
-    background: #dc3545;
-    /* Light Red */
+    background: #c82333;
+    /* Darker Red for better contrast */
     color: #FFFFFF;
 }
 
 .polarity-opportunities {
-    background: #28a745;
-    /* Light Green */
+    background: #218838;
+    /* Darker Green for better contrast */
     color: #FFFFFF;
 }
 

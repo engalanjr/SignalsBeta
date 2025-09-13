@@ -93,7 +93,7 @@ class SignalRenderer {
                             <span><i class="${signal.source_icon || 'fas fa-info-circle'}"></i> ${signalName}</span>
                             <span class="category-badge">${category}</span>
                             <span class="priority-badge priority-${priorityClass}">${priority}</span>
-                            <span class="polarity-badge polarity-${polarityClass}">${signalPolarity}</span>
+                            <span class="polarity-badge polarity-${polarityClass}">${signalPolarity.charAt(0).toUpperCase() + signalPolarity.slice(1)}</span>
                             <span>${FormatUtils.formatDate(signal.created_at || signal.created_date)}</span>
                             ${isNew ? '<span class="new-badge">NEW</span>' : ''}
                         </div>
