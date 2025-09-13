@@ -367,7 +367,7 @@ class ActionsRenderer {
         // Set renewal value safely
         const renewalValueSpan = tempDiv.querySelector('.renewal-value');
         if (renewalValueSpan) {
-            renewalValueSpan.textContent = `$${app.formatNumber(firstPlan.renewalBaseline || 0)}`;
+            renewalValueSpan.textContent = FormatUtils.formatCurrency(firstPlan.renewalBaseline || 0);
         }
         
         return tempDiv.innerHTML;
