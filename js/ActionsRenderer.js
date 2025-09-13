@@ -131,9 +131,9 @@ class ActionsRenderer {
 
             actionPlans.push({
                 accountId: accountId,
-                accountName: account.name,
-                accountHealth: this.getHealthFromRiskCategory(account.at_risk_cat),
-                signalsCount: account.signals.length,
+                accountName: account?.name || planData.accountName || `Account ${accountId}`,
+                accountHealth: this.getHealthFromRiskCategory(account?.at_risk_cat || 'Unknown'),
+                signalsCount: (account && account.signals) ? account.signals.length : 0,
                 highPriorityCount: highPrioritySignals.length,
                 renewalBaseline: this.getRandomRenewalValue(),
                 status: planData.status || 'Pending',
