@@ -146,6 +146,30 @@ class FormatUtils {
         // For shorter text or single sentences, return as-is
         return text;
     }
+
+    /**
+     * Normalize polarity text to proper Title Case
+     * @param {string} polarity - The polarity value (can be ANY case)
+     * @returns {string} - Normalized Title Case polarity
+     */
+    static normalizePolarityLabel(polarity) {
+        if (!polarity || typeof polarity !== 'string') {
+            return 'Enrichment';
+        }
+        
+        const normalized = polarity.toLowerCase().trim();
+        
+        // Map to proper Title Case labels
+        const polarityMap = {
+            'risk': 'Risk',
+            'risks': 'Risk',
+            'opportunity': 'Opportunities', 
+            'opportunities': 'Opportunities',
+            'enrichment': 'Enrichment'
+        };
+        
+        return polarityMap[normalized] || 'Enrichment';
+    }
 }
 
 // Make globally available

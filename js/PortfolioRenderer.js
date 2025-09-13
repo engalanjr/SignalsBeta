@@ -741,7 +741,7 @@ class PortfolioRenderer {
                     <div class="recommendation-list-item">
                         <div class="polarity-col">
                             <div class="polarity-badge polarity-${accountPolarityClass}">
-                                ${accountPolarityClass.charAt(0).toUpperCase() + accountPolarityClass.slice(1)}
+                                ${FormatUtils.normalizePolarityLabel(accountPolarityClass)}
                             </div>
                         </div>
                         <div class="recommendation-content">
