@@ -747,7 +747,7 @@ class PortfolioRenderer {
                     <div class="recommendation-list-item">
                         <div class="polarity-col">
                             <div class="polarity-badge polarity-${accountPolarityClass}">
-                                ${FormatUtils.normalizePolarityLabel(accountPolarityClass)}
+                                ${accountPolarityClass === 'opportunities' ? 'Opportunities' : accountPolarityClass === 'risk' ? 'Risk' : 'Enrichment'}
                             </div>
                         </div>
                         <div class="recommendation-content">
