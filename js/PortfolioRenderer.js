@@ -722,6 +722,9 @@ class PortfolioRenderer {
                 const isInPlan = planInfo.isInPlan;
                 const timeSinceAdded = planInfo.timeSinceAdded;
                 
+                // Get related calls for this action
+                const relatedCalls = this.getRelatedCallsForAction(data.actionId, account);
+                
                 return `
                     <div class="recommendation-list-item">
                         <div class="polarity-col">
@@ -736,6 +739,23 @@ class PortfolioRenderer {
                             ${data.rationale ? `
                                 <div class="recommendation-rationale">
                                     ${SecurityUtils.sanitizeHTML(data.rationale)}
+                                </div>
+                            ` : ''}
+                            ${relatedCalls.length > 0 ? `
+                                <div class="related-calls-section">
+                                    <span class="related-calls-label">Related Calls:</span>
+                                    <div class="related-calls-list">
+                                        ${relatedCalls.map((call, index) => {
+                                            const callData = JSON.stringify({
+                                                title: call.title,
+                                                date: call.date,
+                                                attendees: call.attendees,
+                                                relatedSignals: call.relatedSignals
+                                            }).replace(/"/g, '&quot;');
+                                            
+                                            return `<span class="call-link" data-call-info="${callData}">${SecurityUtils.sanitizeHTML(call.title)}</span>${index < relatedCalls.length - 1 ? ', ' : ''}`;
+                                        }).join('')}
+                                    </div>
                                 </div>
                             ` : ''}
                         </div>
