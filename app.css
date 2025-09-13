@@ -5685,3 +5685,265 @@ body {
     transform: scale(1.1);
     box-shadow: 0 2px 8px rgba(0, 125, 186, 0.2);
 }
+
+/* =============== WHITESPACE HEATMAP STYLES =============== */
+
+.whitespace-container {
+    padding: 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.whitespace-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--neutral-gray-300);
+}
+
+.whitespace-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.whitespace-stats {
+    display: flex;
+    gap: 2rem;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.stat-item i {
+    color: var(--domo-blue);
+}
+
+/* Heatmap Table */
+.heatmap-scroll-container {
+    overflow: auto;
+    max-height: calc(100vh - 300px);
+    border: 1px solid var(--neutral-gray-300);
+    border-radius: 8px;
+    background: white;
+}
+
+.heatmap-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.heatmap-table thead {
+    position: sticky;
+    top: 0;
+    background: var(--neutral-gray-100);
+    z-index: 10;
+}
+
+.heatmap-table th {
+    padding: 0.75rem 0.5rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--neutral-gray-300);
+    white-space: nowrap;
+}
+
+.account-header {
+    min-width: 200px;
+    position: sticky;
+    left: 0;
+    background: var(--neutral-gray-100);
+    z-index: 11;
+}
+
+.signal-header {
+    text-align: center !important;
+    min-width: 60px;
+    font-size: 0.75rem;
+    transform: rotate(-45deg);
+    height: 80px;
+    vertical-align: bottom;
+}
+
+.heatmap-row:hover {
+    background: var(--neutral-gray-50);
+}
+
+.account-name-cell {
+    position: sticky;
+    left: 0;
+    background: white;
+    padding: 0.75rem;
+    border-right: 1px solid var(--neutral-gray-300);
+    z-index: 5;
+}
+
+.heatmap-row:hover .account-name-cell {
+    background: var(--neutral-gray-50);
+}
+
+.account-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.account-total {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* Heat Cell Colors - Blue gradient matching the image */
+.heat-cell {
+    text-align: center;
+    padding: 0.5rem;
+    border: 1px solid var(--neutral-gray-200);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    min-width: 60px;
+    height: 40px;
+    font-weight: 500;
+}
+
+.heat-empty {
+    background: white;
+    color: var(--text-secondary);
+}
+
+/* Blue gradient intensity levels */
+.heat-1 {
+    background: #E3F2FD;
+    color: #1565C0;
+}
+
+.heat-2 {
+    background: #90CAF9;
+    color: #0D47A1;
+}
+
+.heat-3 {
+    background: #42A5F5;
+    color: white;
+}
+
+.heat-4 {
+    background: #1E88E5;
+    color: white;
+}
+
+.heat-5 {
+    background: #1565C0;
+    color: white;
+}
+
+.heat-cell:hover:not(.heat-empty) {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1;
+}
+
+.heat-hover {
+    border-color: var(--domo-orange) !important;
+    border-width: 2px !important;
+}
+
+/* Legend */
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: var(--neutral-gray-50);
+    border-radius: 8px;
+}
+
+.legend-label {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.legend-scale {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.legend-item {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border: 1px solid var(--neutral-gray-300);
+}
+
+.legend-item.heat-empty {
+    background: white;
+    color: var(--text-secondary);
+}
+
+.legend-item.heat-1 {
+    background: #E3F2FD;
+    color: #1565C0;
+}
+
+.legend-item.heat-2 {
+    background: #90CAF9;
+    color: #0D47A1;
+}
+
+.legend-item.heat-3 {
+    background: #42A5F5;
+    color: white;
+}
+
+.legend-item.heat-4 {
+    background: #1E88E5;
+    color: white;
+}
+
+.legend-item.heat-5 {
+    background: #1565C0;
+    color: white;
+}
+
+/* Empty and Error States */
+.whitespace-container .empty-state,
+.whitespace-container .error-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-secondary);
+}
+
+.whitespace-container .empty-state i,
+.whitespace-container .error-state i {
+    color: var(--neutral-gray-400);
+    margin-bottom: 1rem;
+}
+
+.whitespace-container .empty-state h3,
+.whitespace-container .error-state h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.whitespace-container .loading-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--domo-blue);
+}
+
+.whitespace-container .loading-state i {
+    margin-bottom: 1rem;
+}

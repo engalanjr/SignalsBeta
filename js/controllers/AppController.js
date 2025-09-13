@@ -1,7 +1,7 @@
 // AppController - Main application controller for Flux architecture
 class AppController {
     constructor() {
-        this.currentTab = 'signal-feed';
+        this.currentTab = 'whitespace';  // Set Whitespace as default
         this.isInitialized = false;
         this.controllers = new Map();
         
@@ -195,6 +195,20 @@ class AppController {
         const state = signalsStore.getState();
         
         switch (this.currentTab) {
+            case 'whitespace':
+                // Handle Whitespace tab
+                if (typeof WhitespaceRenderer !== 'undefined') {
+                    console.log('🗺️ Rendering Whitespace tab');
+                    const container = document.getElementById('whitespace');
+                    if (container) {
+                        WhitespaceRenderer.renderWhitespace(container, state).catch(error => {
+                            console.error('🚨 ERROR rendering whitespace:', error);
+                        });
+                    }
+                } else {
+                    console.error('🚨 CRITICAL: WhitespaceRenderer not available');
+                }
+                break;
             case 'signal-feed':
                 this.controllers.get('signals')?.render(state);
                 break;
