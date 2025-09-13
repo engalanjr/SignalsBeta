@@ -313,6 +313,25 @@ class WhitespaceRenderer {
     }
     
     /**
+     * Normalize polarity to a safe whitelist value for CSS classes
+     * This prevents XSS attacks through class attribute injection
+     */
+    static normalizePolarity(polarity) {
+        if (!polarity) return 'enrichment';
+        
+        const polarityLower = String(polarity).toLowerCase();
+        
+        // Strict whitelist - only return one of these three values
+        if (polarityLower === 'opportunity' || polarityLower === 'opportunities') {
+            return 'opportunity';
+        } else if (polarityLower === 'risk' || polarityLower === 'risks') {
+            return 'risk';
+        } else {
+            return 'enrichment';
+        }
+    }
+    
+    /**
      * Setup event listeners for interactivity
      */
     static setupEventListeners() {
@@ -339,22 +358,28 @@ class WhitespaceRenderer {
         const polarity = cell.dataset.polarity;
         
         if (count && count !== '0') {
+            // Sanitize and normalize polarity for safe class usage
+            const normalizedPolarity = this.normalizePolarity(polarity);
+            
             tooltip.innerHTML = `
                 <div class="tooltip-content">
                     <div class="tooltip-header">${SecurityUtils.sanitizeHTML(account)}</div>
                     <div class="tooltip-signal">${SecurityUtils.sanitizeHTML(signalFull || signal)}</div>
                     <div class="tooltip-stats">
                         <span class="tooltip-count">Count: ${count}</span>
-                        <span class="tooltip-polarity ${polarity.toLowerCase()}">${SecurityUtils.sanitizeHTML(polarity)}</span>
+                        <span class="tooltip-polarity ${normalizedPolarity}">${SecurityUtils.sanitizeHTML(polarity)}</span>
                     </div>
                 </div>
             `;
             
-            // Position tooltip near cursor
+            // Improved positioning with viewport awareness
             const rect = cell.getBoundingClientRect();
+            const scrollX = window.scrollX || window.pageXOffset;
+            const scrollY = window.scrollY || window.pageYOffset;
+            
             tooltip.style.display = 'block';
-            tooltip.style.left = (rect.left + rect.width / 2) + 'px';
-            tooltip.style.top = (rect.top - 10) + 'px';
+            tooltip.style.left = (rect.left + rect.width / 2 + scrollX) + 'px';
+            tooltip.style.top = (rect.top + scrollY - 10) + 'px';
         }
     }
     
