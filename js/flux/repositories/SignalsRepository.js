@@ -42,12 +42,12 @@ class SignalsRepository {
             console.log(`⚡ Data load and normalization completed in ${loadTime.toFixed(2)}ms`);
             
             console.log('📊 Normalized data summary:', {
-                accounts: Object.keys(normalizedData.accounts).length,
-                signals: Object.keys(normalizedData.signals).length,
-                recommendedActions: Object.keys(normalizedData.recommendedActions).length,
-                interactions: Object.keys(normalizedData.interactions).length,
-                comments: Object.keys(normalizedData.comments).length,
-                actionPlans: Object.keys(normalizedData.actionPlans).length,
+                accounts: normalizedData.accounts.size,
+                signals: normalizedData.signals.size,
+                recommendedActions: normalizedData.recommendedActions.size,
+                interactions: normalizedData.interactions.size,
+                comments: normalizedData.comments.size,
+                actionPlans: normalizedData.actionPlans.size,
                 userInfo: userInfo.userName
             });
             
@@ -196,25 +196,25 @@ class SignalsRepository {
         });
         console.log(`✅ Processed ${normalizedActionPlans.size} action plans`);
         
-        // Return normalized data structure - convert Maps to Objects for serialization
+        // Return normalized data structure
         return {
-            // Entity stores (convert Maps to Objects)
-            accounts: Object.fromEntries(accounts),
-            signals: Object.fromEntries(signals),
-            recommendedActions: Object.fromEntries(recommendedActions),
-            interactions: Object.fromEntries(normalizedInteractions),
-            comments: Object.fromEntries(normalizedComments),
-            actionPlans: Object.fromEntries(normalizedActionPlans),
+            // Entity stores
+            accounts,
+            signals,
+            recommendedActions,
+            interactions: normalizedInteractions,
+            comments: normalizedComments,
+            actionPlans: normalizedActionPlans,
             
-            // Relationship indexes (convert Maps with Sets to Objects with Arrays)
-            signalsByAccount: Object.fromEntries(Array.from(signalsByAccount).map(([k, v]) => [k, Array.from(v)])),
-            signalsByAction: Object.fromEntries(Array.from(signalsByAction).map(([k, v]) => [k, Array.from(v)])),
-            actionsByAccount: Object.fromEntries(Array.from(actionsByAccount).map(([k, v]) => [k, Array.from(v)])),
-            interactionsBySignal: Object.fromEntries(Array.from(interactionsBySignal).map(([k, v]) => [k, Array.from(v)])),
-            commentsBySignal: Object.fromEntries(Array.from(commentsBySignal).map(([k, v]) => [k, Array.from(v)])),
-            commentsByAccount: Object.fromEntries(Array.from(commentsByAccount).map(([k, v]) => [k, Array.from(v)])),
-            plansByAccount: Object.fromEntries(Array.from(plansByAccount).map(([k, v]) => [k, Array.from(v)])),
-            plansByAction: Object.fromEntries(Array.from(plansByAction).map(([k, v]) => [k, Array.from(v)]))
+            // Relationship indexes
+            signalsByAccount,
+            signalsByAction,
+            actionsByAccount,
+            interactionsBySignal,
+            commentsBySignal,
+            commentsByAccount,
+            plansByAccount,
+            plansByAction
         };
     }
     

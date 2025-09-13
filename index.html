@@ -47,11 +47,7 @@
 
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
-            <button class="nav-tab active" data-tab="whitespace">
-                <i class="fas fa-chart-area"></i>
-                Whitespace
-            </button>
-            <button class="nav-tab" data-tab="signal-feed">
+            <button class="nav-tab active" data-tab="signal-feed">
                 <i class="fas fa-stream"></i>
                 Signal Feed
             </button>
@@ -67,13 +63,8 @@
 
         <!-- Main Content Area -->
         <main class="main-content">
-            <!-- Whitespace Tab (Default) -->
-            <div id="whitespace" class="tab-content active">
-                <!-- Whitespace heatmap will be populated here -->
-            </div>
-            
             <!-- Signal Feed Tab -->
-            <div id="signal-feed" class="tab-content">
+            <div id="signal-feed" class="tab-content active">
                 <!-- Priority Alert Banner -->
                 <div class="priority-alert-banner">
                     <div class="alert-content">
@@ -308,7 +299,6 @@
     <script src="js/utils/FormatUtils.js"></script>
     <script src="js/utils/StatusUtils.js"></script>
     <script src="js/utils/SecurityUtils.js"></script>
-    <script src="js/WhitespaceRenderer.js"></script>
     <script src="js/SignalRenderer.js"></script>
     <script src="js/PortfolioRenderer.js"></script>
     <script src="js/ActionsRenderer.js"></script>
