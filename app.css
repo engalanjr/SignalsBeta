@@ -1375,7 +1375,7 @@ body {
 
 .recommendation-list-item {
     display: grid;
-    grid-template-columns: 90px 1fr 70px 110px;
+    grid-template-columns: 1fr 70px 110px;
     gap: 15px;
     align-items: center;
     padding: 0.75rem;
@@ -2717,6 +2717,10 @@ body {
     color: var(--neutral-gray-800);
     line-height: 1.4;
     word-wrap: break-word;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .recommendation-rationale {

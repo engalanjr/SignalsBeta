@@ -745,13 +745,11 @@ class PortfolioRenderer {
                 
                 return `
                     <div class="recommendation-list-item">
-                        <div class="polarity-col">
-                            <div class="polarity-badge polarity-${accountPolarityClass}">
-                                ${accountPolarityClass === 'opportunities' ? 'Opportunities' : accountPolarityClass === 'risk' ? 'Risk' : 'Enrichment'}
-                            </div>
-                        </div>
                         <div class="recommendation-content">
                             <div class="recommendation-text">
+                                <div class="polarity-badge polarity-${accountPolarityClass}">
+                                    ${accountPolarityClass === 'opportunities' ? 'Opportunities' : accountPolarityClass === 'risk' ? 'Risk' : 'Enrichment'}
+                                </div>
                                 ${SecurityUtils.sanitizeHTML(action)}
                             </div>
                             ${data.rationale ? `
