@@ -194,11 +194,20 @@ class AppController {
     renderCurrentTab() {
         const state = signalsStore.getState();
         
+        // Hide all tab contents first
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
         switch (this.currentTab) {
             case 'signal-feed':
+                const signalFeedTab = document.getElementById('signal-feed');
+                if (signalFeedTab) signalFeedTab.classList.add('active');
                 this.controllers.get('signals')?.render(state);
                 break;
             case 'my-portfolio':
+                const portfolioTab = document.getElementById('my-portfolio');
+                if (portfolioTab) portfolioTab.classList.add('active');
                 this.controllers.get('portfolio')?.render(state);
                 break;
             case 'actions':
@@ -209,6 +218,9 @@ class AppController {
                     ActionsRenderer.renderActions(state).catch(error => {
                         console.error('🚨 ERROR rendering actions:', error);
                     });
+                    // Show the actions tab
+                    const actionsTab = document.getElementById('actions');
+                    if (actionsTab) actionsTab.classList.add('active');
                 } else {
                     console.error('🚨 CRITICAL: ActionsRenderer not available');
                 }
@@ -221,6 +233,11 @@ class AppController {
                     WhitespaceRenderer.renderWhitespace(state).catch(error => {
                         console.error('🚨 ERROR rendering whitespace:', error);
                     });
+                    // Show the whitespace tab after rendering
+                    setTimeout(() => {
+                        const whitespaceTab = document.getElementById('whitespace');
+                        if (whitespaceTab) whitespaceTab.classList.add('active');
+                    }, 100);
                 } else {
                     console.error('🚨 CRITICAL: WhitespaceRenderer not available');
                 }
