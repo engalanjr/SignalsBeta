@@ -176,9 +176,11 @@ class ActionsRenderer {
             
             // Handle missing app.accounts gracefully - use fallback from planData
             const account = (app.accounts && app.accounts.get) ? app.accounts.get(accountId) : null;
+            
+            // 🔧 FIX: Allow plans to proceed even without account data - we have fallback logic at line 200
             if (!account && !planData.accountName) {
-                console.warn(`Skipping plan ${planId} - no account data available for ${accountId}`);
-                continue;
+                console.log(`⚠️ Processing plan ${planId} without account data for ${accountId} - using fallback name`);
+                // Don't skip - let the fallback logic handle this
             }
 
             // Handle missing account.signals gracefully
