@@ -1476,9 +1476,16 @@ body {
 .call-modal-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     padding: 1.5rem;
     border-bottom: 1px solid var(--neutral-gray-200);
+}
+
+.call-modal-title-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .call-modal-title {
@@ -1486,6 +1493,21 @@ body {
     font-size: 1.1rem;
     color: var(--neutral-gray-800);
     margin: 0;
+}
+
+.call-modal-link {
+    color: var(--domo-blue);
+    text-decoration: none;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: color 0.2s ease;
+}
+
+.call-modal-link:hover {
+    color: var(--domo-blue-dark);
+    text-decoration: underline;
 }
 
 .call-modal-close {
@@ -1519,6 +1541,21 @@ body {
     line-height: 1.4;
 }
 
+.call-modal-recap {
+    margin-bottom: 1.5rem;
+    color: var(--neutral-gray-700);
+}
+
+.call-modal-recap-content {
+    margin-top: 0.5rem;
+    padding: 1rem;
+    background: var(--neutral-gray-50);
+    border-radius: 6px;
+    border-left: 3px solid var(--domo-blue);
+    line-height: 1.5;
+    font-style: italic;
+}
+
 .call-modal-signals {
     margin-top: 1.5rem;
     padding-top: 1rem;
@@ -1539,11 +1576,26 @@ body {
 
 .call-modal-signal {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
     background: var(--neutral-gray-50);
     border-radius: 6px;
+}
+
+.call-modal-signal-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.call-modal-signal-summary {
+    font-size: 0.85rem;
+    color: var(--neutral-gray-600);
+    line-height: 1.4;
+    padding-left: 0.5rem;
+    border-left: 2px solid var(--neutral-gray-200);
+    margin-left: 0.5rem;
 }
 
 .call-modal-signal-priority {
@@ -1573,6 +1625,7 @@ body {
 .call-modal-signal-name {
     flex: 1;
     font-size: 0.9rem;
+    font-weight: 600;
     color: var(--neutral-gray-800);
 }
 

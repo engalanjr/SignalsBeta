@@ -753,6 +753,8 @@ class PortfolioRenderer {
                                                 title: call.title,
                                                 date: call.date,
                                                 attendees: call.attendees,
+                                                recap: call.recap,
+                                                url: call.url,
                                                 relatedSignals: call.relatedSignals
                                             }).replace(/"/g, '&quot;');
                                             
@@ -874,6 +876,7 @@ class PortfolioRenderer {
                             date: callContext.call_date || callContext.call_scheduled_date || '',
                             attendees: callContext.call_attendees || '',
                             recap: callContext.call_recap || '',
+                            url: callContext.call_url || callContext['Call URL'] || '',
                             relatedSignals: []
                         });
                     }
@@ -882,6 +885,7 @@ class PortfolioRenderer {
                     callsMap.get(callTitle).relatedSignals.push({
                         id: signal.signal_id,
                         name: signal.name,
+                        summary: signal.summary || '',
                         priority: signal.priority,
                         polarity: signal.signal_polarity
                     });
@@ -970,7 +974,12 @@ class PortfolioRenderer {
         // Build modal content
         let modalHTML = `
             <div class="call-modal-header">
-                <div class="call-modal-title">${SecurityUtils.sanitizeHTML(callData.title)}</div>
+                <div class="call-modal-title-section">
+                    <div class="call-modal-title">${SecurityUtils.sanitizeHTML(callData.title)}</div>
+                    ${callData.url ? `<a href="${SecurityUtils.sanitizeHTML(callData.url)}" target="_blank" rel="noopener noreferrer" class="call-modal-link">
+                        <i class="fas fa-external-link-alt"></i> View Call
+                    </a>` : ''}
+                </div>
                 <button class="call-modal-close" onclick="PortfolioRenderer.hideCallModal()">&times;</button>
             </div>
             <div class="call-modal-content">
@@ -984,6 +993,15 @@ class PortfolioRenderer {
             modalHTML += `<div class="call-modal-attendees"><strong>Attendees:</strong> ${SecurityUtils.sanitizeHTML(callData.attendees)}</div>`;
         }
         
+        if (callData.recap) {
+            modalHTML += `
+                <div class="call-modal-recap">
+                    <strong>Call Recap:</strong>
+                    <div class="call-modal-recap-content">${SecurityUtils.sanitizeHTML(callData.recap)}</div>
+                </div>
+            `;
+        }
+        
         if (callData.relatedSignals && callData.relatedSignals.length > 0) {
             modalHTML += `
                 <div class="call-modal-signals">
@@ -991,8 +1009,11 @@ class PortfolioRenderer {
                     <div class="call-modal-signals-list">
                         ${callData.relatedSignals.map(signal => `
                             <div class="call-modal-signal">
-                                <span class="call-modal-signal-priority ${signal.priority.toLowerCase()}">${signal.priority}</span>
-                                <span class="call-modal-signal-name">${SecurityUtils.sanitizeHTML(signal.name)}</span>
+                                <div class="call-modal-signal-header">
+                                    <span class="call-modal-signal-priority ${signal.priority.toLowerCase()}">${signal.priority}</span>
+                                    <span class="call-modal-signal-name">${SecurityUtils.sanitizeHTML(signal.name)}</span>
+                                </div>
+                                ${signal.summary ? `<div class="call-modal-signal-summary">${SecurityUtils.sanitizeHTML(signal.summary)}</div>` : ''}
                             </div>
                         `).join('')}
                     </div>
