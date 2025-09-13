@@ -504,94 +504,17 @@ class WhitespaceRenderer {
     }
 
     /**
-     * Generate strategic insights
+     * Generate strategic insights using the shared InsightsUtils utility
      */
     static generateInsights(chartData) {
         const container = document.getElementById('whitespaceInsights');
         if (!container) return;
         
-        const { accounts } = chartData;
+        // Use the shared InsightsUtils to calculate insights
+        const insights = InsightsUtils.calculateInsights(chartData);
         
-        // Calculate insights
-        const totalAccounts = accounts.length;
-        const highRiskAccounts = accounts.filter(a => a.riskScore > 0.5).length;
-        const highOpportunityAccounts = accounts.filter(a => a.opportunityScore > 0.3).length;
-        const totalRenewalValue = accounts.reduce((sum, a) => sum + a.renewalBaseline, 0);
-        const atRiskValue = accounts
-            .filter(a => a.riskScore > 0.5)
-            .reduce((sum, a) => sum + a.renewalBaseline, 0);
-        
-        const topRiskAccounts = accounts
-            .filter(a => a.riskScore > 0)
-            .sort((a, b) => b.riskScore - a.riskScore)
-            .slice(0, 3);
-            
-        const topOpportunityAccounts = accounts
-            .filter(a => a.opportunityScore > 0)
-            .sort((a, b) => (b.opportunityScore * b.renewalBaseline) - (a.opportunityScore * a.renewalBaseline))
-            .slice(0, 3);
-
-        container.innerHTML = `
-            <div class="insights-grid">
-                <div class="insight-card risk">
-                    <div class="insight-header">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h4>Risk Analysis</h4>
-                    </div>
-                    <div class="insight-metric">
-                        <span class="metric-value">${highRiskAccounts}</span>
-                        <span class="metric-label">High-Risk Accounts</span>
-                    </div>
-                    <div class="insight-detail">
-                        ${FormatUtils.formatCurrency(atRiskValue)} at risk (${Math.round(atRiskValue / totalRenewalValue * 100)}% of portfolio)
-                    </div>
-                    <div class="insight-list">
-                        <strong>Top Risk Accounts:</strong>
-                        ${topRiskAccounts.map(a => 
-                            `<div class="insight-item">${SecurityUtils.sanitizeHTML(a.name)} (${Math.round(a.riskScore * 100)}% risk signals)</div>`
-                        ).join('')}
-                    </div>
-                </div>
-                
-                <div class="insight-card opportunity">
-                    <div class="insight-header">
-                        <i class="fas fa-chart-line"></i>
-                        <h4>Growth Opportunities</h4>
-                    </div>
-                    <div class="insight-metric">
-                        <span class="metric-value">${highOpportunityAccounts}</span>
-                        <span class="metric-label">High-Opportunity Accounts</span>
-                    </div>
-                    <div class="insight-detail">
-                        Focus on accounts with expansion potential
-                    </div>
-                    <div class="insight-list">
-                        <strong>Top Opportunities:</strong>
-                        ${topOpportunityAccounts.map(a => 
-                            `<div class="insight-item">${SecurityUtils.sanitizeHTML(a.name)} (${FormatUtils.formatCurrency(a.renewalBaseline)} value)</div>`
-                        ).join('')}
-                    </div>
-                </div>
-                
-                <div class="insight-card portfolio">
-                    <div class="insight-header">
-                        <i class="fas fa-chart-pie"></i>
-                        <h4>Portfolio Overview</h4>
-                    </div>
-                    <div class="insight-metric">
-                        <span class="metric-value">${totalAccounts}</span>
-                        <span class="metric-label">Total Accounts</span>
-                    </div>
-                    <div class="insight-detail">
-                        ${FormatUtils.formatCurrency(totalRenewalValue)} total renewal value
-                    </div>
-                    <div class="insight-list">
-                        <div class="insight-item">Average signals per account: ${Math.round(accounts.reduce((sum, a) => sum + a.signalCount, 0) / totalAccounts)}</div>
-                        <div class="insight-item">Risk/Opportunity ratio: ${Math.round(highRiskAccounts / Math.max(highOpportunityAccounts, 1) * 100) / 100}:1</div>
-                    </div>
-                </div>
-            </div>
-        `;
+        // Generate the full insights HTML using the utility
+        container.innerHTML = InsightsUtils.generateFullInsightsHTML(insights);
     }
 
     /**
