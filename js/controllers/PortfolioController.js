@@ -145,6 +145,9 @@ class PortfolioController {
                 state.comments
             );
             
+            // Initialize call tooltips after rendering
+            PortfolioRenderer.initializeCallTooltips();
+            
             // 🎯 Initialize button states for optimistic UI
             setTimeout(() => {
                 PortfolioRenderer.initializePlanButtonStates(state);

@@ -882,6 +882,113 @@ class PortfolioRenderer {
         return `<span class="delta ${color}">${sign}${deltaFormatted}</span>`;
     }
 
+    /**
+     * Initialize hover functionality for call links
+     * Should be called after rendering the portfolio
+     */
+    static initializeCallTooltips() {
+        // Remove any existing tooltips first
+        const existingTooltips = document.querySelectorAll('.call-tooltip');
+        existingTooltips.forEach(tooltip => tooltip.remove());
+        
+        // Add event listeners to all call links
+        const callLinks = document.querySelectorAll('.call-link');
+        callLinks.forEach(link => {
+            link.addEventListener('mouseenter', (e) => this.showCallTooltip(e));
+            link.addEventListener('mouseleave', () => this.hideCallTooltip());
+            link.addEventListener('mousemove', (e) => this.positionCallTooltip(e));
+        });
+    }
+    
+    /**
+     * Show call tooltip on hover
+     * @param {Event} event - Mouse event
+     */
+    static showCallTooltip(event) {
+        const callLink = event.target;
+        const callData = JSON.parse(callLink.getAttribute('data-call-info').replace(/&quot;/g, '"'));
+        
+        // Create tooltip element
+        const tooltip = document.createElement('div');
+        tooltip.className = 'call-tooltip';
+        tooltip.id = 'call-tooltip';
+        
+        // Build tooltip content
+        let tooltipHTML = `
+            <div class="call-tooltip-title">${SecurityUtils.sanitizeHTML(callData.title)}</div>
+        `;
+        
+        if (callData.date) {
+            tooltipHTML += `<div class="call-tooltip-date">Date: ${FormatUtils.formatDateSimple(callData.date)}</div>`;
+        }
+        
+        if (callData.attendees) {
+            tooltipHTML += `<div class="call-tooltip-attendees">Attendees: ${SecurityUtils.sanitizeHTML(callData.attendees)}</div>`;
+        }
+        
+        if (callData.relatedSignals && callData.relatedSignals.length > 0) {
+            tooltipHTML += `
+                <div class="call-tooltip-signals">
+                    <div class="call-tooltip-signals-title">Related Signals:</div>
+                    ${callData.relatedSignals.map(signal => `
+                        <div class="call-tooltip-signal">
+                            <span class="call-tooltip-signal-priority ${signal.priority.toLowerCase()}">${signal.priority}</span>
+                            <span>${SecurityUtils.sanitizeHTML(signal.name)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        tooltip.innerHTML = tooltipHTML;
+        document.body.appendChild(tooltip);
+        
+        // Position and show tooltip
+        this.positionCallTooltip(event);
+        setTimeout(() => tooltip.classList.add('show'), 10);
+    }
+    
+    /**
+     * Position call tooltip relative to mouse
+     * @param {Event} event - Mouse event
+     */
+    static positionCallTooltip(event) {
+        const tooltip = document.getElementById('call-tooltip');
+        if (!tooltip) return;
+        
+        const mouseX = event.clientX;
+        const mouseY = event.clientY;
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        
+        let left = mouseX + 10;
+        let top = mouseY - tooltipRect.height - 10;
+        
+        // Adjust if tooltip goes off screen
+        if (left + tooltipRect.width > windowWidth) {
+            left = mouseX - tooltipRect.width - 10;
+        }
+        
+        if (top < 0) {
+            top = mouseY + 10;
+        }
+        
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+    }
+    
+    /**
+     * Hide call tooltip
+     */
+    static hideCallTooltip() {
+        const tooltip = document.getElementById('call-tooltip');
+        if (tooltip) {
+            tooltip.classList.remove('show');
+            setTimeout(() => tooltip.remove(), 200);
+        }
+    }
+
     static openAddToPlanDrawer(actionId, actionTitle, accountId) {
         // Store current action data
         window.currentDrawerData = {
