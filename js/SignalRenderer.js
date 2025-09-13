@@ -1,5 +1,9 @@
 // Signal Renderer - Pure view for rendering signal feed
 class SignalRenderer {
+    
+    static virtualScrollManager = null;
+    static cachedSignals = [];
+    static lastRenderTime = 0;
 
     static renderSignalFeed(signals, viewState, comments, interactions, actionPlans) {
         const container = document.getElementById('signalsList');
@@ -56,8 +60,56 @@ class SignalRenderer {
             html += this.renderSignalCard(signal, comments, false);
         });
 
-        container.innerHTML = html;
-        this.attachEventListeners(container);
+        // Check if we should use virtual scrolling (for large datasets)
+        const shouldUseVirtualScroll = sortedSignals.length > 100;
+        
+        if (shouldUseVirtualScroll) {
+            this.renderWithVirtualScroll(sortedSignals, viewState, comments, interactions, actionPlans);
+        } else {
+            // For small datasets, use traditional rendering
+            container.innerHTML = html;
+            this.attachEventListeners(container);
+        }
+        
+        // Cache the signals for fast tab switching
+        this.cachedSignals = sortedSignals;
+        this.lastRenderTime = Date.now();
+    }
+    
+    /**
+     * Render signals using virtual scrolling for performance
+     */
+    static renderWithVirtualScroll(signals, viewState, comments, interactions, actionPlans) {
+        const container = document.getElementById('signalsList');
+        if (!container) return;
+        
+        // Initialize virtual scroll manager if not exists
+        if (!this.virtualScrollManager) {
+            this.virtualScrollManager = new VirtualScrollManager({
+                itemHeight: 250, // Estimated height for signal cards
+                bufferSize: 3,
+                pageSize: 30,
+                renderCallback: (signal, index) => {
+                    const isNew = !this.hasUserInteraction(signal, viewState, interactions, actionPlans);
+                    return this.renderSignalCard(signal, comments, isNew);
+                },
+                loadMoreCallback: async () => {
+                    // Load next page of signals
+                    const result = await SignalsRepository.loadNextPage();
+                    if (result.hasMore) {
+                        // Get updated signals from store
+                        const updatedSignals = SignalsStore.getAllSignals();
+                        this.virtualScrollManager.setItems(updatedSignals, true);
+                    }
+                    return result.hasMore;
+                }
+            });
+        }
+        
+        // Initialize with signals
+        this.virtualScrollManager.initialize('signalsList', signals);
+        
+        console.log(`🚀 Virtual scrolling enabled for ${signals.length} signals`);
     }
 
     static renderSignalCard(signal, comments, isNew) {

@@ -1,6 +1,13 @@
 // SignalsRepository - Handles all data operations with normalized relational model
 class SignalsRepository {
     
+    // Pagination configuration
+    static PAGE_SIZE = 200; // Signals per page
+    static currentPage = 0;
+    static totalSignals = 0;
+    static allRawSignals = []; // Cache all raw signals
+    static isInitialLoadComplete = false;
+    
     /**
      * Load all application data and normalize into relational structure
      * @returns {Promise} - Promise that resolves with normalized data
@@ -35,8 +42,25 @@ class SignalsRepository {
             const actionPlans = this.processResult(actionPlansResult, 'action plans', []);
             const userInfo = this.processResult(userInfoResult, 'user info', { userId: 'user-1', userName: 'Current User' });
 
+            // Cache all raw signals for pagination
+            this.allRawSignals = rawSignals;
+            this.totalSignals = rawSignals.length;
+            
+            // For initial load, only process first page of signals
+            const firstPageSignals = rawSignals.slice(0, this.PAGE_SIZE);
+            console.log(`📄 Loading first page: ${firstPageSignals.length} of ${this.totalSignals} total signals`);
+            
             // NORMALIZE THE DATA INTO RELATIONAL STRUCTURE
-            const normalizedData = this.normalizeData(rawSignals, interactions, comments, actionPlans);
+            const normalizedData = this.normalizeData(firstPageSignals, interactions, comments, actionPlans);
+            
+            // Store metadata for pagination
+            normalizedData.pagination = {
+                currentPage: 0,
+                pageSize: this.PAGE_SIZE,
+                totalSignals: this.totalSignals,
+                loadedSignals: firstPageSignals.length,
+                hasMore: this.totalSignals > this.PAGE_SIZE
+            };
             
             const loadTime = performance.now() - startTime;
             console.log(`⚡ Data load and normalization completed in ${loadTime.toFixed(2)}ms`);
@@ -64,6 +88,88 @@ class SignalsRepository {
             dispatcher.dispatch(Actions.dataLoadFailed(error));
             throw error;
         }
+    }
+    
+    /**
+     * Load the next page of signals
+     * @returns {Promise} - Promise that resolves with the next page of normalized signals
+     */
+    static async loadNextPage() {
+        try {
+            this.currentPage++;
+            const startIdx = this.currentPage * this.PAGE_SIZE;
+            const endIdx = startIdx + this.PAGE_SIZE;
+            
+            // Check if we have more signals to load
+            if (startIdx >= this.totalSignals) {
+                console.log('📭 No more signals to load');
+                return { hasMore: false, signals: [] };
+            }
+            
+            // Get next page of signals
+            const nextPageSignals = this.allRawSignals.slice(startIdx, endIdx);
+            console.log(`📄 Loading page ${this.currentPage + 1}: ${nextPageSignals.length} signals (${startIdx}-${Math.min(endIdx, this.totalSignals)} of ${this.totalSignals})`);
+            
+            // Normalize just the new signals
+            const normalizedSignals = new Map();
+            const newAccounts = new Map();
+            const newActions = new Map();
+            
+            // Process new signals
+            nextPageSignals.forEach(rawSignal => {
+                // Extract account if new
+                const accountId = rawSignal.account_id;
+                if (accountId && !SignalsStore.getAccount(accountId)) {
+                    const account = this.extractAccountFromSignal(rawSignal);
+                    newAccounts.set(accountId, account);
+                }
+                
+                // Extract action if new
+                const actionId = rawSignal.action_id;
+                if (actionId && !SignalsStore.getRecommendedAction(actionId)) {
+                    const action = this.extractRecommendedActionFromSignal(rawSignal);
+                    newActions.set(actionId, action);
+                }
+                
+                // Extract normalized signal
+                const signal = this.extractNormalizedSignal(rawSignal);
+                normalizedSignals.set(signal.signal_id, signal);
+            });
+            
+            // Dispatch action to add new page to store
+            dispatcher.dispatch(Actions.dataPageLoaded({
+                signals: normalizedSignals,
+                accounts: newAccounts,
+                recommendedActions: newActions,
+                pagination: {
+                    currentPage: this.currentPage,
+                    pageSize: this.PAGE_SIZE,
+                    totalSignals: this.totalSignals,
+                    loadedSignals: Math.min(endIdx, this.totalSignals),
+                    hasMore: endIdx < this.totalSignals
+                }
+            }));
+            
+            return {
+                hasMore: endIdx < this.totalSignals,
+                signals: Array.from(normalizedSignals.values()),
+                loadedCount: Math.min(endIdx, this.totalSignals)
+            };
+            
+        } catch (error) {
+            console.error('❌ Failed to load next page:', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Reset pagination state
+     */
+    static resetPagination() {
+        this.currentPage = 0;
+        this.totalSignals = 0;
+        this.allRawSignals = [];
+        this.isInitialLoadComplete = false;
     }
     
     /**

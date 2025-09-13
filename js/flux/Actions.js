@@ -12,6 +12,8 @@ class Actions {
         DATA_LOAD_STARTED: 'DATA_LOAD_STARTED',
         DATA_LOAD_SUCCESS: 'DATA_LOAD_SUCCESS',
         DATA_LOAD_FAILED: 'DATA_LOAD_FAILED',
+        DATA_PAGE_LOADED: 'DATA_PAGE_LOADED',
+        LOAD_NEXT_PAGE: 'LOAD_NEXT_PAGE',
         
         // Signal Management
         SIGNALS_FILTERED: 'SIGNALS_FILTERED',
@@ -119,6 +121,22 @@ class Actions {
         return {
             type: this.Types.DATA_LOAD_FAILED,
             payload: { error },
+            timestamp: Date.now()
+        };
+    }
+    
+    // Pagination Actions
+    static dataPageLoaded(data) {
+        return {
+            type: this.Types.DATA_PAGE_LOADED,
+            payload: { data },
+            timestamp: Date.now()
+        };
+    }
+    
+    static loadNextPage() {
+        return {
+            type: this.Types.LOAD_NEXT_PAGE,
             timestamp: Date.now()
         };
     }

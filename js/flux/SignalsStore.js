@@ -36,6 +36,24 @@ class SignalsStore extends Store {
             actionPlans: new Map(),
             userInfo: {},
             
+            // Pagination state
+            pagination: {
+                currentPage: 0,
+                pageSize: 200,
+                totalSignals: 0,
+                loadedSignals: 0,
+                hasMore: false,
+                isLoading: false
+            },
+            
+            // Cache for fast tab switching
+            viewCache: {
+                signalFeed: null,
+                portfolio: null,
+                whitespace: null,
+                lastUpdate: 0
+            },
+            
             // Indexes for performance
             signalsById: new Map(),
             signalsByAccount: new Map(),
@@ -98,6 +116,12 @@ class SignalsStore extends Store {
                 break;
             case Actions.Types.DATA_LOAD_FAILED:
                 this.handleDataLoadFailed(payload);
+                break;
+            case Actions.Types.DATA_PAGE_LOADED:
+                this.handleDataPageLoaded(payload);
+                break;
+            case Actions.Types.LOAD_NEXT_PAGE:
+                this.handleLoadNextPage();
                 break;
                 
             // Signal Management
@@ -213,6 +237,77 @@ class SignalsStore extends Store {
     }
     
     // ========== NORMALIZED DATA HANDLERS ==========
+    
+    /**
+     * Handle data page loaded (pagination)
+     */
+    handleDataPageLoaded(payload) {
+        console.log('📄 SignalsStore: handleDataPageLoaded');
+        const { data } = payload;
+        
+        // Add new signals to normalized data
+        if (data.signals) {
+            data.signals.forEach((signal, id) => {
+                this.normalizedData.signals.set(id, signal);
+            });
+        }
+        
+        // Add new accounts if any
+        if (data.accounts) {
+            data.accounts.forEach((account, id) => {
+                if (!this.normalizedData.accounts.has(id)) {
+                    this.normalizedData.accounts.set(id, account);
+                }
+            });
+        }
+        
+        // Add new recommended actions if any
+        if (data.recommendedActions) {
+            data.recommendedActions.forEach((action, id) => {
+                if (!this.normalizedData.recommendedActions.has(id)) {
+                    this.normalizedData.recommendedActions.set(id, action);
+                }
+            });
+        }
+        
+        // Update pagination state
+        if (data.pagination) {
+            this.state.pagination = { ...this.state.pagination, ...data.pagination };
+        }
+        
+        // Update denormalized signals array for backward compatibility
+        this.state.signals = Array.from(this.normalizedData.signals.values());
+        
+        // Clear cache to force re-render
+        this.state.viewCache.lastUpdate = Date.now();
+        
+        this.emit('data:page-loaded');
+    }
+    
+    /**
+     * Handle load next page request
+     */
+    async handleLoadNextPage() {
+        if (this.state.pagination.isLoading || !this.state.pagination.hasMore) {
+            return;
+        }
+        
+        this.state.pagination.isLoading = true;
+        this.emit('loading:page');
+        
+        try {
+            const result = await SignalsRepository.loadNextPage();
+            this.state.pagination.isLoading = false;
+            
+            if (!result.hasMore) {
+                console.log('✅ All signals loaded');
+            }
+        } catch (error) {
+            console.error('❌ Failed to load next page:', error);
+            this.state.pagination.isLoading = false;
+            this.emit('error:page-load');
+        }
+    }
     
     handleDataLoadSuccess(payload) {
         console.log('📦 SignalsStore: handleDataLoadSuccess with normalized data');
