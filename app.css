@@ -1437,88 +1437,143 @@ body {
     text-decoration: none;
 }
 
-/* Call Details Tooltip */
-.call-tooltip {
-    position: absolute;
-    background: white;
-    border: 1px solid var(--neutral-gray-200);
-    border-radius: 8px;
-    padding: 1rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+/* Call Details Modal */
+.call-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
     z-index: 1000;
-    max-width: 300px;
-    font-size: 0.8rem;
-    line-height: 1.4;
-    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     opacity: 0;
-    transform: translateY(-10px);
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition: opacity 0.2s ease;
 }
 
-.call-tooltip.show {
+.call-modal-overlay.show {
     opacity: 1;
-    transform: translateY(0);
 }
 
-.call-tooltip-title {
+.call-modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    transform: scale(0.9);
+    transition: transform 0.2s ease;
+}
+
+.call-modal-overlay.show .call-modal {
+    transform: scale(1);
+}
+
+.call-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--neutral-gray-200);
+}
+
+.call-modal-title {
     font-weight: 600;
+    font-size: 1.1rem;
     color: var(--neutral-gray-800);
-    margin-bottom: 0.5rem;
-    font-size: 0.85rem;
+    margin: 0;
 }
 
-.call-tooltip-date {
-    color: var(--neutral-gray-600);
-    margin-bottom: 0.5rem;
+.call-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--neutral-gray-500);
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
 }
 
-.call-tooltip-attendees {
+.call-modal-close:hover {
+    background: var(--neutral-gray-100);
     color: var(--neutral-gray-700);
-    margin-bottom: 0.5rem;
 }
 
-.call-tooltip-signals {
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
+.call-modal-content {
+    padding: 1.5rem;
+}
+
+.call-modal-date, .call-modal-attendees {
+    margin-bottom: 1rem;
+    color: var(--neutral-gray-700);
+    line-height: 1.4;
+}
+
+.call-modal-signals {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
     border-top: 1px solid var(--neutral-gray-100);
 }
 
-.call-tooltip-signals-title {
+.call-modal-signals-title {
     font-weight: 600;
     color: var(--neutral-gray-700);
-    margin-bottom: 0.25rem;
-    font-size: 0.75rem;
+    margin-bottom: 1rem;
 }
 
-.call-tooltip-signal {
+.call-modal-signals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.call-modal-signal {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    margin-bottom: 0.25rem;
-    font-size: 0.7rem;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    background: var(--neutral-gray-50);
+    border-radius: 6px;
 }
 
-.call-tooltip-signal-priority {
-    padding: 0.1rem 0.3rem;
-    border-radius: 3px;
-    font-size: 0.6rem;
+.call-modal-signal-priority {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
+    white-space: nowrap;
 }
 
-.call-tooltip-signal-priority.high {
+.call-modal-signal-priority.high {
     background: rgba(220, 53, 69, 0.1);
     color: var(--critical-red);
 }
 
-.call-tooltip-signal-priority.medium {
+.call-modal-signal-priority.medium {
     background: rgba(253, 126, 20, 0.1);
     color: var(--warning-orange);
 }
 
-.call-tooltip-signal-priority.low {
+.call-modal-signal-priority.low {
     background: rgba(40, 167, 69, 0.1);
     color: var(--healthy-green);
+}
+
+.call-modal-signal-name {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--neutral-gray-800);
 }
 
 .recommendation-text {

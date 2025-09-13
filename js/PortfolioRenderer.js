@@ -883,109 +883,104 @@ class PortfolioRenderer {
     }
 
     /**
-     * Initialize hover functionality for call links
+     * Initialize click functionality for call links
      * Should be called after rendering the portfolio
      */
     static initializeCallTooltips() {
-        // Remove any existing tooltips first
-        const existingTooltips = document.querySelectorAll('.call-tooltip');
-        existingTooltips.forEach(tooltip => tooltip.remove());
+        // Remove any existing modals first
+        const existingModals = document.querySelectorAll('.call-modal');
+        existingModals.forEach(modal => modal.remove());
         
-        // Add event listeners to all call links
+        // Add click event listeners to all call links
         const callLinks = document.querySelectorAll('.call-link');
         callLinks.forEach(link => {
-            link.addEventListener('mouseenter', (e) => this.showCallTooltip(e));
-            link.addEventListener('mouseleave', () => this.hideCallTooltip());
-            link.addEventListener('mousemove', (e) => this.positionCallTooltip(e));
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.showCallModal(e);
+            });
+        });
+        
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('call-modal-overlay')) {
+                this.hideCallModal();
+            }
         });
     }
     
     /**
-     * Show call tooltip on hover
-     * @param {Event} event - Mouse event
+     * Show call modal on click
+     * @param {Event} event - Click event
      */
-    static showCallTooltip(event) {
+    static showCallModal(event) {
+        // Hide any existing modal first
+        this.hideCallModal();
+        
         const callLink = event.target;
         const callData = JSON.parse(callLink.getAttribute('data-call-info').replace(/&quot;/g, '"'));
         
-        // Create tooltip element
-        const tooltip = document.createElement('div');
-        tooltip.className = 'call-tooltip';
-        tooltip.id = 'call-tooltip';
+        // Create modal overlay
+        const modalOverlay = document.createElement('div');
+        modalOverlay.className = 'call-modal-overlay';
+        modalOverlay.id = 'call-modal-overlay';
         
-        // Build tooltip content
-        let tooltipHTML = `
-            <div class="call-tooltip-title">${SecurityUtils.sanitizeHTML(callData.title)}</div>
+        // Create modal content
+        const modal = document.createElement('div');
+        modal.className = 'call-modal';
+        modal.id = 'call-modal';
+        
+        // Build modal content
+        let modalHTML = `
+            <div class="call-modal-header">
+                <div class="call-modal-title">${SecurityUtils.sanitizeHTML(callData.title)}</div>
+                <button class="call-modal-close" onclick="PortfolioRenderer.hideCallModal()">&times;</button>
+            </div>
+            <div class="call-modal-content">
         `;
         
         if (callData.date) {
-            tooltipHTML += `<div class="call-tooltip-date">Date: ${FormatUtils.formatDateSimple(callData.date)}</div>`;
+            modalHTML += `<div class="call-modal-date"><strong>Date:</strong> ${FormatUtils.formatDateSimple(callData.date)}</div>`;
         }
         
         if (callData.attendees) {
-            tooltipHTML += `<div class="call-tooltip-attendees">Attendees: ${SecurityUtils.sanitizeHTML(callData.attendees)}</div>`;
+            modalHTML += `<div class="call-modal-attendees"><strong>Attendees:</strong> ${SecurityUtils.sanitizeHTML(callData.attendees)}</div>`;
         }
         
         if (callData.relatedSignals && callData.relatedSignals.length > 0) {
-            tooltipHTML += `
-                <div class="call-tooltip-signals">
-                    <div class="call-tooltip-signals-title">Related Signals:</div>
-                    ${callData.relatedSignals.map(signal => `
-                        <div class="call-tooltip-signal">
-                            <span class="call-tooltip-signal-priority ${signal.priority.toLowerCase()}">${signal.priority}</span>
-                            <span>${SecurityUtils.sanitizeHTML(signal.name)}</span>
-                        </div>
-                    `).join('')}
+            modalHTML += `
+                <div class="call-modal-signals">
+                    <div class="call-modal-signals-title"><strong>Related Signals:</strong></div>
+                    <div class="call-modal-signals-list">
+                        ${callData.relatedSignals.map(signal => `
+                            <div class="call-modal-signal">
+                                <span class="call-modal-signal-priority ${signal.priority.toLowerCase()}">${signal.priority}</span>
+                                <span class="call-modal-signal-name">${SecurityUtils.sanitizeHTML(signal.name)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
             `;
         }
         
-        tooltip.innerHTML = tooltipHTML;
-        document.body.appendChild(tooltip);
+        modalHTML += `</div>`;
         
-        // Position and show tooltip
-        this.positionCallTooltip(event);
-        setTimeout(() => tooltip.classList.add('show'), 10);
+        modal.innerHTML = modalHTML;
+        modalOverlay.appendChild(modal);
+        document.body.appendChild(modalOverlay);
+        
+        // Show modal with animation
+        setTimeout(() => modalOverlay.classList.add('show'), 10);
     }
     
     /**
-     * Position call tooltip relative to mouse
-     * @param {Event} event - Mouse event
+     * Hide call modal
      */
-    static positionCallTooltip(event) {
-        const tooltip = document.getElementById('call-tooltip');
-        if (!tooltip) return;
-        
-        const mouseX = event.clientX;
-        const mouseY = event.clientY;
-        const tooltipRect = tooltip.getBoundingClientRect();
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-        
-        let left = mouseX + 10;
-        let top = mouseY - tooltipRect.height - 10;
-        
-        // Adjust if tooltip goes off screen
-        if (left + tooltipRect.width > windowWidth) {
-            left = mouseX - tooltipRect.width - 10;
-        }
-        
-        if (top < 0) {
-            top = mouseY + 10;
-        }
-        
-        tooltip.style.left = `${left}px`;
-        tooltip.style.top = `${top}px`;
-    }
-    
-    /**
-     * Hide call tooltip
-     */
-    static hideCallTooltip() {
-        const tooltip = document.getElementById('call-tooltip');
-        if (tooltip) {
-            tooltip.classList.remove('show');
-            setTimeout(() => tooltip.remove(), 200);
+    static hideCallModal() {
+        const modalOverlay = document.getElementById('call-modal-overlay');
+        if (modalOverlay) {
+            modalOverlay.classList.remove('show');
+            setTimeout(() => modalOverlay.remove(), 200);
         }
     }
 
