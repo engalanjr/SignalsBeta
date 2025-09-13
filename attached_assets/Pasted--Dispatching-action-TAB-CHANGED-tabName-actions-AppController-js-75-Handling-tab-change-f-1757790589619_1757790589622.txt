@@ -1,0 +1,52 @@
+🎯 Dispatching action: TAB_CHANGED {tabName: 'actions'}
+AppController.js:75 🔄 Handling tab change from signal-feed to actions
+AppController.js:216 📋 Rendering Actions tab
+ActionsRenderer.js:82 Action Plans for KPI calculation: (2) [{…}, {…}]
+ActionsRenderer.js:100 Processing 2 action plans from app state...
+ActionsRenderer.js:150 Using 2 action plans from app state
+ActionsRenderer.js:296 Rendering 2 account groups with 2 total plans
+ActionsRenderer.js:587 Action "Schedule a technical demo focused on Domo's BigQuery connector capabilities and data pipeline optimization" (ID: aa259a4a-88c0-42ad-aafe-299b4f2a0904) has plays: (2) ['Feature Demo/Deep Dive Enablement (ACE)', 'Domo instance Optimization'] count: 2
+ActionsRenderer.js:332 Account Home Depot U.S.A., Inc.: Generated 1 tasks from 1 plans
+ActionsRenderer.js:587 Action "Schedule Domo Architecture Assessment to address sandbox-to-production migration issues" (ID: 36bdba5b-30db-4654-a123-43c9c0cf3348) has plays: ['Domo Architecture Assessments'] count: 1
+ActionsRenderer.js:332 Account United Parcel Service Oasis Supply Corporation: Generated 1 tasks from 1 plans
+90920-9507d4cffd850feb.chunk.built.js:1 Download the Apollo DevTools for a better development experience: https://chrome.google.com/webstore/detail/apollo-client-developer-t/jdkknkkbebbapilgoeccciglkfbmbnfm
+ActionsRenderer.js:1518 Opening task details drawer for taskId: plan-1757788917605, actionId: aa259a4a-88c0-42ad-aafe-299b4f2a0904
+ActionsRenderer.js:1593 🔍 [FIXED] Finding task using correct plan structure: {taskId: 'plan-1757788917605', actionId: 'aa259a4a-88c0-42ad-aafe-299b4f2a0904'}
+ActionsRenderer.js:1613 ⚠️ No cached action plans, attempting to fetch (likely to fail in production)
+ActionsRenderer.js:95 ⚠️ app.actionPlans not initialized as Map, initializing empty Map
+getFormattedActionPlans @ ActionsRenderer.js:95
+findTaskData @ ActionsRenderer.js:1614
+openTaskDetailsDrawer @ ActionsRenderer.js:1522
+handleTaskRowClick @ ActionsRenderer.js:921
+handleDelegatedClick @ ActionsRenderer.js:2128
+ActionsRenderer.js:100 Processing 0 action plans from app state...
+ActionsRenderer.js:166 No action plans from Domo, loading fallback data...
+ActionsRenderer.js:2517  GET https://f1d970d9-7013-4a0f-a225-8c0e3a36f1dd.domoapps.prod2.domo.com/action-plans-fallback.json 404 (Not Found)
+loadFallbackActionPlans @ ActionsRenderer.js:2517
+getFormattedActionPlans @ ActionsRenderer.js:167
+findTaskData @ ActionsRenderer.js:1614
+openTaskDetailsDrawer @ ActionsRenderer.js:1522
+handleTaskRowClick @ ActionsRenderer.js:921
+handleDelegatedClick @ ActionsRenderer.js:2128
+ActionsRenderer.js:2659 Error loading fallback action plans: Error: HTTP error! status: 404
+    at ActionsRenderer.loadFallbackActionPlans (ActionsRenderer.js:2519:23)
+    at async ActionsRenderer.getFormattedActionPlans (ActionsRenderer.js:167:35)
+    at async ActionsRenderer.findTaskData (ActionsRenderer.js:1614:36)
+    at async ActionsRenderer.openTaskDetailsDrawer (ActionsRenderer.js:1522:36)
+loadFallbackActionPlans @ ActionsRenderer.js:2659
+await in loadFallbackActionPlans
+getFormattedActionPlans @ ActionsRenderer.js:167
+findTaskData @ ActionsRenderer.js:1614
+openTaskDetailsDrawer @ ActionsRenderer.js:1522
+handleTaskRowClick @ ActionsRenderer.js:921
+handleDelegatedClick @ ActionsRenderer.js:2128
+ActionsRenderer.js:268 ⚠️ No action plans available - returning empty array
+ActionsRenderer.js:1617 🔍 [FIXED] Using plans for modal: []
+ActionsRenderer.js:1659 🔍 [FIXED] Task not found in formatted plans: {taskId: 'plan-1757788917605', actionId: 'aa259a4a-88c0-42ad-aafe-299b4f2a0904'}
+findTaskData @ ActionsRenderer.js:1659
+await in findTaskData
+openTaskDetailsDrawer @ ActionsRenderer.js:1522
+handleTaskRowClick @ ActionsRenderer.js:921
+handleDelegatedClick @ ActionsRenderer.js:2128
+ActionsRenderer.js:1660 🔍 [FIXED] Available task/action IDs: []
+ActionsRenderer.js:1524 Could not find task data for: {taskId: 'plan-1757788917605', actionId: 'aa259a4a-88c0-42ad-aafe-299b4f2a0904'}

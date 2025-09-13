@@ -17,6 +17,41 @@ class ActionsRenderer {
         // Get action plans and convert to display format
         const actionPlans = await this.getFormattedActionPlans(app);
 
+        // 🔧 CRITICAL FIX: Cache the formatted action plans back to app.actionPlans for modal access
+        if (actionPlans.length > 0) {
+            console.log(`🔧 [DATA PERSISTENCE FIX] Caching ${actionPlans.length} formatted action plans to app.actionPlans for modal access`);
+            
+            // Ensure app.actionPlans is initialized as Map
+            if (!app.actionPlans || !(app.actionPlans instanceof Map)) {
+                app.actionPlans = new Map();
+            }
+            
+            // Store each action plan with its proper structure for modal access
+            actionPlans.forEach(formattedPlan => {
+                const planData = formattedPlan.planData;
+                if (planData && planData.id) {
+                    // Store the plan data with all necessary fields for modal
+                    app.actionPlans.set(planData.id, {
+                        ...planData,
+                        accountId: formattedPlan.accountId,
+                        accountName: formattedPlan.accountName,
+                        // Ensure all required fields are preserved
+                        title: planData.title,
+                        description: planData.description,
+                        actionId: planData.actionId,
+                        status: planData.status,
+                        priority: planData.priority,
+                        plays: planData.plays || [],
+                        dueDate: planData.dueDate,
+                        createdDate: planData.createdDate
+                    });
+                    console.log(`🔧 Cached plan ${planData.id} for account ${formattedPlan.accountName}`);
+                }
+            });
+            
+            console.log(`🔧 [DATA PERSISTENCE FIX] Successfully cached ${app.actionPlans.size} action plans for modal access`);
+        }
+
         if (actionPlans.length === 0) {
             container.innerHTML = this.renderEmptyState();
             return;
