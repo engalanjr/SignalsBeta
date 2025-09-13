@@ -2726,6 +2726,40 @@ body {
     color: var(--neutral-gray-600);
     line-height: 1.3;
     word-wrap: break-word;
+    position: relative;
+}
+
+/* Polarity Bubbles for AI Recommendations */
+.polarity-bubbles {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+}
+
+.polarity-bubble {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+}
+
+.polarity-bubble-risk {
+    background-color: #e53e3e;
+}
+
+.polarity-bubble-opportunities {
+    background-color: #38a169;
+}
+
+.polarity-bubble-enrichment {
+    background-color: #718096;
 }
 
 .plays-section {

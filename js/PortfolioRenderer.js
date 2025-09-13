@@ -751,6 +751,22 @@ class PortfolioRenderer {
                 // Get related calls for this action
                 const relatedCalls = this.getRelatedCallsForAction(data.actionId, account);
                 
+                // Count signals by polarity for this action_id
+                const polarityCounts = { risk: 0, opportunities: 0, enrichment: 0 };
+                account.signals.forEach(signal => {
+                    if (signal.action_id === data.actionId) {
+                        const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                        const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
+                        if (normalizedPolarity === 'risk') {
+                            polarityCounts.risk++;
+                        } else if (normalizedPolarity === 'opportunities') {
+                            polarityCounts.opportunities++;
+                        } else {
+                            polarityCounts.enrichment++;
+                        }
+                    }
+                });
+                
                 return `
                     <div class="recommendation-list-item">
                         <div class="recommendation-content">
@@ -759,6 +775,11 @@ class PortfolioRenderer {
                             </div>
                             ${data.rationale ? `
                                 <div class="recommendation-rationale">
+                                    <div class="polarity-bubbles">
+                                        <div class="polarity-bubble polarity-bubble-risk">${polarityCounts.risk}</div>
+                                        <div class="polarity-bubble polarity-bubble-opportunities">${polarityCounts.opportunities}</div>
+                                        <div class="polarity-bubble polarity-bubble-enrichment">${polarityCounts.enrichment}</div>
+                                    </div>
                                     <div class="polarity-badge polarity-${accountPolarityClass}">
                                         ${accountPolarityClass === 'opportunities' ? 'Opportunities' : accountPolarityClass === 'risk' ? 'Risk' : 'Enrichment'}
                                     </div>
