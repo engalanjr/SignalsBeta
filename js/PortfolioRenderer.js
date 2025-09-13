@@ -206,14 +206,23 @@ class PortfolioRenderer {
     }
 
     static renderAccountCard(account, actionPlans, comments, filterPolarities = null) {
-        // Count Risk and Opportunities recommended actions (not signals)
-        const riskActions = account.signals.filter(s => {
-            const polarity = s.signal_polarity || s['Signal Polarity'] || '';
-            return polarity === 'Risk' && s.recommended_action && s.recommended_action.trim() && s.recommended_action !== 'No actions specified';
+        // Count AI Recommendations by polarity (not all signals)
+        const uniqueActions = this.getUniqueRecommendedActions(account);
+        const riskActions = uniqueActions.filter(actionText => {
+            // Find signals with this action to check polarity
+            const signalsWithAction = account.signals.filter(s => s.recommended_action === actionText);
+            return signalsWithAction.some(s => {
+                const polarity = s.signal_polarity || s['Signal Polarity'] || '';
+                return polarity === 'Risk';
+            });
         }).length;
-        const opportunityActions = account.signals.filter(s => {
-            const polarity = s.signal_polarity || s['Signal Polarity'] || '';
-            return polarity === 'Opportunities' && s.recommended_action && s.recommended_action.trim() && s.recommended_action !== 'No actions specified';
+        const opportunityActions = uniqueActions.filter(actionText => {
+            // Find signals with this action to check polarity
+            const signalsWithAction = account.signals.filter(s => s.recommended_action === actionText);
+            return signalsWithAction.some(s => {
+                const polarity = s.signal_polarity || s['Signal Polarity'] || '';
+                return polarity === 'Opportunities';
+            });
         }).length;
         const totalSignals = account.signals.length;
 
@@ -290,15 +299,15 @@ class PortfolioRenderer {
                                 </div>
                                 <div class="financial-metric">
                                     <span class="financial-label">GPA</span>
-                                    <span class="financial-value">${account.gpa ? account.gpa.toFixed(1) : '0.0'}</span>
+                                    <span class="financial-value">${account['Account GPA'] ? parseFloat(account['Account GPA']).toFixed(1) : '0.0'}</span>
                                 </div>
                                 <div class="financial-metric">
                                     <span class="financial-label">% Pacing</span>
-                                    <span class="financial-value">${account.pacing_percent ? (account.pacing_percent * 100).toFixed(1) : '0.0'}%</span>
+                                    <span class="financial-value">${account['% Pacing'] ? (parseFloat(account['% Pacing']) * 100).toFixed(1) : '0.0'}%</span>
                                 </div>
                                 <div class="financial-metric">
                                     <span class="financial-label">Next Renewal Date</span>
-                                    <span class="financial-value">${account.next_renewal_date || 'TBD'}</span>
+                                    <span class="financial-value">${account['Next Renewal Date'] || 'TBD'}</span>
                                 </div>
                             </div>
                         </div>
