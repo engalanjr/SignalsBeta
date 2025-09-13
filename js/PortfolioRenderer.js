@@ -754,6 +754,7 @@ class PortfolioRenderer {
                                     <div class="polarity-badge polarity-${accountPolarityClass}">
                                         ${accountPolarityClass === 'opportunities' ? 'Opportunities' : accountPolarityClass === 'risk' ? 'Risk' : 'Enrichment'}
                                     </div>
+                                    <br>
                                     ${SecurityUtils.sanitizeHTML(data.rationale)}
                                 </div>
                             ` : ''}
