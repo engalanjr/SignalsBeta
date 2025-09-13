@@ -45,6 +45,8 @@ The application is a frontend-only web application utilizing vanilla HTML5, CSS3
 - **action-plans-fallback.json:** Used as a fallback data source for action plans when Domo endpoints fail.
 
 ## Recent Changes
+- **Portfolio Hero Cards Integration (September 2025):** Successfully moved the three executive insight cards (Risk Analysis, Growth Opportunities, Portfolio Overview) from the Whitespace dashboard to become compact hero cards at the top of the My Portfolio page, providing immediate strategic value upon landing on the portfolio view.
+- **InsightsUtils Shared Library (September 2025):** Created a reusable insights calculation utility that provides consistent metrics across both Portfolio and Whitespace views, eliminating code duplication and ensuring data consistency.
 - **Enhanced Action Plans (September 2025):** Implemented comprehensive optimistic updates with immediate UI feedback and resilient local storage fallback for better user experience even when APIs fail.
 - **Executive Whitespace Dashboard (September 2025):** Added new analytics tab featuring bubble charts for signal density vs renewal value analysis and heat maps showing account signal activity patterns with polarity-based visualizations.
 - **Polarity-Based Visualizations:** Enhanced all visualizations with consistent polarity color coding (Risk=red, Opportunity=green, Enrichment=blue/gray) for better portfolio risk assessment.
