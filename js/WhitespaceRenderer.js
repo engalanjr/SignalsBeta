@@ -138,7 +138,7 @@ class WhitespaceRenderer {
             const account = accounts.get(accountId);
             account.signals.push(signal);
             // Count by polarity (normalize polarity values)
-            const polarity = FormatUtils.normalizePolarity(signal.polarity);
+            const polarity = FormatUtils.normalizePolarityKey(signal.polarity);
             if (polarity && account.polarityCount.hasOwnProperty(polarity)) {
                 account.polarityCount[polarity]++;
             }
