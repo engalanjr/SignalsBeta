@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whitespace - Signal Heat Map</title>
+    <style>
+        /* app.css */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 12px;
+            color: #6c757d;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-group select,
+        .control-group input {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            min-width: 200px;
+        }
+
+        .heatmap-wrapper {
+            padding: 20px;
+            overflow: auto;
+            max-height: calc(100vh - 250px);
+        }
+
+        .heatmap-table {
+            border-collapse: separate;
+            border-spacing: 2px;
+            font-size: 12px;
+            width: 100%;
+        }
+
+        .heatmap-table th,
+        .heatmap-table td {
+            padding: 8px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .heatmap-table th {
+            background: #495057;
+            color: white;
+            font-weight: 500;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .heatmap-table th.account-header {
+            text-align: left;
+            min-width: 200px;
+            left: 0;
+            z-index: 11;
+            background: #343a40;
+        }
+
+        .heatmap-table td.account-name {
+            background: #f8f9fa;
+            font-weight: 500;
+            text-align: left;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            border-right: 2px solid #dee2e6;
+            white-space: nowrap;
+        }
+
+        .heatmap-table td.data-cell {
+            cursor: pointer;
+            min-width: 50px;
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .heatmap-table td.data-cell:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 20;
+        }
+
+        /* Opportunity - Green shades (Domo inspired) */
+        .opportunity-1 { background: #e6f7e6; color: #2e7d2e !important; }
+        .opportunity-2 { background: #b3e5b3; color: #1a5e1a !important; }
+        .opportunity-3 { background: #80d480; color: white !important; }
+        .opportunity-4 { background: #4dc24d; color: white !important; }
+        .opportunity-5 { background: #1aaa1a; color: white !important; }
+
+        /* Risk - Red shades (Domo inspired) */
+        .risk-1 { background: #ffe6e6; color: #cc0000 !important; }
+        .risk-2 { background: #ffb3b3; color: #990000 !important; }
+        .risk-3 { background: #ff8080; color: white !important; }
+        .risk-4 { background: #ff4d4d; color: white !important; }
+        .risk-5 { background: #ff1a1a; color: white !important; }
+
+        /* Enrichment - Grey shades */
+        .enrichment-1 { background: #f0f0f0; color: #333 !important; }
+        .enrichment-2 { background: #d9d9d9; color: #333 !important; }
+        .enrichment-3 { background: #b3b3b3; color: white !important; }
+        .enrichment-4 { background: #808080; color: white !important; }
+        .enrichment-5 { background: #4d4d4d; color: white !important; }
+
+        .legend {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .legend-scale {
+            display: flex;
+            gap: 2px;
+        }
+
+        .legend-box {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+            max-width: 300px;
+        }
+
+        .summary-stats {
+            padding: 20px;
+            background: white;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .stat-card {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Whitespace</h1>
+            <p>Dynamic Signal Heat Map Analysis</p>
+        </div>
+        
+        <div class="summary-stats" id="summaryStats">
+            <div class="stat-card">
+                <div class="stat-value" id="totalAccounts">0</div>
+                <div class="stat-label">Total Accounts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalSignals">0</div>
+                <div class="stat-label">Total Signals</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalOccurrences">0</div>
+                <div class="stat-label">Total Occurrences</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgSignalsPerAccount">0</div>
+                <div class="stat-label">Avg Signals/Account</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Filter by Polarity</label>
+                <select id="polarityFilter">
+                    <option value="all">All Polarities</option>
+                    <option value="Opportunity">Opportunity</option>
+                    <option value="Risk">Risk</option>
+                    <option value="Enrichment">Enrichment</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Search Account</label>
+                <input type="text" id="accountSearch" placeholder="Type to search...">
+            </div>
+            <div class="control-group">
+                <label>Min Signal Count</label>
+                <input type="number" id="minCount" value="0" min="0">
+            </div>
+        </div>
+
+        <div class="heatmap-wrapper">
+            <table class="heatmap-table" id="heatmapTable">
+                <!-- Dynamic content will be inserted here -->
+            </table>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <span class="legend-label">Opportunity:</span>
+                <div class="legend-scale">
+                    <div class="legend-box opportunity-1">1</div>
+                    <div class="legend-box opportunity-2">2</div>
+                    <div class="legend-box opportunity-3">3</div>
+                    <div class="legend-box opportunity-4">4</div>
+                    <div class="legend-box opportunity-5">5+</div>
+                </div>
+            </div>
+            <div class="legend-item">
+                <span class="legend-label">Risk:</span>
+                <div class="legend-scale">
+                    <div class="legend-box risk-1">1</div>
+                    <div class="legend-box risk-2">2</div>
+                    <div class="legend-box risk-3">3</div>
+                    <div class="legend-box risk-4">4</div>
+                    <div class="legend-box risk-5">5+</div>
+                </div>
+            </div>
+            <div class="legend-item">
+                <span class="legend-label">Enrichment:</span>
+                <div class="legend-scale">
+                    <div class="legend-box enrichment-1">1</div>
+                    <div class="legend-box enrichment-2">2</div>
+                    <div class="legend-box enrichment-3">3</div>
+                    <div class="legend-box enrichment-4">4</div>
+                    <div class="legend-box enrichment-5">5+</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // app.js
+        class WhitespaceHeatMap {
+            constructor() {
+                this.rawData = [];
+                this.processedData = {};
+                this.signalCodes = new Set();
+                this.accounts = new Set();
+                this.signalPolarities = {};
+                this.init();
+            }
+
+            init() {
+                this.generateMockData();
+                this.processData();
+                this.renderHeatMap();
+                this.attachEventListeners();
+                this.updateStats();
+            }
+
+            generateMockData() {
+                const accounts = [
+                    "21st Century Home Health Services Inc.",
+                    "Apex Companies, LLC",
+                    "Archaea Energy, Inc.",
+                    "Astra Service Partners, Inc.",
+                    "Atlas General Insurance Services, LLC",
+                    "Bass Pro, LLC",
+                    "Beacon Credit Union",
+                    "Bonneville International Corporation",
+                    "Brigham Young University",
+                    "Brigham Young University-Hawaii",
+                    "Busybuy, Inc.",
+                    "Caliber Healthcare Solutions LLC",
+                    "Ciranda, Inc.",
+                    "Civitas Senior Healthcare LLC",
+                    "Connecticut Housing Finance Authority",
+                    "Corbin Advisors, LLC",
+                    "Cox Media Group, LLC - Gamut",
+                    "Cozy Earth Holdings, Inc.",
+                    "Cronos Growing Company Inc.",
+                    "Dal-Tile Corporation",
+                    "Eight Eleven Group, LLC",
+                    "Enveda Therapeutics, Inc.",
+                    "Everyday Health, Inc.",
+                    "Eye Five Inc.",
+                    "FMR LLC",
+                    "Falvey Insurance Group Ltd",
+                    "FamilySearch International",
+                    "Fan Capital LLC",
+                    "Five Star Senior Living Inc.",
+                    "Fox World Travel, Inc.",
+                    "Greenway Health, LLC",
+                    "H M Y Yacht Sales, Inc."
+                ];
+
+                const signalDefinitions = [
+                    { code: "ARCH-01", name: "CDW Identified", polarity: "Opportunity" },
+                    { code: "ARCH-02", name: "Source-System Identified", polarity: "Enrichment" },
+                    { code: "ARCH-03", name: "External Integration", polarity: "Risk" },
+                    { code: "ARCH-04", name: "Feature Usage", polarity: "Opportunity" },
+                    { code: "ARCH-05", name: "Feature Gap / Request", polarity: "Risk" },
+                    { code: "ARCH-08", name: "Architecture Gap", polarity: "Risk" },
+                    { code: "ARCH-09", name: "Data Distribution", polarity: "Enrichment" },
+                    { code: "BIZ-01", name: "Business Goal Identified", polarity: "Opportunity" },
+                    { code: "BIZ-02", name: "External Event Identified", polarity: "Enrichment" },
+                    { code: "EDU-01", name: "Education Path Identified", polarity: "Opportunity" },
+                    { code: "REL-02", name: "Influencer Identified", polarity: "Opportunity" },
+                    { code: "REL-04", name: "Champion Affirmed", polarity: "Opportunity" },
+                    { code: "REL-05", name: "Relationship Gap / Exposed", polarity: "Risk" },
+                    { code: "UC-01", name: "Umbrella Use Case", polarity: "Enrichment" },
+                    { code: "UC-02", name: "Use Case Name Identified", polarity: "Opportunity" },
+                    { code: "UC-03", name: "Target Identified", polarity: "Opportunity" },
+                    { code: "UC-04", name: "Stakeholder Identified", polarity: "Enrichment" },
+                    { code: "UC-05", name: "Exec Sponsor", polarity: "Opportunity" },
+                    { code: "UC-06", name: "Problem Identified", polarity: "Risk" }
+                ];
+
+                // Generate random signal occurrences
+                this.rawData = [];
+                let signalId = 1;
+
+                accounts.forEach(account => {
+                    // Random number of signals per account (1-10)
+                    const numSignals = Math.floor(Math.random() * 10) + 1;
+                    const usedSignals = new Set();
+
+                    for (let i = 0; i < numSignals; i++) {
+                        const signal = signalDefinitions[Math.floor(Math.random() * signalDefinitions.length)];
+                        
+                        // Generate multiple occurrences for some signals
+                        const occurrences = Math.random() > 0.7 ? Math.floor(Math.random() * 5) + 1 : 1;
+                        
+                        for (let j = 0; j < occurrences; j++) {
+                            this.rawData.push({
+                                signal_id: signalId++,
+                                account_name: account,
+                                code: signal.code,
+                                name: signal.name,
+                                signal_polarity: signal.polarity
+                            });
+                        }
+                    }
+                });
+
+                // Store signal polarities for reference
+                signalDefinitions.forEach(signal => {
+                    const key = `${signal.code}: ${signal.name}`;
+                    this.signalPolarities[key] = signal.polarity;
+                });
+            }
+
+            processData() {
+                this.processedData = {};
+                this.signalCodes.clear();
+                this.accounts.clear();
+
+                this.rawData.forEach(record => {
+                    const signalCode = `${record.code}: ${record.name}`;
+                    const accountName = record.account_name;
+
+                    this.signalCodes.add(signalCode);
+                    this.accounts.add(accountName);
+
+                    if (!this.processedData[accountName]) {
+                        this.processedData[accountName] = {};
+                    }
+
+                    if (!this.processedData[accountName][signalCode]) {
+                        this.processedData[accountName][signalCode] = {
+                            count: 0,
+                            polarity: record.signal_polarity
+                        };
+                    }
+
+                    this.processedData[accountName][signalCode].count++;
+                });
+            }
+
+            getColorClass(count, polarity) {
+                if (count === 0) return '';
+                
+                const intensity = Math.min(count, 5);
+                const polarityClass = polarity.toLowerCase();
+                return `${polarityClass}-${intensity}`;
+            }
+
+            renderHeatMap() {
+                const table = document.getElementById('heatmapTable');
+                const polarityFilter = document.getElementById('polarityFilter').value;
+                const accountSearch = document.getElementById('accountSearch').value.toLowerCase();
+                const minCount = parseInt(document.getElementById('minCount').value) || 0;
+
+                // Filter signal codes based on polarity
+                let filteredSignalCodes = Array.from(this.signalCodes);
+                if (polarityFilter !== 'all') {
+                    filteredSignalCodes = filteredSignalCodes.filter(code => 
+                        this.signalPolarities[code] === polarityFilter
+                    );
+                }
+
+                // Filter accounts based on search
+                let filteredAccounts = Array.from(this.accounts);
+                if (accountSearch) {
+                    filteredAccounts = filteredAccounts.filter(account => 
+                        account.toLowerCase().includes(accountSearch)
+                    );
+                }
+
+                // Sort for consistency
+                filteredSignalCodes.sort();
+                filteredAccounts.sort();
+
+                // Clear table
+                table.innerHTML = '';
+
+                // Create header row
+                const headerRow = document.createElement('tr');
+                const accountHeader = document.createElement('th');
+                accountHeader.className = 'account-header';
+                accountHeader.textContent = 'Account Name';
+                headerRow.appendChild(accountHeader);
+
+                filteredSignalCodes.forEach(code => {
+                    const th = document.createElement('th');
+                    th.textContent = code;
+                    th.style.writingMode = 'vertical-rl';
+                    th.style.textOrientation = 'mixed';
+                    th.style.height = '150px';
+                    headerRow.appendChild(th);
+                });
+
+                table.appendChild(headerRow);
+
+                // Create data rows
+                filteredAccounts.forEach(account => {
+                    const row = document.createElement('tr');
+                    
+                    const accountCell = document.createElement('td');
+                    accountCell.className = 'account-name';
+                    accountCell.textContent = account;
+                    row.appendChild(accountCell);
+
+                    let hasValidData = false;
+
+                    filteredSignalCodes.forEach(code => {
+                        const cell = document.createElement('td');
+                        cell.className = 'data-cell';
+                        
+                        const data = this.processedData[account]?.[code];
+                        const count = data?.count || 0;
+                        const polarity = data?.polarity || this.signalPolarities[code];
+
+                        if (count >= minCount) {
+                            hasValidData = true;
+                        }
+
+                        if (count > 0) {
+                            cell.textContent = count;
+                            cell.className += ' ' + this.getColorClass(count, polarity);
+                            cell.dataset.account = account;
+                            cell.dataset.signal = code;
+                            cell.dataset.count = count;
+                            cell.dataset.polarity = polarity;
+
+                            cell.addEventListener('mouseenter', (e) => this.showTooltip(e));
+                            cell.addEventListener('mouseleave', () => this.hideTooltip());
+                        }
+
+                        row.appendChild(cell);
+                    });
+
+                    // Only add row if it has data meeting minimum count
+                    if (hasValidData || minCount === 0) {
+                        table.appendChild(row);
+                    }
+                });
+            }
+
+            showTooltip(event) {
+                const tooltip = document.getElementById('tooltip');
+                const cell = event.target;
+                
+                tooltip.innerHTML = `
+                    <strong>Account:</strong> ${cell.dataset.account}<br>
+                    <strong>Signal:</strong> ${cell.dataset.signal}<br>
+                    <strong>Count:</strong> ${cell.dataset.count}<br>
+                    <strong>Polarity:</strong> ${cell.dataset.polarity}
+                `;
+                
+                tooltip.style.display = 'block';
+                tooltip.style.left = event.pageX + 10 + 'px';
+                tooltip.style.top = event.pageY + 10 + 'px';
+            }
+
+            hideTooltip() {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.style.display = 'none';
+            }
+
+            updateStats() {
+                const totalAccounts = this.accounts.size;
+                const totalSignals = this.signalCodes.size;
+                const totalOccurrences = this.rawData.length;
+                const avgSignalsPerAccount = (totalOccurrences / totalAccounts).toFixed(1);
+
+                document.getElementById('totalAccounts').textContent = totalAccounts;
+                document.getElementById('totalSignals').textContent = totalSignals;
+                document.getElementById('totalOccurrences').textContent = totalOccurrences;
+                document.getElementById('avgSignalsPerAccount').textContent = avgSignalsPerAccount;
+            }
+
+            attachEventListeners() {
+                document.getElementById('polarityFilter').addEventListener('change', () => {
+                    this.renderHeatMap();
+                });
+
+                document.getElementById('accountSearch').addEventListener('input', () => {
+                    this.renderHeatMap();
+                });
+
+                document.getElementById('minCount').addEventListener('change', () => {
+                    this.renderHeatMap();
+                });
+            }
+        }
+
+        // Initialize the application when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new WhitespaceHeatMap();
+        });
+    </script>
+</body>
+</html>

@@ -213,6 +213,18 @@ class AppController {
                     console.error('🚨 CRITICAL: ActionsRenderer not available');
                 }
                 break;
+            case 'whitespace':
+                // Handle whitespace tab if WhitespaceRenderer exists
+                if (typeof WhitespaceRenderer !== 'undefined') {
+                    console.log('📊 Rendering Whitespace tab');
+                    const state = signalsStore.getState();
+                    WhitespaceRenderer.renderWhitespace(state).catch(error => {
+                        console.error('🚨 ERROR rendering whitespace:', error);
+                    });
+                } else {
+                    console.error('🚨 CRITICAL: WhitespaceRenderer not available');
+                }
+                break;
             default:
                 console.warn(`Unknown tab: ${this.currentTab}`);
         }
