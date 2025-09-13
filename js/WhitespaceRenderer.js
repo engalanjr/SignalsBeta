@@ -8,14 +8,17 @@ class WhitespaceRenderer {
         try {
             console.log('🎯 Rendering Whitespace heatmap view');
             
-            // Get data from Flux store state
-            const signals = state.signals || [];
+            // Get data from Flux store state - handle both array and Map formats
+            const signals = Array.isArray(state.signals) ? state.signals : 
+                           (state.signals && typeof state.signals[Symbol.iterator] === 'function' ? 
+                            Array.from(state.signals.values()) : []);
+            
             const accounts = state.accounts || new Map();
             
-            console.log(`🔍 Processing ${signals.length} signals and ${accounts.size} accounts`);
+            console.log(`🔍 Processing ${signals.length} signals`);
             
             // Process signals into matrix format
-            const { matrix, signalTypes, accountNames, stats } = this.processSignalsMatrix(signals, accounts);
+            const { matrix, signalTypes, accountNames, stats, signalPolarities } = this.processSignalsMatrix(signals, accounts);
             
             console.log(`📊 Processed ${stats.totalAccounts} accounts, ${stats.totalSignalTypes} signal types, ${stats.totalOccurrences} total occurrences`);
             
@@ -36,9 +39,9 @@ class WhitespaceRenderer {
             }
             
             // Render the heatmap content
-            whitespaceTab.innerHTML = this.generateWhitespaceHTML(matrix, signalTypes, accountNames, stats);
+            whitespaceTab.innerHTML = this.generateWhitespaceHTML(matrix, signalTypes, accountNames, stats, signalPolarities);
             
-            // Setup basic interactivity
+            // Setup event listeners
             this.setupEventListeners();
             
             console.log('✅ Whitespace view rendered successfully');
@@ -55,8 +58,8 @@ class WhitespaceRenderer {
         console.log('🔄 Processing signals into heatmap matrix...');
         
         const matrix = {};
-        const signalTypes = new Set();
-        const accountSet = new Set();
+        const signalTypesMap = new Map(); // Use Map to preserve order and store metadata
+        const accountMap = new Map();
         const signalPolarities = {};
         
         let totalOccurrences = 0;
@@ -64,29 +67,44 @@ class WhitespaceRenderer {
         // Process each signal from the signals array
         for (let signal of signals) {
             if (!signal || !signal.account_id) {
-                continue; // Skip invalid signals
+                continue;
             }
             
             const accountId = signal.account_id;
             
-            // Get account name from accounts Map or use fallback
-            let accountName = `Account ${accountId}`;
-            if (accounts && accounts.get && accounts.get(accountId)) {
-                accountName = accounts.get(accountId).name || accountName;
-            } else if (signal.account_name) {
-                accountName = signal.account_name;
+            // Get account name - handle different account data structures
+            let accountName = signal.account_name || signal.accountName || `Account ${accountId}`;
+            if (accounts) {
+                if (accounts.get && typeof accounts.get === 'function') {
+                    const account = accounts.get(accountId);
+                    if (account) accountName = account.name || accountName;
+                } else if (accounts[accountId]) {
+                    accountName = accounts[accountId].name || accountName;
+                }
             }
             
-            // Create signal type key (combining category and name for uniqueness)
-            const signalKey = signal.code ? 
-                `${signal.code}: ${signal.name}` : 
-                `${signal.category || 'General'}: ${signal.name}`;
+            // Store account info
+            if (!accountMap.has(accountId)) {
+                accountMap.set(accountId, accountName);
+            }
             
-            signalTypes.add(signalKey);
-            accountSet.add(accountName);
+            // Create signal type key - use code if available, otherwise truncate name
+            const signalCode = signal.code || signal.signal_code || '';
+            const signalName = signal.name || signal.signal_name || 'Unknown';
+            const signalKey = signalCode || signalName.substring(0, 20);
+            
+            // Store full signal info for tooltips
+            if (!signalTypesMap.has(signalKey)) {
+                signalTypesMap.set(signalKey, {
+                    code: signalCode,
+                    name: signalName,
+                    category: signal.category || 'General'
+                });
+            }
             
             // Store polarity for this signal type
-            signalPolarities[signalKey] = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
+            const polarity = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
+            signalPolarities[signalKey] = polarity;
             
             // Initialize matrix structure
             if (!matrix[accountName]) {
@@ -96,8 +114,9 @@ class WhitespaceRenderer {
             if (!matrix[accountName][signalKey]) {
                 matrix[accountName][signalKey] = {
                     count: 0,
-                    polarity: signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment',
-                    accountId: accountId
+                    polarity: polarity,
+                    accountId: accountId,
+                    fullSignalName: signalName
                 };
             }
             
@@ -106,97 +125,98 @@ class WhitespaceRenderer {
             totalOccurrences++;
         }
         
+        // Sort accounts and signal types
+        const sortedAccounts = Array.from(accountMap.values()).sort();
+        const sortedSignalTypes = Array.from(signalTypesMap.keys()).sort();
+        
         // Calculate statistics
         const stats = {
-            totalAccounts: accountSet.size,
-            totalSignalTypes: signalTypes.size,
+            totalAccounts: sortedAccounts.length,
+            totalSignalTypes: sortedSignalTypes.length,
             totalOccurrences,
-            avgSignalsPerAccount: accountSet.size > 0 ? (totalOccurrences / accountSet.size).toFixed(1) : 0
+            avgSignalsPerAccount: sortedAccounts.length > 0 ? (totalOccurrences / sortedAccounts.length).toFixed(1) : 0
         };
         
         console.log(`✅ Matrix processing complete:`, stats);
         
         return {
             matrix,
-            signalTypes: Array.from(signalTypes).sort(),
-            accountNames: Array.from(accountSet).sort(),
+            signalTypes: sortedSignalTypes,
+            accountNames: sortedAccounts,
             stats,
-            signalPolarities
+            signalPolarities,
+            signalTypesMap
         };
     }
     
     /**
      * Generate the HTML structure for the Whitespace view
      */
-    static generateWhitespaceHTML(matrix, signalTypes, accountNames, stats) {
+    static generateWhitespaceHTML(matrix, signalTypes, accountNames, stats, signalPolarities) {
         return `
             <div class="whitespace-container">
                 <div class="whitespace-header">
-                    <div class="header-content">
-                        <div class="header-title">
-                            <i class="fas fa-th header-icon"></i>
-                            <h1>Whitespace Analysis</h1>
-                        </div>
-                        <div class="header-subtitle">
-                            Signal distribution patterns across your portfolio
-                        </div>
+                    <div class="whitespace-header-content">
+                        <i class="fas fa-th whitespace-header-icon"></i>
+                        <h1 class="whitespace-title">Whitespace Analysis</h1>
+                        <p class="whitespace-subtitle">Signal distribution patterns across your portfolio</p>
                     </div>
                 </div>
                 
                 <div class="whitespace-stats">
-                    <div class="stat-card">
+                    <div class="whitespace-stat-card">
                         <div class="stat-value">${stats.totalAccounts}</div>
-                        <div class="stat-label">Total Accounts</div>
+                        <div class="stat-label">TOTAL ACCOUNTS</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="whitespace-stat-card">
                         <div class="stat-value">${stats.totalSignalTypes}</div>
-                        <div class="stat-label">Signal Types</div>
+                        <div class="stat-label">SIGNAL TYPES</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="whitespace-stat-card">
                         <div class="stat-value">${stats.totalOccurrences}</div>
-                        <div class="stat-label">Total Signals</div>
+                        <div class="stat-label">TOTAL SIGNALS</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="whitespace-stat-card">
                         <div class="stat-value">${stats.avgSignalsPerAccount}</div>
-                        <div class="stat-label">Avg per Account</div>
+                        <div class="stat-label">AVG PER ACCOUNT</div>
                     </div>
                 </div>
                 
-                <div class="whitespace-content">
-                    <div class="heatmap-wrapper">
-                        ${this.generateHeatmapTable(matrix, signalTypes, accountNames)}
+                <div class="whitespace-table-container">
+                    <div class="heatmap-scroll-wrapper">
+                        ${this.generateHeatmapTable(matrix, signalTypes, accountNames, signalPolarities)}
                     </div>
                 </div>
                 
                 <div class="whitespace-legend">
-                    <div class="legend-item">
+                    <div class="legend-group">
                         <span class="legend-label">Opportunity:</span>
-                        <div class="legend-scale">
-                            <div class="legend-box opportunity-1">1</div>
-                            <div class="legend-box opportunity-2">2</div>
-                            <div class="legend-box opportunity-3">3</div>
-                            <div class="legend-box opportunity-4">4</div>
-                            <div class="legend-box opportunity-5">5+</div>
+                        <div class="legend-items">
+                            <span class="legend-item opportunity-1">1</span>
+                            <span class="legend-item opportunity-2">2</span>
+                            <span class="legend-item opportunity-3">3</span>
+                            <span class="legend-item opportunity-4">4</span>
+                            <span class="legend-item opportunity-5">5+</span>
                         </div>
                     </div>
-                    <div class="legend-item">
+                    <div class="legend-group">
                         <span class="legend-label">Risk:</span>
-                        <div class="legend-scale">
-                            <div class="legend-box risk-1">1</div>
-                            <div class="legend-box risk-2">2</div>
-                            <div class="legend-box risk-3">3</div>
-                            <div class="legend-box risk-4">4</div>
-                            <div class="legend-box risk-5">5+</div>
+                        <div class="legend-items">
+                            <span class="legend-item risk-1">1</span>
+                            <span class="legend-item risk-2">2</span>
+                            <span class="legend-item risk-3">3</span>
+                            <span class="legend-item risk-4">4</span>
+                            <span class="legend-item risk-5">5+</span>
                         </div>
                     </div>
-                    <div class="legend-item">
+                    <div class="legend-group">
                         <span class="legend-label">Enrichment:</span>
-                        <div class="legend-scale">
-                            <div class="legend-box enrichment-1">1</div>
-                            <div class="legend-box enrichment-2">2</div>
-                            <div class="legend-box enrichment-3">3</div>
-                            <div class="legend-box enrichment-4">4</div>
-                            <div class="legend-box enrichment-5">5+</div>
+                        <div class="legend-items">
+                            <span class="legend-item enrichment-1">1</span>
+                            <span class="legend-item enrichment-2">2</span>
+                            <span class="legend-item enrichment-3">3</span>
+                            <span class="legend-item enrichment-4">4</span>
+                            <span class="legend-item enrichment-5">5+</span>
                         </div>
                     </div>
                 </div>
@@ -209,17 +229,22 @@ class WhitespaceRenderer {
     /**
      * Generate the heatmap table HTML
      */
-    static generateHeatmapTable(matrix, signalTypes, accountNames) {
+    static generateHeatmapTable(matrix, signalTypes, accountNames, signalPolarities) {
         let tableHTML = `
-            <table class="heatmap-table">
+            <table class="whitespace-heatmap-table">
                 <thead>
-                    <tr>
-                        <th class="account-header">Account Name</th>
-                        ${signalTypes.map(signalType => `
-                            <th class="signal-header" title="${signalType}">
-                                ${this.truncateSignalName(signalType)}
-                            </th>
-                        `).join('')}
+                    <tr class="heatmap-header-row">
+                        <th class="heatmap-corner-cell">Account Name</th>
+                        ${signalTypes.map(signalType => {
+                            const sanitizedSignal = SecurityUtils.sanitizeHTML(signalType);
+                            return `
+                                <th class="heatmap-header-cell">
+                                    <div class="rotated-header" title="${sanitizedSignal}">
+                                        <span>${sanitizedSignal}</span>
+                                    </div>
+                                </th>
+                            `;
+                        }).join('')}
                     </tr>
                 </thead>
                 <tbody>
@@ -227,22 +252,26 @@ class WhitespaceRenderer {
         
         // Generate rows for each account
         accountNames.forEach(accountName => {
-            tableHTML += `<tr>`;
-            tableHTML += `<td class="account-name">${SecurityUtils.sanitizeHTML(accountName)}</td>`;
+            const sanitizedAccountName = SecurityUtils.sanitizeHTML(accountName);
+            tableHTML += `
+                <tr class="heatmap-row">
+                    <td class="heatmap-account-cell">${sanitizedAccountName}</td>
+            `;
             
             signalTypes.forEach(signalType => {
                 const cellData = matrix[accountName]?.[signalType];
                 const count = cellData?.count || 0;
-                const polarity = cellData?.polarity || 'Enrichment';
+                const polarity = cellData?.polarity || signalPolarities[signalType] || 'Enrichment';
                 
                 const colorClass = this.getColorClass(count, polarity);
-                const cellTitle = count > 0 ? `${accountName}\n${signalType}\nCount: ${count}\nType: ${polarity}` : '';
+                const sanitizedSignalType = SecurityUtils.sanitizeHTML(signalType);
+                const fullSignalName = cellData?.fullSignalName || signalType;
                 
                 tableHTML += `
-                    <td class="data-cell ${colorClass}" 
-                        title="${cellTitle}"
-                        data-account="${SecurityUtils.sanitizeHTML(accountName)}"
-                        data-signal="${SecurityUtils.sanitizeHTML(signalType)}"
+                    <td class="heatmap-data-cell ${colorClass}" 
+                        data-account="${sanitizedAccountName}"
+                        data-signal="${sanitizedSignalType}"
+                        data-signal-full="${SecurityUtils.sanitizeHTML(fullSignalName)}"
                         data-count="${count}"
                         data-polarity="${polarity}">
                         ${count > 0 ? count : ''}
@@ -265,53 +294,39 @@ class WhitespaceRenderer {
      * Get CSS color class based on count and polarity
      */
     static getColorClass(count, polarity) {
-        if (count === 0) return '';
+        if (count === 0) return 'empty-cell';
         
         const intensity = Math.min(count, 5);
-        const polarityClass = polarity.toLowerCase();
+        const polarityClass = (polarity || 'enrichment').toLowerCase();
         
-        // Map polarity variations to consistent class names
+        // Normalize polarity variations
         let normalizedPolarity = polarityClass;
         if (polarityClass === 'opportunities' || polarityClass === 'opportunity') {
             normalizedPolarity = 'opportunity';
-        } else if (polarityClass === 'risks') {
+        } else if (polarityClass === 'risks' || polarityClass === 'risk') {
             normalizedPolarity = 'risk';
+        } else {
+            normalizedPolarity = 'enrichment';
         }
         
         return `${normalizedPolarity}-${intensity}`;
     }
     
     /**
-     * Truncate long signal names for table headers
-     */
-    static truncateSignalName(signalName) {
-        const maxLength = 15;
-        if (signalName.length <= maxLength) return signalName;
-        
-        // Try to split on colon and take the code part
-        if (signalName.includes(':')) {
-            const parts = signalName.split(':');
-            const code = parts[0].trim();
-            if (code.length <= maxLength) return code;
-        }
-        
-        return signalName.substring(0, maxLength - 3) + '...';
-    }
-    
-    /**
-     * Setup basic event listeners
+     * Setup event listeners for interactivity
      */
     static setupEventListeners() {
-        // Basic hover effects for data cells
-        const dataCells = document.querySelectorAll('.data-cell');
+        // Add hover effects for data cells
+        const dataCells = document.querySelectorAll('.heatmap-data-cell');
         dataCells.forEach(cell => {
             cell.addEventListener('mouseenter', (e) => this.showTooltip(e));
             cell.addEventListener('mouseleave', () => this.hideTooltip());
+            cell.addEventListener('click', (e) => this.handleCellClick(e));
         });
     }
     
     /**
-     * Show tooltip on cell hover
+     * Show enhanced tooltip on cell hover
      */
     static showTooltip(event) {
         const tooltip = document.getElementById('whitespaceTooltip');
@@ -319,20 +334,27 @@ class WhitespaceRenderer {
         
         const account = cell.dataset.account;
         const signal = cell.dataset.signal;
+        const signalFull = cell.dataset.signalFull;
         const count = cell.dataset.count;
         const polarity = cell.dataset.polarity;
         
         if (count && count !== '0') {
             tooltip.innerHTML = `
-                <strong>Account:</strong> ${SecurityUtils.sanitizeHTML(account)}<br>
-                <strong>Signal:</strong> ${SecurityUtils.sanitizeHTML(signal)}<br>
-                <strong>Count:</strong> ${count}<br>
-                <strong>Type:</strong> ${SecurityUtils.sanitizeHTML(polarity)}
+                <div class="tooltip-content">
+                    <div class="tooltip-header">${SecurityUtils.sanitizeHTML(account)}</div>
+                    <div class="tooltip-signal">${SecurityUtils.sanitizeHTML(signalFull || signal)}</div>
+                    <div class="tooltip-stats">
+                        <span class="tooltip-count">Count: ${count}</span>
+                        <span class="tooltip-polarity ${polarity.toLowerCase()}">${SecurityUtils.sanitizeHTML(polarity)}</span>
+                    </div>
+                </div>
             `;
             
+            // Position tooltip near cursor
+            const rect = cell.getBoundingClientRect();
             tooltip.style.display = 'block';
-            tooltip.style.left = event.pageX + 10 + 'px';
-            tooltip.style.top = event.pageY + 10 + 'px';
+            tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+            tooltip.style.top = (rect.top - 10) + 'px';
         }
     }
     
@@ -343,6 +365,21 @@ class WhitespaceRenderer {
         const tooltip = document.getElementById('whitespaceTooltip');
         if (tooltip) {
             tooltip.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Handle cell click for drill-down functionality
+     */
+    static handleCellClick(event) {
+        const cell = event.target;
+        const count = cell.dataset.count;
+        
+        if (count && count !== '0') {
+            const account = cell.dataset.account;
+            const signal = cell.dataset.signalFull || cell.dataset.signal;
+            console.log(`Cell clicked: ${account} - ${signal} (${count} signals)`);
+            // Future: Navigate to filtered signal view
         }
     }
 }
