@@ -41,12 +41,20 @@ The application is a frontend-only web application utilizing vanilla HTML5, CSS3
 - **External Data Sources:** Utilizes CSV datasets (e.g., "View of SignalsAI _ CORE _ WIP _ PDP_1757418159244.csv") for comprehensive signal and action plan data.
 - **action-plans-fallback.json:** Used as a fallback data source for action plans when Domo endpoints fail.
 
-## Recent Changes (v8.1)
-- **Added Whitespace Heatmap View:** Implemented Phase 1 of a comprehensive signal distribution heatmap analysis view. This new view provides visual matrix representation of signal patterns across accounts and signal types with color-coded intensity levels based on polarity (Risk/Opportunities/Enrichment). Features include:
-  - Matrix visualization of signal occurrence patterns
-  - Color-coded cells with 5 intensity levels per polarity type  
-  - Summary statistics showing total accounts, signal types, and occurrences
-  - Hover tooltips for detailed cell information
-  - Sticky headers for easy navigation in large datasets
-  - Uses existing normalized signal data structure with no additional data requirements
-  - Navigation integration with dedicated "Whitespace" tab using grid icon
+## Recent Changes (v8.2)
+- **Enhanced Whitespace Heatmap View:** Completed professional redesign matching industry-standard quality. Major improvements include:
+  - **Security:** Fixed critical XSS vulnerability in tooltip rendering with strict polarity whitelisting
+  - **Professional Design:** Blue gradient header (#2563eb to #3b82f6) with centered white text
+  - **Enhanced Stats Cards:** Clean white cards with 36px bold numbers, subtle shadows, hover effects
+  - **Advanced Table Features:**
+    - 45-degree rotated column headers for signal types
+    - Sticky header row that remains visible during scrolling
+    - Frozen first column for account names
+    - 32x32px cells with professional borders and hover states
+  - **Professional Color Gradients:**
+    - Opportunities: Light to dark green (5 levels) with proper contrast
+    - Risks: Light to dark red (5 levels) with accessibility in mind
+    - Enrichment: Light to dark blue (5 levels) for neutral signals
+  - **Improved Tooltips:** Enhanced positioning with viewport awareness and arrow pointer
+  - **Data Handling:** Fixed compatibility with Flux store arrays/objects instead of Maps
+  - **Responsive Design:** Clean layout with proper spacing and professional typography
