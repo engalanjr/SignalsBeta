@@ -213,51 +213,8 @@ class AppController {
                     console.error('🚨 CRITICAL: ActionsRenderer not available');
                 }
                 break;
-            case 'whitespace':
-                // Handle whitespace tab if WhitespaceRenderer exists
-                if (typeof WhitespaceRenderer !== 'undefined') {
-                    console.log('📊 Rendering Whitespace analytics tab');
-                    this.renderWhitespace();
-                } else {
-                    console.error('🚨 CRITICAL: WhitespaceRenderer not available');
-                }
-                break;
             default:
                 console.warn(`Unknown tab: ${this.currentTab}`);
-        }
-    }
-
-    async renderWhitespace() {
-        try {
-            const state = signalsStore.getState();
-            const container = document.getElementById('whitespace');
-            
-            if (!container) {
-                console.error('Whitespace container not found');
-                return;
-            }
-            
-            // Render the whitespace view
-            container.innerHTML = WhitespaceRenderer.renderWhitespace(state);
-            
-            // Initialize interactive charts
-            await WhitespaceRenderer.initializeCharts(state);
-            
-        } catch (error) {
-            console.error('Error rendering whitespace view:', error);
-            const container = document.getElementById('whitespace');
-            if (container) {
-                container.innerHTML = `
-                    <div class="error-state">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <h3>Unable to Load Whitespace Analysis</h3>
-                        <p>There was an error loading the portfolio analytics.</p>
-                        <button onclick="window.location.reload()" class="btn btn-primary">
-                            <i class="fas fa-refresh"></i> Retry
-                        </button>
-                    </div>
-                `;
-            }
         }
     }
     

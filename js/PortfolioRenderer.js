@@ -8,9 +8,6 @@ class PortfolioRenderer {
         // Update dashboard card values
         this.updateDashboardCards(accounts, actionPlans);
 
-        // Calculate insights for hero cards using the new utility
-        const insights = InsightsUtils.calculateInsights(accounts);
-
         // Get all accounts
         const allAccounts = Array.from(accounts.values());
 
@@ -78,9 +75,6 @@ class PortfolioRenderer {
         });
 
         let html = '';
-
-        // Add hero cards at the top of the portfolio
-        html += InsightsUtils.generateHeroCardsHTML(insights);
 
         // Render "Accounts with a recent Risk or Opportunities Identified" section
         if (accountsWithRiskOrOpportunitySignals.length > 0) {
