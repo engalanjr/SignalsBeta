@@ -148,6 +148,30 @@ class FormatUtils {
     }
 
     /**
+     * Normalize polarity text to canonical keys for logic and CSS
+     * @param {string} polarity - The polarity value (can be ANY case)
+     * @returns {string} - Canonical key ('risk', 'opportunities', 'enrichment')
+     */
+    static normalizePolarityKey(polarity) {
+        if (!polarity || typeof polarity !== 'string') {
+            return 'enrichment';
+        }
+        
+        const normalized = polarity.toLowerCase().trim();
+        
+        // Map to canonical keys for consistent logic and CSS
+        const polarityMap = {
+            'risk': 'risk',
+            'risks': 'risk',
+            'opportunity': 'opportunities', 
+            'opportunities': 'opportunities',
+            'enrichment': 'enrichment'
+        };
+        
+        return polarityMap[normalized] || 'enrichment';
+    }
+
+    /**
      * Normalize polarity text to proper Title Case
      * @param {string} polarity - The polarity value (can be ANY case)
      * @returns {string} - Normalized Title Case polarity

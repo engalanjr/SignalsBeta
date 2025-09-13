@@ -17,11 +17,13 @@ class SignalRenderer {
             }
 
             // 2. Signal Polarity - Risk, Opportunities, Enrichment
-            const polarityOrder = { 'Risk': 3, 'Opportunities': 2, 'Enrichment': 1 };
+            const polarityOrder = { 'risk': 3, 'opportunities': 2, 'enrichment': 1 };
             const polarityA = a.signal_polarity || a['Signal Polarity'] || 'Enrichment';
             const polarityB = b.signal_polarity || b['Signal Polarity'] || 'Enrichment';
-            const polarityScoreA = polarityOrder[polarityA] || 0;
-            const polarityScoreB = polarityOrder[polarityB] || 0;
+            const normalizedPolarityA = FormatUtils.normalizePolarityKey(polarityA);
+            const normalizedPolarityB = FormatUtils.normalizePolarityKey(polarityB);
+            const polarityScoreA = polarityOrder[normalizedPolarityA] || 0;
+            const polarityScoreB = polarityOrder[normalizedPolarityB] || 0;
 
             if (polarityScoreA !== polarityScoreB) {
                 return polarityScoreB - polarityScoreA;
@@ -82,7 +84,7 @@ class SignalRenderer {
         
         // Get Signal Polarity for pill display
         const signalPolarity = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
-        const polarityClass = signalPolarity.toLowerCase();
+        const polarityClass = FormatUtils.normalizePolarityKey(signalPolarity);
 
         return `
             <div class="signal-card ${cardClass} ${priorityClass}-priority ${feedbackClass}" data-signal-id="${signal.id}" style="${feedbackStyle}">

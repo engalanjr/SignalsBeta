@@ -15,22 +15,26 @@ class PortfolioRenderer {
         const accountsWithRiskOrOpportunitySignals = allAccounts
             .filter(account => account.signals.some(signal => {
                 const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
-                return signal.priority === 'High' && (polarity === 'Risk' || polarity === 'Opportunities');
+                const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
+                return signal.priority === 'High' && (normalizedPolarity === 'risk' || normalizedPolarity === 'opportunities');
             }))
             .map(account => {
                 // Find the most recent high priority Risk/Opportunities signal for sorting
                 const qualifyingSignals = account.signals.filter(signal => {
                     const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
-                    return signal.priority === 'High' && (polarity === 'Risk' || polarity === 'Opportunities');
+                    const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
+                    return signal.priority === 'High' && (normalizedPolarity === 'risk' || normalizedPolarity === 'opportunities');
                 });
                 
                 // Sort qualifying signals by polarity priority (Risk > Opportunities) then by call_date DESC
                 const sortedQualifyingSignals = qualifyingSignals.sort((a, b) => {
                     const polarityA = a.signal_polarity || a['Signal Polarity'] || '';
                     const polarityB = b.signal_polarity || b['Signal Polarity'] || '';
-                    const polarityOrder = { 'Risk': 2, 'Opportunities': 1 };
-                    const polarityScoreA = polarityOrder[polarityA] || 0;
-                    const polarityScoreB = polarityOrder[polarityB] || 0;
+                    const normalizedPolarityA = FormatUtils.normalizePolarityKey(polarityA);
+                    const normalizedPolarityB = FormatUtils.normalizePolarityKey(polarityB);
+                    const polarityOrder = { 'risk': 2, 'opportunities': 1, 'enrichment': 0 };
+                    const polarityScoreA = polarityOrder[normalizedPolarityA] || 0;
+                    const polarityScoreB = polarityOrder[normalizedPolarityB] || 0;
                     
                     if (polarityScoreA !== polarityScoreB) {
                         return polarityScoreB - polarityScoreA; // Risk before Opportunities
@@ -46,13 +50,13 @@ class PortfolioRenderer {
                     ? new Date(sortedQualifyingSignals[0].call_date || sortedQualifyingSignals[0].created_date).getTime()
                     : 0;
                 const topSignalPolarity = sortedQualifyingSignals.length > 0 
-                    ? (sortedQualifyingSignals[0].signal_polarity || sortedQualifyingSignals[0]['Signal Polarity'] || '')
+                    ? FormatUtils.normalizePolarityKey(sortedQualifyingSignals[0].signal_polarity || sortedQualifyingSignals[0]['Signal Polarity'] || '')
                     : '';
                     
                 return { ...account, mostRecentQualifyingDate, topSignalPolarity };
             })
             .sort((a, b) => {
-                const polarityOrder = { 'Risk': 2, 'Opportunities': 1 };
+                const polarityOrder = { 'risk': 2, 'opportunities': 1, 'enrichment': 0 };
                 const polarityScoreA = polarityOrder[a.topSignalPolarity] || 0;
                 const polarityScoreB = polarityOrder[b.topSignalPolarity] || 0;
                 
@@ -213,7 +217,8 @@ class PortfolioRenderer {
             const signalsWithAction = account.signals.filter(s => s.recommended_action === actionText);
             return signalsWithAction.some(s => {
                 const polarity = s.signal_polarity || s['Signal Polarity'] || '';
-                return polarity === 'Risk';
+                const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
+                return normalizedPolarity === 'risk';
             });
         }).length;
         const opportunityActions = uniqueActions.filter(actionText => {
@@ -221,7 +226,8 @@ class PortfolioRenderer {
             const signalsWithAction = account.signals.filter(s => s.recommended_action === actionText);
             return signalsWithAction.some(s => {
                 const polarity = s.signal_polarity || s['Signal Polarity'] || '';
-                return polarity === 'Opportunities';
+                const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
+                return normalizedPolarity === 'opportunities';
             });
         }).length;
         const totalSignals = account.signals.length;
