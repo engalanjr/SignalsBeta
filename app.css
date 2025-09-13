@@ -5685,3 +5685,395 @@ body {
     transform: scale(1.1);
     box-shadow: 0 2px 8px rgba(0, 125, 186, 0.2);
 }
+
+/* ==================== WHITESPACE ANALYTICS ==================== */
+
+.whitespace-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.whitespace-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-content h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+}
+
+.header-description {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    line-height: 1.5;
+    margin: 0;
+    max-width: 600px;
+}
+
+.whitespace-legend {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+}
+
+.legend-dot.risk {
+    background-color: #e53e3e;
+    border-color: #e53e3e;
+}
+
+.legend-dot.opportunity {
+    background-color: #38a169;
+    border-color: #38a169;
+}
+
+.legend-dot.enrichment {
+    background-color: #718096;
+    border-color: #718096;
+}
+
+.visualization-section {
+    margin-bottom: 3rem;
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.viz-header {
+    margin-bottom: 2rem;
+}
+
+.viz-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+}
+
+.viz-description {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.bubble-chart-container {
+    position: relative;
+    text-align: center;
+}
+
+.bubble-chart-container canvas {
+    border: 1px solid var(--neutral-gray-200);
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.heatmap-container {
+    position: relative;
+    overflow-x: auto;
+}
+
+.heatmap-table {
+    min-width: 800px;
+    border: 1px solid var(--neutral-gray-200);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.heatmap-header {
+    display: grid;
+    grid-template-columns: 200px 120px repeat(auto-fit, minmax(80px, 1fr));
+    background: var(--neutral-gray-100);
+    border-bottom: 2px solid var(--neutral-gray-200);
+}
+
+.heatmap-header > div {
+    padding: 1rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border-right: 1px solid var(--neutral-gray-200);
+    text-align: center;
+}
+
+.account-header {
+    text-align: left !important;
+}
+
+.heatmap-row {
+    display: grid;
+    grid-template-columns: 200px 120px repeat(auto-fit, minmax(80px, 1fr));
+    border-bottom: 1px solid var(--neutral-gray-200);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.heatmap-row:hover {
+    background-color: var(--neutral-gray-50);
+}
+
+.account-cell {
+    padding: 1rem 0.75rem;
+    border-right: 1px solid var(--neutral-gray-200);
+    text-align: left;
+}
+
+.account-name {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.signal-count {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+.renewal-cell {
+    padding: 1rem 0.75rem;
+    border-right: 1px solid var(--neutral-gray-200);
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.signal-cell {
+    padding: 1rem 0.75rem;
+    border-right: 1px solid var(--neutral-gray-200);
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.signal-cell.risk {
+    background-color: #e53e3e;
+}
+
+.signal-cell.opportunities {
+    background-color: #38a169;
+}
+
+.signal-cell.enrichment {
+    background-color: #718096;
+}
+
+.signal-cell:hover {
+    transform: scale(1.05);
+    z-index: 10;
+    position: relative;
+}
+
+.insights-panel {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.insights-panel h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 2rem 0;
+}
+
+.insights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.insight-card {
+    background: var(--neutral-gray-50);
+    border-radius: 8px;
+    padding: 1.5rem;
+    border-left: 4px solid currentColor;
+}
+
+.insight-card.risk {
+    color: #e53e3e;
+    border-left-color: #e53e3e;
+}
+
+.insight-card.opportunity {
+    color: #38a169;
+    border-left-color: #38a169;
+}
+
+.insight-card.portfolio {
+    color: var(--domo-blue);
+    border-left-color: var(--domo-blue);
+}
+
+.insight-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.insight-header i {
+    font-size: 1.2rem;
+}
+
+.insight-header h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    color: inherit;
+}
+
+.insight-metric {
+    margin-bottom: 1rem;
+}
+
+.metric-value {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: inherit;
+    line-height: 1;
+}
+
+.metric-label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+.insight-detail {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+.insight-list {
+    font-size: 0.85rem;
+}
+
+.insight-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--neutral-gray-200);
+    color: var(--text-primary);
+}
+
+.insight-item:last-child {
+    border-bottom: none;
+}
+
+.chart-tooltip {
+    position: absolute;
+    display: none;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 0.75rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    z-index: 1000;
+    pointer-events: none;
+    max-width: 250px;
+}
+
+.tooltip-header {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    padding-bottom: 0.25rem;
+}
+
+.tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.tooltip-row:last-child {
+    margin-bottom: 0;
+}
+
+.polarity-risk {
+    color: #e53e3e;
+}
+
+.polarity-opportunities {
+    color: #38a169;
+}
+
+.polarity-enrichment {
+    color: #718096;
+}
+
+.error-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-secondary);
+}
+
+.error-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--neutral-gray-400);
+}
+
+.error-state h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.error-state p {
+    margin-bottom: 2rem;
+    line-height: 1.5;
+}
+
+/* Responsive adjustments for Whitespace */
+@media (max-width: 1200px) {
+    .whitespace-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+    
+    .insights-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .bubble-chart-container canvas {
+        max-width: 100%;
+        height: auto;
+    }
+}
