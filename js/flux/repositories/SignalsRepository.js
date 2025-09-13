@@ -40,6 +40,7 @@ class SignalsRepository {
             const interactions = this.processResult(interactionsResult, 'interactions', []);
             const comments = this.processResult(commentsResult, 'comments', []);
             const actionPlans = this.processResult(actionPlansResult, 'action plans', []);
+            console.log(`🔍 [DEBUG] Loaded ${actionPlans.length} action plans from loadActionPlans:`, actionPlans.map(p => p.id));
             const userInfo = this.processResult(userInfoResult, 'user info', { userId: 'user-1', userName: 'Current User' });
 
             // Cache all raw signals for pagination
@@ -51,7 +52,9 @@ class SignalsRepository {
             console.log(`📄 Loading first page: ${firstPageSignals.length} of ${this.totalSignals} total signals`);
             
             // NORMALIZE THE DATA INTO RELATIONAL STRUCTURE
+            console.log(`🔍 [DEBUG] About to normalize ${actionPlans.length} action plans`);
             const normalizedData = this.normalizeData(firstPageSignals, interactions, comments, actionPlans);
+            console.log(`🔍 [DEBUG] After normalization: ${normalizedData.actionPlans.size} action plans in store`);
             
             // Store metadata for pagination
             normalizedData.pagination = {
@@ -119,14 +122,14 @@ class SignalsRepository {
             nextPageSignals.forEach(rawSignal => {
                 // Extract account if new
                 const accountId = rawSignal.account_id;
-                if (accountId && !SignalsStore.getAccount(accountId)) {
+                if (accountId && !signalsStore.getAccount(accountId)) {
                     const account = this.extractAccountFromSignal(rawSignal);
                     newAccounts.set(accountId, account);
                 }
                 
                 // Extract action if new
                 const actionId = rawSignal.action_id;
-                if (actionId && !SignalsStore.getRecommendedAction(actionId)) {
+                if (actionId && !signalsStore.getRecommendedAction(actionId)) {
                     const action = this.extractRecommendedActionFromSignal(rawSignal);
                     newActions.set(actionId, action);
                 }
@@ -773,26 +776,30 @@ class SignalsRepository {
             console.log(`✅ Loaded ${data.length} action plans from fallback (error recovery)`);
             
             // Transform the fallback data to match expected format
-            return data.map(plan => ({
-                id: plan.recordId || plan.id,
-                accountId: plan.accountId,
-                actionId: plan.actionId,
-                title: plan.title,
-                status: plan.status || 'pending',
-                createdAt: plan.createdAt || new Date().toISOString(),
-                updatedAt: plan.updatedAt || new Date().toISOString(),
-                planTitle: plan.planTitle || `Action Plan - ${plan.accountId}`,
-                description: plan.description || '',
-                plays: plan.plays || [],
-                priority: plan.priority || 'medium',
-                dueDate: plan.dueDate,
-                actionItems: plan.actionItems || [],
-                assignee: plan.assignee,
-                createdBy: plan.createdBy,
-                createdByUserId: plan.createdByUserId,
-                lastUpdatedBy: plan.lastUpdatedBy,
-                lastUpdatedByUserId: plan.lastUpdatedByUserId
-            }));
+            // Extract content from the wrapper document structure
+            return data.map(planWrapper => {
+                const plan = planWrapper.content || planWrapper; // Handle both wrapped and unwrapped formats
+                return {
+                    id: plan.id,  // Use the actual plan ID from content, not wrapper document ID
+                    accountId: plan.accountId,
+                    actionId: plan.actionId,
+                    title: plan.title,
+                    status: plan.status || 'pending',
+                    createdAt: plan.createdAt || new Date().toISOString(),
+                    updatedAt: plan.updatedAt || new Date().toISOString(),
+                    planTitle: plan.planTitle || `Action Plan - ${plan.accountId}`,
+                    description: plan.description || '',
+                    plays: plan.plays || [],
+                    priority: plan.priority || 'medium',
+                    dueDate: plan.dueDate,
+                    actionItems: plan.actionItems || [],
+                    assignee: plan.assignee,
+                    createdBy: plan.createdBy,
+                    createdByUserId: plan.createdByUserId,
+                    lastUpdatedBy: plan.lastUpdatedBy,
+                    lastUpdatedByUserId: plan.lastUpdatedByUserId
+                };
+            });
         } catch (error) {
             console.error('Failed to load fallback action plans:', error);
             return [];
