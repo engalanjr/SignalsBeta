@@ -219,25 +219,29 @@ class PortfolioRenderer {
     }
 
     static renderAccountCard(account, actionPlans, comments, filterPolarities = null) {
-        // Count AI Recommendations by polarity (not all signals)
+        // Count AI Recommendations by polarity (each account has 0-3 AI Recommendations)
         const uniqueActions = this.getUniqueRecommendedActions(account);
         const riskActions = uniqueActions.filter(actionText => {
-            // Find signals with this action to check polarity
+            // Find signals with this action to determine its polarity
             const signalsWithAction = account.signals.filter(s => s.recommended_action === actionText);
-            return signalsWithAction.some(s => {
-                const polarity = s.signal_polarity || s['Signal Polarity'] || '';
+            // Get the first signal's polarity (all signals with same action should have same polarity)
+            if (signalsWithAction.length > 0) {
+                const polarity = signalsWithAction[0].signal_polarity || signalsWithAction[0]['Signal Polarity'] || '';
                 const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
                 return normalizedPolarity === 'risk';
-            });
+            }
+            return false;
         }).length;
         const opportunityActions = uniqueActions.filter(actionText => {
-            // Find signals with this action to check polarity
+            // Find signals with this action to determine its polarity
             const signalsWithAction = account.signals.filter(s => s.recommended_action === actionText);
-            return signalsWithAction.some(s => {
-                const polarity = s.signal_polarity || s['Signal Polarity'] || '';
+            // Get the first signal's polarity (all signals with same action should have same polarity)
+            if (signalsWithAction.length > 0) {
+                const polarity = signalsWithAction[0].signal_polarity || signalsWithAction[0]['Signal Polarity'] || '';
                 const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
                 return normalizedPolarity === 'opportunities';
-            });
+            }
+            return false;
         }).length;
         const totalSignals = account.signals.length;
 
