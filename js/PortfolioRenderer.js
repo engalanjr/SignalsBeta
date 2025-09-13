@@ -1047,15 +1047,25 @@ class PortfolioRenderer {
                 <div class="call-modal-signals">
                     <div class="call-modal-signals-title"><strong>Related Signals:</strong></div>
                     <div class="call-modal-signals-list">
-                        ${callData.relatedSignals.map(signal => `
+                        ${callData.relatedSignals.map(signal => {
+                            // Get signal polarity and normalize it
+                            const polarity = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
+                            const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
+                            const polarityDisplay = normalizedPolarity === 'opportunities' ? 'Opportunity' : 
+                                                   normalizedPolarity === 'risk' ? 'Risk' : 'Enrichment';
+                            const polarityClass = normalizedPolarity === 'opportunities' ? 'polarity-opportunities' : 
+                                                 normalizedPolarity === 'risk' ? 'polarity-risk' : 'polarity-enrichment';
+                            
+                            return `
                             <div class="call-modal-signal">
                                 <div class="call-modal-signal-header">
-                                    <span class="call-modal-signal-priority ${signal.priority.toLowerCase()}">${signal.priority}</span>
+                                    <span class="call-modal-signal-priority ${polarityClass}">${polarityDisplay}</span>
                                     <span class="call-modal-signal-name">${SecurityUtils.sanitizeHTML(signal.name)}</span>
                                 </div>
                                 ${signal.summary ? `<div class="call-modal-signal-summary">${SecurityUtils.sanitizeHTML(signal.summary)}</div>` : ''}
                             </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             `;
