@@ -716,6 +716,9 @@ class PortfolioRenderer {
         
         // If we have action items, display them in the new list format
         if (actionDataMap.size > 0) {
+            // Get account-level polarity class for consistent color coding
+            const accountPolarityClass = this.getAccountPolarityClass(account);
+            
             return Array.from(actionDataMap.entries()).slice(0, 5).map(([action, data]) => {
                 // Check if already in plan and calculate time since added
                 const planInfo = this.getActionPlanInfo(data.actionId, window.app);
@@ -728,8 +731,8 @@ class PortfolioRenderer {
                 return `
                     <div class="recommendation-list-item">
                         <div class="polarity-col">
-                            <div class="polarity-badge polarity-${data.polarityClass}">
-                                ${data.signalPolarity.toUpperCase()}
+                            <div class="polarity-badge polarity-${accountPolarityClass}">
+                                ${accountPolarityClass.toUpperCase()}
                             </div>
                         </div>
                         <div class="recommendation-content">
@@ -786,6 +789,40 @@ class PortfolioRenderer {
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Get account-level polarity color class based on all recommendations
+     * @param {Object} account - The account object containing signals
+     * @returns {string} - Color class ('risk', 'opportunities', or 'enrichment')
+     */
+    static getAccountPolarityClass(account) {
+        if (!account || !account.signals) {
+            return 'enrichment';
+        }
+        
+        const polarities = new Set();
+        
+        // Extract polarities from all signals that have recommended actions and action_ids
+        account.signals.forEach(signal => {
+            if (signal.recommended_action && 
+                signal.recommended_action.trim() && 
+                signal.recommended_action !== 'No actions specified' &&
+                signal.action_id &&
+                signal.action_id.trim()) {
+                const polarity = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
+                polarities.add(polarity.toLowerCase());
+            }
+        });
+        
+        // Priority logic: Risk > Opportunities > Enrichment
+        if (polarities.has('risk')) {
+            return 'risk';
+        } else if (polarities.has('opportunities') && !polarities.has('risk')) {
+            return 'opportunities';
+        } else {
+            return 'enrichment';
+        }
     }
 
     static getUniqueRecommendedActions(account) {
