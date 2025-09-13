@@ -219,26 +219,26 @@ class SignalsStore extends Store {
         
         const normalizedData = payload.data;
         
-        // Store normalized entities
+        // Store normalized entities - convert Objects back to Maps
         this.normalizedData = {
-            accounts: normalizedData.accounts || new Map(),
-            signals: normalizedData.signals || new Map(),
-            recommendedActions: normalizedData.recommendedActions || new Map(),
-            interactions: normalizedData.interactions || new Map(),
-            comments: normalizedData.comments || new Map(),
-            actionPlans: normalizedData.actionPlans || new Map()
+            accounts: normalizedData.accounts ? new Map(Object.entries(normalizedData.accounts)) : new Map(),
+            signals: normalizedData.signals ? new Map(Object.entries(normalizedData.signals)) : new Map(),
+            recommendedActions: normalizedData.recommendedActions ? new Map(Object.entries(normalizedData.recommendedActions)) : new Map(),
+            interactions: normalizedData.interactions ? new Map(Object.entries(normalizedData.interactions)) : new Map(),
+            comments: normalizedData.comments ? new Map(Object.entries(normalizedData.comments)) : new Map(),
+            actionPlans: normalizedData.actionPlans ? new Map(Object.entries(normalizedData.actionPlans)) : new Map()
         };
         
-        // Store relationship indexes
+        // Store relationship indexes - convert Objects with Arrays back to Maps with Sets
         this.indexes = {
-            signalsByAccount: normalizedData.signalsByAccount || new Map(),
-            signalsByAction: normalizedData.signalsByAction || new Map(),
-            actionsByAccount: normalizedData.actionsByAccount || new Map(),
-            interactionsBySignal: normalizedData.interactionsBySignal || new Map(),
-            commentsBySignal: normalizedData.commentsBySignal || new Map(),
-            commentsByAccount: normalizedData.commentsByAccount || new Map(),
-            plansByAccount: normalizedData.plansByAccount || new Map(),
-            plansByAction: normalizedData.plansByAction || new Map()
+            signalsByAccount: normalizedData.signalsByAccount ? new Map(Object.entries(normalizedData.signalsByAccount).map(([k, v]) => [k, new Set(v)])) : new Map(),
+            signalsByAction: normalizedData.signalsByAction ? new Map(Object.entries(normalizedData.signalsByAction).map(([k, v]) => [k, new Set(v)])) : new Map(),
+            actionsByAccount: normalizedData.actionsByAccount ? new Map(Object.entries(normalizedData.actionsByAccount).map(([k, v]) => [k, new Set(v)])) : new Map(),
+            interactionsBySignal: normalizedData.interactionsBySignal ? new Map(Object.entries(normalizedData.interactionsBySignal).map(([k, v]) => [k, new Set(v)])) : new Map(),
+            commentsBySignal: normalizedData.commentsBySignal ? new Map(Object.entries(normalizedData.commentsBySignal).map(([k, v]) => [k, new Set(v)])) : new Map(),
+            commentsByAccount: normalizedData.commentsByAccount ? new Map(Object.entries(normalizedData.commentsByAccount).map(([k, v]) => [k, new Set(v)])) : new Map(),
+            plansByAccount: normalizedData.plansByAccount ? new Map(Object.entries(normalizedData.plansByAccount).map(([k, v]) => [k, new Set(v)])) : new Map(),
+            plansByAction: normalizedData.plansByAction ? new Map(Object.entries(normalizedData.plansByAction).map(([k, v]) => [k, new Set(v)])) : new Map()
         };
         
         // Store user info

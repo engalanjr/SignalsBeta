@@ -46,8 +46,8 @@ class WhitespaceRenderer {
         const accountTotals = new Map();
         
         // Process signals to build the matrix
-        if (app.data && Array.isArray(app.data)) {
-            app.data.forEach(signal => {
+        if (app.signals && Array.isArray(app.signals)) {
+            app.signals.forEach(signal => {
                 const accountId = signal.account_id;
                 const accountName = signal.account_name || `Account ${accountId}`;
                 const signalCode = signal.signal || signal.signal_code || 'UNKNOWN';
