@@ -776,14 +776,10 @@ class PortfolioRenderer {
                             ${data.rationale ? `
                                 <div class="recommendation-rationale">
                                     <div class="polarity-bubbles">
-                                        <div class="polarity-bubble polarity-bubble-risk">${polarityCounts.risk}</div>
-                                        <div class="polarity-bubble polarity-bubble-opportunities">${polarityCounts.opportunities}</div>
-                                        <div class="polarity-bubble polarity-bubble-enrichment">${polarityCounts.enrichment}</div>
+                                        <div class="polarity-bubble polarity-bubble-risk" title="${polarityCounts.risk} Risk signals">${polarityCounts.risk}</div>
+                                        <div class="polarity-bubble polarity-bubble-opportunities" title="${polarityCounts.opportunities} Opportunities signals">${polarityCounts.opportunities}</div>
+                                        <div class="polarity-bubble polarity-bubble-enrichment" title="${polarityCounts.enrichment} Enrichment signals">${polarityCounts.enrichment}</div>
                                     </div>
-                                    <div class="polarity-badge polarity-${accountPolarityClass}">
-                                        ${accountPolarityClass === 'opportunities' ? 'Opportunities' : accountPolarityClass === 'risk' ? 'Risk' : 'Enrichment'}
-                                    </div>
-                                    <br>
                                     ${SecurityUtils.sanitizeHTML(data.rationale)}
                                 </div>
                             ` : ''}
