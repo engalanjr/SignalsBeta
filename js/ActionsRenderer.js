@@ -2012,36 +2012,33 @@ class ActionsRenderer {
             // 🔧 FIX: Use canonical planId from modal context
             const planId = window.currentActionPlanData.planId;
             console.log(`🔧 [FIX] Auto-saving with canonical planId: ${planId}`);
-            const result = await ActionPlansService.updateActionPlan(planId, updateData, window.app);
+            const result = await ActionPlansService.updateActionPlan(planId, updateData);
             
+            // OPTIMISTIC UPDATES: Always update UI immediately, regardless of server response
+            console.log(`✅ Auto-save initiated for ${propertyName}:`, result);
+            
+            // Update the current modal data immediately with the new value
+            if (window.currentActionPlanData && window.currentActionPlanData.planData) {
+                // Apply the update to the modal data
+                Object.assign(window.currentActionPlanData.planData, updateData);
+                console.log(`🔄 Updated modal data for ${propertyName}`);
+            }
+            
+            // 🎉 IMMEDIATE UI FEEDBACK: Always refresh the Action Plans table 
+            if (window.app && typeof window.app.renderCurrentTab === 'function') {
+                // Debounce UI refresh to avoid thrashing during rapid changes
+                if (this.uiRefreshTimeout) clearTimeout(this.uiRefreshTimeout);
+                this.uiRefreshTimeout = setTimeout(() => {
+                    window.app.renderCurrentTab();
+                    console.log(`🎉 [OPTIMISTIC] Refreshed UI to show ${propertyName} change`);
+                }, 100);
+            }
+            
+            // Result handling (success/warning messages are handled by the service)
             if (result && result.success) {
-                console.log(`✅ Successfully auto-saved ${propertyName}:`, result);
-                
-                // Update the current modal data immediately
-                if (window.currentActionPlanData && result.plan) {
-                    window.currentActionPlanData.planData = result.plan;
-                }
-                
-                // 🎉 IMMEDIATE UI FEEDBACK: Re-render the Action Plans table to show changes
-                if (window.app && typeof window.app.renderCurrentTab === 'function') {
-                    // Debounce UI refresh to avoid thrashing during rapid changes
-                    if (this.uiRefreshTimeout) clearTimeout(this.uiRefreshTimeout);
-                    this.uiRefreshTimeout = setTimeout(() => {
-                        window.app.renderCurrentTab();
-                        console.log(`🎉 [AUTO-SAVE] Refreshed UI to show ${propertyName} change`);
-                    }, 100);
-                }
-                
-                // Show success feedback to user
-                if (typeof NotificationService !== 'undefined') {
-                    NotificationService.showSuccess(`${propertyName} updated successfully`);
-                }
+                console.log(`✅ Auto-save completed for ${propertyName}`);
             } else {
-                console.error(`Failed to auto-save ${propertyName}:`, result ? result.error : 'Unknown error');
-                // Show error notification to the user about the save failure
-                if (typeof NotificationService !== 'undefined') {
-                    NotificationService.showError(`Failed to save ${propertyName} change`);
-                }
+                console.warn(`⚠️ Auto-save had issues for ${propertyName}, but optimistic update applied`);
             }
         } catch (error) {
             console.error(`Error auto-saving ${propertyName}:`, error);

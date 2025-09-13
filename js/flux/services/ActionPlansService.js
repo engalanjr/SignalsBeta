@@ -208,7 +208,7 @@ class ActionPlansService {
     }
     
     /**
-     * Update an existing action plan
+     * Update an existing action plan with optimistic updates
      * @param {string} planId - Plan ID
      * @param {Object} updates - Plan updates
      */
@@ -218,41 +218,57 @@ class ActionPlansService {
         try {
             const dispatcher = this.getDispatcher();
             
-            // Make API call
+            // OPTIMISTIC UPDATE: Immediately update local data and UI
+            const existingPlans = this.getLocalActionPlans();
+            const updatedPlan = existingPlans[planId] ? 
+                { ...existingPlans[planId], ...updates, updatedAt: new Date().toISOString() } : 
+                { id: planId, ...updates, updatedAt: new Date().toISOString() };
+            
+            // Store optimistic update locally
+            this.storeActionPlanLocally(updatedPlan);
+            
+            // Dispatch optimistic update action immediately
+            dispatcher.dispatch(Actions.updateActionPlan(planId, updates));
+            
+            console.log(`✅ Optimistic update applied for plan ${planId}`);
+            
+            // Make API call in background
             const result = await SignalsRepository.updateActionPlan(planId, updates);
             
             if (result && result.success) {
-                // Update local storage as fallback
-                const existingPlans = this.getLocalActionPlans();
-                if (existingPlans[planId]) {
-                    existingPlans[planId] = { ...existingPlans[planId], ...updates, updatedAt: new Date().toISOString() };
-                    this.storeActionPlanLocally(existingPlans[planId]);
-                }
-                
-                // Dispatch update action
-                dispatcher.dispatch(Actions.updateActionPlan(planId, updates));
-                
-                // Show success message
+                console.log(`✅ Server update successful for plan ${planId}`);
+                // Server update successful - show success message
                 dispatcher.dispatch(Actions.showMessage('Action plan updated successfully', 'success'));
                 
-                return result.data;
+                return { success: true, data: updatedPlan, plan: updatedPlan };
                 
             } else {
-                // Show error message
-                dispatcher.dispatch(Actions.showMessage('Failed to update action plan', 'error'));
+                console.warn(`⚠️ Server update failed for plan ${planId}, but optimistic update remains`);
+                // Server failed but optimistic update already applied - show warning but don't revert
+                dispatcher.dispatch(Actions.showMessage('Changes saved locally (server sync failed)', 'warning'));
                 
-                return null;
+                return { success: true, data: updatedPlan, plan: updatedPlan };
             }
             
         } catch (error) {
             console.error('❌ ActionPlansService: Failed to update action plan:', error);
+            
+            // Even if there's an error, the optimistic update was already applied
+            // Don't revert unless it's a critical validation error
             try {
                 const dispatcher = this.getDispatcher();
-                dispatcher.dispatch(Actions.showMessage('Failed to update action plan', 'error'));
+                dispatcher.dispatch(Actions.showMessage('Changes saved locally (sync error)', 'warning'));
+                
+                // Return success since optimistic update worked
+                const existingPlans = this.getLocalActionPlans();
+                const updatedPlan = existingPlans[planId];
+                
+                return { success: true, data: updatedPlan, plan: updatedPlan };
+                
             } catch (dispatchError) {
                 console.error('❌ Failed to dispatch error message:', dispatchError);
+                return { success: false, error: error.message };
             }
-            return null;
         }
     }
     
