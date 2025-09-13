@@ -780,6 +780,7 @@ class PortfolioRenderer {
                                         <div class="polarity-bubble polarity-bubble-opportunities" title="${polarityCounts.opportunities} Opportunities signals">${polarityCounts.opportunities}</div>
                                         <div class="polarity-bubble polarity-bubble-enrichment" title="${polarityCounts.enrichment} Enrichment signals">${polarityCounts.enrichment}</div>
                                     </div>
+                                    <br>
                                     ${SecurityUtils.sanitizeHTML(data.rationale)}
                                 </div>
                             ` : ''}
