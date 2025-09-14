@@ -1,0 +1,46 @@
+[DEBUG] Auto-saving priority: High
+ActionsRenderer.js:2030 🔍 [DEBUG] Current action plan data: {taskId: 'plan-1757810570464', actionId: '36bdba5b-30db-4654-a123-43c9c0cf3348', planId: 'plan-1757810570464', accountId: '0015000000Yrl38AAB', planDataKeys: Array(18), …}
+ActionsRenderer.js:2049 🔍 [DEBUG] Updating property priority with value: High
+ActionsRenderer.js:2050 🔍 [DEBUG] Current action item: {title: 'Schedule Domo Architecture Assessment to address sandbox-to-production migration issues', actionId: '36bdba5b-30db-4654-a123-43c9c0cf3348', status: 'pending', priority: 'Medium', dueDate: '2025-09-21', …}
+ActionsRenderer.js:2051 🔍 [DEBUG] Current plan data structure: {id: 'plan-1757810570464', actionId: '36bdba5b-30db-4654-a123-43c9c0cf3348', accountId: '0015000000Yrl38AAB', title: 'Schedule Domo Architecture Assessment to address sandbox-to-production migration issues', description: 'do this', …}
+ActionsRenderer.js:2094 🔍 [DEBUG] Prepared update data: {priority: 'High'}priority: "High"[[Prototype]]: Object
+ActionsRenderer.js:2097 🔍 [DEBUG] Calling updateActionPlan with: {planId: 'plan-1757810570464', updateData: {…}, planDataType: 'string', planIdExists: true}planDataType: "string"planId: "plan-1757810570464"planIdExists: trueupdateData: priority: "High"[[Prototype]]: Object[[Prototype]]: Object
+ActionsRenderer.js:2106 🔧 [FIX] Auto-saving with canonical planId: plan-1757810570464
+ActionPlansService.js:216 🎯 ActionPlansService: Updating action plan plan-1757810570464
+ActionPlansService.js:34 ✅ Action plan stored locally: plan-1757810570464
+Dispatcher.js:62 🎯 Dispatching action: ACTION_PLAN_UPDATED {planId: 'plan-1757810570464', updates: {…}}planId: "plan-1757810570464"updates: priority: "High"[[Prototype]]: Object[[Prototype]]: Object
+ActionPlansService.js:233 ✅ Optimistic update applied for plan plan-1757810570464
+SignalsRepository.js:897 📝 Updating action plan: plan-1757810570464 {priority: 'High'}priority: "High"[[Prototype]]: Object
+domo.ts:400  PUT https://f1d970d9-7013-4a0f-a225-8c0e3a36f1dd.domoapps.prod2.domo.com/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/plan-1757810570464 404 (Not Found)
+(anonymous) @ domo.ts:400
+i @ domo.ts:340
+e.put @ domo.ts:52
+updateActionPlan @ SignalsRepository.js:934
+updateActionPlan @ ActionPlansService.js:236
+autoSaveTaskProperty @ ActionsRenderer.js:2107
+(anonymous) @ ActionsRenderer.js:2147
+setTimeout
+debouncedAutoSave @ ActionsRenderer.js:2146
+onchange @ ?analyzer=%5B%7B%22column%22%3A%22CSM+Manager%22%2C%22values%22%3A%5B%22jacob+peterson%22%5D%2C%22dataSourceId%22%3A%22f49c6a4d-4894-4124-9988-5e40414cf09f%22%2C%22sourceCardURN%22%3A%22%22%2C%22affectedCardUrns%22%3A%5B%5D%2C%22operand%22%3A%22IN%22%2C%22dataType%22%3A%22string%22%2C%22key%22%3A%22CSM+Manager%3A%22%2C%22label%22%3A%22CSM+Manager%22%7D%5D&userId=621623466&userEmail=ed.engalan%40domo.com&userName=Ed+Engalan&customer=domo&locale=en-US&environment=undefined&platform=desktop&pageId=1535068836:1
+SignalsRepository.js:943 ⚠️ Failed to update in Domo API using plan-1757810570464: Error
+    at p.onload (domo.ts:386:16)
+updateActionPlan @ SignalsRepository.js:943
+await in updateActionPlan
+updateActionPlan @ ActionPlansService.js:236
+autoSaveTaskProperty @ ActionsRenderer.js:2107
+(anonymous) @ ActionsRenderer.js:2147
+setTimeout
+debouncedAutoSave @ ActionsRenderer.js:2146
+onchange @ ?analyzer=%5B%7B%22column%22%3A%22CSM+Manager%22%2C%22values%22%3A%5B%22jacob+peterson%22%5D%2C%22dataSourceId%22%3A%22f49c6a4d-4894-4124-9988-5e40414cf09f%22%2C%22sourceCardURN%22%3A%22%22%2C%22affectedCardUrns%22%3A%5B%5D%2C%22operand%22%3A%22IN%22%2C%22dataType%22%3A%22string%22%2C%22key%22%3A%22CSM+Manager%3A%22%2C%22label%22%3A%22CSM+Manager%22%7D%5D&userId=621623466&userEmail=ed.engalan%40domo.com&userName=Ed+Engalan&customer=domo&locale=en-US&environment=undefined&platform=desktop&pageId=1535068836:1
+ActionPlansService.js:246 ⚠️ Server update failed for plan plan-1757810570464, but optimistic update remains
+updateActionPlan @ ActionPlansService.js:246
+await in updateActionPlan
+autoSaveTaskProperty @ ActionsRenderer.js:2107
+(anonymous) @ ActionsRenderer.js:2147
+setTimeout
+debouncedAutoSave @ ActionsRenderer.js:2146
+onchange @ ?analyzer=%5B%7B%22column%22%3A%22CSM+Manager%22%2C%22values%22%3A%5B%22jacob+peterson%22%5D%2C%22dataSourceId%22%3A%22f49c6a4d-4894-4124-9988-5e40414cf09f%22%2C%22sourceCardURN%22%3A%22%22%2C%22affectedCardUrns%22%3A%5B%5D%2C%22operand%22%3A%22IN%22%2C%22dataType%22%3A%22string%22%2C%22key%22%3A%22CSM+Manager%3A%22%2C%22label%22%3A%22CSM+Manager%22%7D%5D&userId=621623466&userEmail=ed.engalan%40domo.com&userName=Ed+Engalan&customer=domo&locale=en-US&environment=undefined&platform=desktop&pageId=1535068836:1
+Dispatcher.js:62 🎯 Dispatching action: MESSAGE_SHOWN {message: 'Changes saved locally (server sync failed)', type: 'warning'}message: "Changes saved locally (server sync failed)"type: "warning"[[Prototype]]: Object
+ActionsRenderer.js:2110 ✅ Auto-save initiated for priority: {success: true, data: {…}, plan: {…}}data: accountId: "0015000000Yrl38AAB"actionId: "36bdba5b-30db-4654-a123-43c9c0cf3348"assignee: 621623466createdAt: "2025-09-14T00:42:50.464Z"createdBy: "Ed Engalan"createdByUserId: 621623466createdDate: "2025-09-14T00:42:50.464Z"description: "do this"domoDocumentId: "168e2bba-e780-4288-b96d-bcb6fc817b02"dueDate: "2025-09-21"id: "plan-1757810570464"planTitle: "Action Plan - 9/13/2025"plays: ['Domo Architecture Assessments']priority: "High"recordId: "168e2bba-e780-4288-b96d-bcb6fc817b02"signalPolarity: "Opportunities"status: "pending"title: "Schedule Domo Architecture Assessment to address sandbox-to-production migration issues"updatedAt: "2025-09-14T00:52:32.330Z"[[Prototype]]: Objectplan: accountId: "0015000000Yrl38AAB"actionId: "36bdba5b-30db-4654-a123-43c9c0cf3348"assignee: 621623466createdAt: "2025-09-14T00:42:50.464Z"createdBy: "Ed Engalan"createdByUserId: 621623466createdDate: "2025-09-14T00:42:50.464Z"description: "do this"domoDocumentId: "168e2bba-e780-4288-b96d-bcb6fc817b02"dueDate: "2025-09-21"id: "plan-1757810570464"planTitle: "Action Plan - 9/13/2025"plays: ['Domo Architecture Assessments']priority: "High"recordId: "168e2bba-e780-4288-b96d-bcb6fc817b02"signalPolarity: "Opportunities"status: "pending"title: "Schedule Domo Architecture Assessment to address sandbox-to-production migration issues"updatedAt: "2025-09-14T00:52:32.330Z"[[Prototype]]: Objectsuccess: true[[Prototype]]: Object
+ActionsRenderer.js:2116 🔄 Updated modal data for priority
+ActionsRenderer.js:2131 ✅ Auto-save completed for priority

@@ -896,51 +896,74 @@ class SignalsRepository {
         try {
             console.log('📝 Updating action plan:', planId, updates);
             
-            // 🔧 FIX: Look up the plan to get Domo document ID for proper API updates
-            let documentId = planId; // Default to planId
-            let planData = null;
-            
-            // Try to find the plan data with domoDocumentId
-            try {
-                // First check the SignalsStore for the plan
-                if (window.signalsStore) {
-                    const state = window.signalsStore.getState();
-                    if (state.actionPlans && state.actionPlans.has(planId)) {
-                        planData = state.actionPlans.get(planId);
-                        if (planData.domoDocumentId) {
-                            documentId = planData.domoDocumentId;
-                            console.log(`🔧 Found Domo document ID: ${documentId} for plan: ${planId}`);
-                        }
-                    }
+            // 🔧 FIX: Use fresh lookup approach (proven working pattern)
+            // Step 1: Get existing plan data to merge with updates
+            let existingPlan = null;
+            if (window.signalsStore) {
+                const state = window.signalsStore.getState();
+                if (state.actionPlans && state.actionPlans.has(planId)) {
+                    existingPlan = state.actionPlans.get(planId);
                 }
-                
-                // Fallback: Check local storage
-                if (!planData || !planData.domoDocumentId) {
-                    const storageKey = 'signalai_action_plans';
-                    const existingPlans = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                    const storedPlan = existingPlans.find(p => p.id === planId);
-                    if (storedPlan && storedPlan.domoDocumentId) {
-                        documentId = storedPlan.domoDocumentId;
-                        console.log(`🔧 Found Domo document ID in storage: ${documentId} for plan: ${planId}`);
-                    }
-                }
-            } catch (lookupError) {
-                console.warn('⚠️ Error looking up plan data:', lookupError);
-                // Continue with original planId
             }
             
-            // Try to update in Domo API using the correct document ID
-            try {
-                const response = await domo.put(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${documentId}`, {
-                    content: updates
-                });
-                
-                if (response) {
-                    console.log(`✅ Action plan updated in Domo API using document ID: ${documentId}`);
-                    return { success: true, data: response };
+            if (!existingPlan) {
+                throw new Error(`Plan ${planId} not found in store`);
+            }
+            
+            // Step 2: Create merged plan with updates
+            const mergedPlan = {
+                ...existingPlan,
+                ...updates,
+                updatedAt: new Date().toISOString()
+            };
+            
+            // Step 3: Fresh lookup to find correct Domo document ID
+            let documentId = null;
+            let retryCount = 0;
+            const maxRetries = 2;
+            
+            while (retryCount < maxRetries) {
+                try {
+                    console.log(`🔍 Fresh lookup attempt ${retryCount + 1} for plan: ${planId}`);
+                    
+                    // Get all documents from Domo API
+                    const response = await domo.get('/domo/datastores/v1/collections/SignalAI.ActionPlans/documents');
+                    const documents = response || [];
+                    
+                    // Find the document containing our action plan
+                    const docToUpdate = documents.find(doc => doc.content && doc.content.id === planId);
+                    
+                    if (!docToUpdate) {
+                        throw new Error(`Action plan document not found in AppDB for plan: ${planId}`);
+                    }
+                    
+                    documentId = docToUpdate.id;
+                    console.log(`🔧 Found Domo document ID: ${documentId} for plan: ${planId}`);
+                    
+                    // Step 4: Update with correct document ID and full plan
+                    const updateResponse = await domo.put(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${documentId}`, {
+                        content: mergedPlan
+                    });
+                    
+                    if (updateResponse) {
+                        console.log(`✅ Action plan updated in Domo API using document ID: ${documentId}`);
+                        return { success: true, data: updateResponse };
+                    }
+                    
+                    break; // Success, exit retry loop
+                    
+                } catch (apiError) {
+                    console.warn(`⚠️ Attempt ${retryCount + 1} failed:`, apiError);
+                    retryCount++;
+                    
+                    if (retryCount >= maxRetries) {
+                        console.error(`❌ All ${maxRetries} attempts failed for plan: ${planId}`);
+                        throw apiError;
+                    }
+                    
+                    // Wait before retry
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
-            } catch (apiError) {
-                console.warn(`⚠️ Failed to update in Domo API using ${documentId}:`, apiError);
             }
             
             // Fallback: Update in local storage
@@ -970,13 +993,45 @@ class SignalsRepository {
         try {
             console.log('🗑️ Deleting action plan:', planId);
             
-            // Try to delete from Domo API
-            try {
-                await domo.delete(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${planId}`);
-                console.log('✅ Action plan deleted from Domo API');
-                return { success: true };
-            } catch (apiError) {
-                console.warn('⚠️ Failed to delete from Domo API, using local storage:', apiError);
+            // 🔧 FIX: Use fresh lookup approach to find correct Domo document ID
+            let retryCount = 0;
+            const maxRetries = 2;
+            
+            while (retryCount < maxRetries) {
+                try {
+                    console.log(`🔍 Fresh lookup attempt ${retryCount + 1} for deletion of plan: ${planId}`);
+                    
+                    // Get all documents from Domo API
+                    const response = await domo.get('/domo/datastores/v1/collections/SignalAI.ActionPlans/documents');
+                    const documents = response || [];
+                    
+                    // Find the document containing our action plan
+                    const docToDelete = documents.find(doc => doc.content && doc.content.id === planId);
+                    
+                    if (!docToDelete) {
+                        throw new Error(`Action plan document not found in AppDB for plan: ${planId}`);
+                    }
+                    
+                    const documentId = docToDelete.id;
+                    console.log(`🔧 Found Domo document ID for deletion: ${documentId} for plan: ${planId}`);
+                    
+                    // Delete using correct document ID
+                    await domo.delete(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${documentId}`);
+                    console.log(`✅ Action plan deleted from Domo API using document ID: ${documentId}`);
+                    return { success: true };
+                    
+                } catch (apiError) {
+                    console.warn(`⚠️ Delete attempt ${retryCount + 1} failed:`, apiError);
+                    retryCount++;
+                    
+                    if (retryCount >= maxRetries) {
+                        console.error(`❌ All ${maxRetries} delete attempts failed for plan: ${planId}`);
+                        break; // Fall through to local storage fallback
+                    }
+                    
+                    // Wait before retry
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
             }
             
             // Fallback: Delete from local storage
