@@ -1110,6 +1110,124 @@ class SignalsRepository {
         }
     }
     
+    // ========== PLAY-LEVEL CRUD OPERATIONS ==========
+    
+    /**
+     * Update a specific property of a play within an action plan
+     */
+    static async updatePlayProperty(planId, playId, property, value) {
+        try {
+            console.log(`🎯 Updating play ${playId} property ${property}:`, value);
+            
+            // Get the current action plan
+            let existingPlan = null;
+            if (window.signalsStore) {
+                const state = window.signalsStore.getState();
+                if (state.actionPlans && state.actionPlans.has(planId)) {
+                    existingPlan = state.actionPlans.get(planId);
+                }
+            }
+            
+            if (!existingPlan) {
+                throw new Error(`Plan ${planId} not found in store`);
+            }
+            
+            // Find and update the specific play
+            const updatedPlays = existingPlan.plays.map(play => {
+                if (play.id === playId) {
+                    return {
+                        ...play,
+                        [property]: value,
+                        updatedAt: new Date().toISOString()
+                    };
+                }
+                return play;
+            });
+            
+            // Update the entire action plan with the modified plays
+            const updates = {
+                plays: updatedPlays,
+                updatedAt: new Date().toISOString()
+            };
+            
+            return await this.updateActionPlan(planId, updates);
+            
+        } catch (error) {
+            console.error('❌ Failed to update play property:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    /**
+     * Update the status of a specific play
+     */
+    static async updatePlayStatus(planId, playId, status) {
+        return await this.updatePlayProperty(planId, playId, 'status', status);
+    }
+    
+    /**
+     * Update the priority of a specific play
+     */
+    static async updatePlayPriority(planId, playId, priority) {
+        return await this.updatePlayProperty(planId, playId, 'priority', priority);
+    }
+    
+    /**
+     * Update the due date of a specific play
+     */
+    static async updatePlayDueDate(planId, playId, dueDate) {
+        return await this.updatePlayProperty(planId, playId, 'dueDate', dueDate);
+    }
+    
+    /**
+     * Get enhanced play analytics for an action plan
+     */
+    static getPlayAnalytics(planId) {
+        try {
+            let existingPlan = null;
+            if (window.signalsStore) {
+                const state = window.signalsStore.getState();
+                if (state.actionPlans && state.actionPlans.has(planId)) {
+                    existingPlan = state.actionPlans.get(planId);
+                }
+            }
+            
+            if (!existingPlan || !existingPlan.plays) {
+                return { total: 0, completed: 0, inProgress: 0, pending: 0, cancelled: 0, onHold: 0 };
+            }
+            
+            const analytics = existingPlan.plays.reduce((acc, play) => {
+                acc.total++;
+                switch (play.status) {
+                    case 'complete':
+                        acc.completed++;
+                        break;
+                    case 'in-progress':
+                        acc.inProgress++;
+                        break;
+                    case 'pending':
+                        acc.pending++;
+                        break;
+                    case 'cancelled':
+                        acc.cancelled++;
+                        break;
+                    case 'on-hold':
+                        acc.onHold++;
+                        break;
+                }
+                return acc;
+            }, { total: 0, completed: 0, inProgress: 0, pending: 0, cancelled: 0, onHold: 0 });
+            
+            analytics.completionPercentage = analytics.total > 0 ? Math.round((analytics.completed / analytics.total) * 100) : 0;
+            
+            return analytics;
+            
+        } catch (error) {
+            console.error('❌ Failed to get play analytics:', error);
+            return { total: 0, completed: 0, inProgress: 0, pending: 0, cancelled: 0, onHold: 0, completionPercentage: 0 };
+        }
+    }
+    
     /**
      * Save interaction (like/not accurate feedback)
      */
