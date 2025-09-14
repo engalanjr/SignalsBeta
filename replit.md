@@ -41,8 +41,17 @@ The application is a frontend-only web application utilizing vanilla HTML5, CSS3
 - **External Data Sources:** Utilizes CSV datasets (e.g., "View of SignalsAI _ CORE _ WIP _ PDP_1757418159244.csv") for comprehensive signal and action plan data.
 - **action-plans-fallback.json:** Used as a fallback data source for action plans when Domo endpoints fail.
 
-## Recent Changes (v8.3)
-- **Performance Optimizations for Production Scale (10,000+ signals):**
+## Recent Changes (v8.4)
+- **CRITICAL PRODUCTION BUG FIX - Action Plan Modal State Management:**
+  - **Issue:** Action plan modals failed to open in production despite displaying correctly in list view
+  - **Root Cause:** State object reference mismatch between rendering and modal opening
+    - Tab rendering used `signalsStore.getState()` with cached action plans
+    - Modal opening used `window.app` (different object) causing "No cached action plans" errors
+  - **Solution:** Fixed `openTaskDetailsDrawer()` to use `window.signalsStore.getState()` for consistent state access
+  - **Result:** Action plan modals now open successfully using same cached data as list rendering
+  - **Files Modified:** `js/ActionsRenderer.js` (line 1593-1594)
+
+- **Performance Optimizations for Production Scale (10,000+ signals) (v8.3):**
   - **Virtual Scrolling:** Implemented VirtualScrollManager for Signal Feed to render only ~50 visible rows instead of all signals
   - **Pagination:** Added lazy loading with 200-signal chunks to reduce initial load time
   - **Cache Layer:** Added view caching mechanism to prevent re-processing when switching tabs

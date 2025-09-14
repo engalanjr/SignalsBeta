@@ -1586,8 +1586,9 @@ class ActionsRenderer {
         console.log(`Opening task details drawer for taskId: ${taskId}, actionId: ${actionId}`);
         
         try {
-            // Find the task data (now async)
-            const actionPlanData = await this.findTaskData(taskId, actionId, window.app);
+            // 🔧 CRITICAL FIX: Use same state object as rendering to ensure cached action plans are available
+            const state = window.signalsStore.getState();
+            const actionPlanData = await this.findTaskData(taskId, actionId, state); 
             if (!actionPlanData) {
                 console.error('Could not find task data for:', { taskId, actionId });
                 this.showTaskUpdateError('Task data not found');
