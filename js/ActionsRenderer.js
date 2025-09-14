@@ -1392,30 +1392,86 @@ class ActionsRenderer {
             `;
         } else {
             plays.forEach((play, index) => {
-                // Handle both string plays and object plays
-                const playTitle = typeof play === 'string' ? play : (play.playTitle || play.playName || `Play ${index + 1}`);
-                const playId = typeof play === 'string' ? `play_${index + 1}` : (play.playId || `play_${index + 1}`);
-                const isCompleted = play.completed || false;
+                // Handle both string plays and enhanced object plays
+                const playTitle = typeof play === 'string' ? play : (play.name || play.playTitle || play.playName || `Play ${index + 1}`);
+                const playId = typeof play === 'string' ? `play_${index + 1}` : (play.id || play.playId || `play_${index + 1}`);
+                const playDescription = typeof play === 'string' ? '' : (play.description || play.full_description || '');
+                
+                // 🎯 Enhanced task management fields
+                const status = play.status || 'pending';
+                const priority = play.priority || 'medium';
+                const dueDate = play.dueDate || '';
+                const assignee = play.assignee || play.executing_role || '';
+                
+                // Status styling
+                const statusClass = status.replace('-', ''); // Convert 'in-progress' to 'inprogress' for CSS
+                const priorityClass = priority.toLowerCase();
+                const isCompleted = status === 'complete';
                 
                 html += `
-                    <div class="play-item" data-action-id="${actionId}" data-play-id="${playId}" data-play-index="${index}">
-                        <div class="play-checkbox-container">
-                            <input type="checkbox" 
-                                   id="playCheck-${index}" 
-                                   class="play-completion-checkbox"
-                                   ${isCompleted ? 'checked' : ''}
-                                   onchange="ActionsRenderer.togglePlayCompletion('${actionId}', '${playId}', ${index}, this.checked)">
-                            <label for="playCheck-${index}" class="play-completion-label">
-                                <i class="fas fa-check"></i>
-                            </label>
-                        </div>
-                        <div class="play-content">
-                            <div class="play-title ${isCompleted ? 'completed' : ''}">${playTitle}</div>
-                            <div class="play-status">
-                                <span class="status-badge ${isCompleted ? 'completed' : 'pending'}">
-                                    ${isCompleted ? 'Completed' : 'Pending'}
-                                </span>
+                    <div class="enhanced-play-item" data-action-id="${actionId}" data-play-id="${playId}" data-play-index="${index}">
+                        <div class="play-header">
+                            <div class="play-title-section">
+                                <div class="play-title ${isCompleted ? 'completed' : ''}" data-title="${playTitle}"></div>
+                                ${playDescription ? `<div class="play-description" data-description="${playDescription}"></div>` : ''}
                             </div>
+                            <div class="play-id-badge">ID: ${playId}</div>
+                        </div>
+                        
+                        <div class="play-management-controls">
+                            <div class="control-row">
+                                <div class="control-group">
+                                    <label class="control-label">Status</label>
+                                    <select class="play-status-select" 
+                                            data-play-id="${playId}" 
+                                            data-action-id="${actionId}"
+                                            onchange="ActionsRenderer.updatePlayStatus('${actionId}', '${playId}', this.value)">
+                                        <option value="pending" ${status === 'pending' ? 'selected' : ''}>📋 Pending</option>
+                                        <option value="in-progress" ${status === 'in-progress' ? 'selected' : ''}>🔄 In Progress</option>
+                                        <option value="complete" ${status === 'complete' ? 'selected' : ''}>✅ Complete</option>
+                                        <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>❌ Cancelled</option>
+                                        <option value="on-hold" ${status === 'on-hold' ? 'selected' : ''}>⏸️ On Hold</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="control-group">
+                                    <label class="control-label">Priority</label>
+                                    <select class="play-priority-select" 
+                                            data-play-id="${playId}" 
+                                            data-action-id="${actionId}"
+                                            onchange="ActionsRenderer.updatePlayPriority('${actionId}', '${playId}', this.value)">
+                                        <option value="low" ${priority === 'low' ? 'selected' : ''}>🟢 Low</option>
+                                        <option value="medium" ${priority === 'medium' ? 'selected' : ''}>🟡 Medium</option>
+                                        <option value="high" ${priority === 'high' ? 'selected' : ''}>🔴 High</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="control-group">
+                                    <label class="control-label">Due Date</label>
+                                    <input type="date" 
+                                           class="play-due-date-input" 
+                                           data-play-id="${playId}" 
+                                           data-action-id="${actionId}"
+                                           value="${dueDate}"
+                                           onchange="ActionsRenderer.updatePlayDueDate('${actionId}', '${playId}', this.value)">
+                                </div>
+                            </div>
+                            
+                            ${assignee ? `
+                                <div class="control-row">
+                                    <div class="assignee-info">
+                                        <i class="fas fa-user"></i>
+                                        <span class="assignee-label">Assigned to:</span>
+                                        <span class="assignee-name">${assignee}</span>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="play-status-badges">
+                            <span class="status-badge ${statusClass}">${ActionsRenderer.getStatusDisplayText(status)}</span>
+                            <span class="priority-badge ${priorityClass}">${priority.toUpperCase()}</span>
+                            ${dueDate ? `<span class="due-date-badge"><i class="fas fa-calendar"></i> ${ActionsRenderer.formatDueDate(dueDate)}</span>` : ''}
                         </div>
                     </div>
                 `;
@@ -1521,6 +1577,239 @@ class ActionsRenderer {
         }
     }
     
+    // ========== ENHANCED PLAY TASK MANAGEMENT METHODS ==========
+    
+    /**
+     * Update the status of a specific play
+     */
+    static async updatePlayStatus(actionId, playId, status) {
+        try {
+            console.log(`🎯 Updating play ${playId} status to: ${status}`);
+            
+            // Get the current action plan ID (we need the plan ID, not action ID)
+            const planId = await this.findPlanIdForAction(actionId);
+            if (!planId) {
+                throw new Error(`Could not find plan for action: ${actionId}`);
+            }
+            
+            // Use the new repository method
+            const result = await window.SignalsRepository.updatePlayStatus(planId, playId, status);
+            
+            if (result.success) {
+                // Update visual state immediately
+                this.updatePlayVisualState(actionId, playId, 'status', status);
+                
+                // Show success notification
+                this.showNotification('Play status updated successfully', 'success');
+                
+                // Refresh the action plans view
+                if (window.app && typeof window.app.renderActions === 'function') {
+                    window.app.renderActions();
+                }
+                
+                console.log(`✅ Play ${playId} status updated to: ${status}`);
+            } else {
+                throw new Error(result.error || 'Failed to update play status');
+            }
+            
+        } catch (error) {
+            console.error('❌ Failed to update play status:', error);
+            this.showNotification('Failed to update play status: ' + error.message, 'error');
+        }
+    }
+    
+    /**
+     * Update the priority of a specific play
+     */
+    static async updatePlayPriority(actionId, playId, priority) {
+        try {
+            console.log(`🎯 Updating play ${playId} priority to: ${priority}`);
+            
+            const planId = await this.findPlanIdForAction(actionId);
+            if (!planId) {
+                throw new Error(`Could not find plan for action: ${actionId}`);
+            }
+            
+            const result = await window.SignalsRepository.updatePlayPriority(planId, playId, priority);
+            
+            if (result.success) {
+                this.updatePlayVisualState(actionId, playId, 'priority', priority);
+                this.showNotification('Play priority updated successfully', 'success');
+                
+                if (window.app && typeof window.app.renderActions === 'function') {
+                    window.app.renderActions();
+                }
+                
+                console.log(`✅ Play ${playId} priority updated to: ${priority}`);
+            } else {
+                throw new Error(result.error || 'Failed to update play priority');
+            }
+            
+        } catch (error) {
+            console.error('❌ Failed to update play priority:', error);
+            this.showNotification('Failed to update play priority: ' + error.message, 'error');
+        }
+    }
+    
+    /**
+     * Update the due date of a specific play
+     */
+    static async updatePlayDueDate(actionId, playId, dueDate) {
+        try {
+            console.log(`🎯 Updating play ${playId} due date to: ${dueDate}`);
+            
+            const planId = await this.findPlanIdForAction(actionId);
+            if (!planId) {
+                throw new Error(`Could not find plan for action: ${actionId}`);
+            }
+            
+            const result = await window.SignalsRepository.updatePlayDueDate(planId, playId, dueDate);
+            
+            if (result.success) {
+                this.updatePlayVisualState(actionId, playId, 'dueDate', dueDate);
+                this.showNotification('Play due date updated successfully', 'success');
+                
+                if (window.app && typeof window.app.renderActions === 'function') {
+                    window.app.renderActions();
+                }
+                
+                console.log(`✅ Play ${playId} due date updated to: ${dueDate}`);
+            } else {
+                throw new Error(result.error || 'Failed to update play due date');
+            }
+            
+        } catch (error) {
+            console.error('❌ Failed to update play due date:', error);
+            this.showNotification('Failed to update play due date: ' + error.message, 'error');
+        }
+    }
+    
+    /**
+     * Helper method to find plan ID for a given action ID
+     */
+    static async findPlanIdForAction(actionId) {
+        try {
+            if (window.signalsStore) {
+                const state = window.signalsStore.getState();
+                if (state.actionPlans) {
+                    for (let [planId, plan] of state.actionPlans) {
+                        if (plan.actionId === actionId) {
+                            return planId;
+                        }
+                    }
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('Error finding plan ID for action:', error);
+            return null;
+        }
+    }
+    
+    /**
+     * Update visual state of a play item immediately
+     */
+    static updatePlayVisualState(actionId, playId, property, value) {
+        try {
+            const playItem = document.querySelector(`[data-action-id="${actionId}"][data-play-id="${playId}"]`);
+            if (!playItem) return;
+            
+            if (property === 'status') {
+                const statusSelect = playItem.querySelector('.play-status-select');
+                const statusBadge = playItem.querySelector('.status-badge');
+                const playTitle = playItem.querySelector('.play-title');
+                
+                if (statusSelect) statusSelect.value = value;
+                if (statusBadge) {
+                    statusBadge.textContent = this.getStatusDisplayText(value);
+                    statusBadge.className = `status-badge ${value.replace('-', '')}`;
+                }
+                if (playTitle) {
+                    if (value === 'complete') {
+                        playTitle.classList.add('completed');
+                    } else {
+                        playTitle.classList.remove('completed');
+                    }
+                }
+            } else if (property === 'priority') {
+                const prioritySelect = playItem.querySelector('.play-priority-select');
+                const priorityBadge = playItem.querySelector('.priority-badge');
+                
+                if (prioritySelect) prioritySelect.value = value;
+                if (priorityBadge) {
+                    priorityBadge.textContent = value.toUpperCase();
+                    priorityBadge.className = `priority-badge ${value.toLowerCase()}`;
+                }
+            } else if (property === 'dueDate') {
+                const dueDateInput = playItem.querySelector('.play-due-date-input');
+                const dueDateBadge = playItem.querySelector('.due-date-badge');
+                
+                if (dueDateInput) dueDateInput.value = value;
+                if (dueDateBadge) {
+                    if (value) {
+                        dueDateBadge.innerHTML = `<i class="fas fa-calendar"></i> ${this.formatDueDate(value)}`;
+                        dueDateBadge.style.display = 'inline-block';
+                    } else {
+                        dueDateBadge.style.display = 'none';
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error updating play visual state:', error);
+        }
+    }
+    
+    /**
+     * Get display text for status values
+     */
+    static getStatusDisplayText(status) {
+        const statusMap = {
+            'pending': 'Pending',
+            'in-progress': 'In Progress',
+            'complete': 'Complete',
+            'cancelled': 'Cancelled',
+            'on-hold': 'On Hold'
+        };
+        return statusMap[status] || status;
+    }
+    
+    /**
+     * Format due date for display
+     */
+    static formatDueDate(dueDate) {
+        if (!dueDate) return '';
+        
+        try {
+            const date = new Date(dueDate);
+            const today = new Date();
+            const diffTime = date - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays < 0) {
+                return `${Math.abs(diffDays)} day(s) overdue`;
+            } else if (diffDays === 0) {
+                return 'Due today';
+            } else if (diffDays === 1) {
+                return 'Due tomorrow';
+            } else {
+                return `Due in ${diffDays} day(s)`;
+            }
+        } catch (error) {
+            return dueDate; // Fallback to raw date
+        }
+    }
+    
+    /**
+     * Show notification to user
+     */
+    static showNotification(message, type = 'info') {
+        if (window.Actions && window.Actions.showMessage) {
+            window.Actions.showMessage(message, type);
+        } else {
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
+    }
+
     static async updateActionPlanPlayStatus(actionId, playUpdates) {
         // Find and update the action plan data
         const app = window.app;
