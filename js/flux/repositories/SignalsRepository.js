@@ -429,9 +429,13 @@ class SignalsRepository {
         // Extract plays from signal
         const plays = [];
         if (rawSignal.plays && Array.isArray(rawSignal.plays)) {
-            plays.push(...rawSignal.plays);
+            // 🔧 Enhance existing plays with new task management fields
+            const enhancedPlays = rawSignal.plays.map(play => {
+                return this.enhancePlayWithTaskManagement(play);
+            });
+            plays.push(...enhancedPlays);
         } else {
-            // Build plays from individual fields
+            // Build plays from individual fields with enhanced task management
             for (let i = 1; i <= 3; i++) {
                 const playId = rawSignal[`play_${i}`];
                 if (playId) {
@@ -443,7 +447,15 @@ class SignalsRepository {
                         play_type: rawSignal[`play_${i}_play_type`] || '',
                         initiating_role: rawSignal[`play_${i}_initiating_role`] || '',
                         executing_role: rawSignal[`play_${i}_executing_role`] || '',
-                        doc_location: rawSignal[`play_${i}_doc_location`] || ''
+                        doc_location: rawSignal[`play_${i}_doc_location`] || '',
+                        
+                        // 🎯 Enhanced task management fields
+                        status: 'pending',           // pending, in-progress, complete, cancelled, on-hold
+                        priority: 'medium',          // high, medium, low
+                        dueDate: null,               // Individual due date per play
+                        assignee: rawSignal[`play_${i}_executing_role`] || null,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
                     });
                 }
             }
@@ -461,6 +473,46 @@ class SignalsRepository {
             created_at: rawSignal.play_3 || rawSignal.created_at || '',
             plays: plays
         };
+    }
+    
+    /**
+     * Enhance play object with new task management fields
+     * Handles migration from old format to new enhanced format
+     */
+    static enhancePlayWithTaskManagement(play) {
+        // Handle string plays (legacy format)
+        if (typeof play === 'string') {
+            return {
+                id: `PLAY-${Math.random().toString(36).substr(2, 3).toUpperCase()}`, // Generate ID if missing
+                name: play,
+                description: '',
+                status: 'pending',
+                priority: 'medium',
+                dueDate: null,
+                assignee: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+        }
+        
+        // Handle object plays - enhance with new fields if missing
+        const enhancedPlay = {
+            ...play,
+            // Migrate old completed boolean to status
+            status: play.status || (play.completed ? 'complete' : 'pending'),
+            priority: play.priority || 'medium',
+            dueDate: play.dueDate || null,
+            assignee: play.assignee || play.executing_role || null,
+            createdAt: play.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        
+        // Remove old completed field if it exists
+        if (enhancedPlay.completed !== undefined) {
+            delete enhancedPlay.completed;
+        }
+        
+        return enhancedPlay;
     }
     
     /**
@@ -781,6 +833,11 @@ class SignalsRepository {
                 const plan = planWrapper.content || planWrapper; // Handle both wrapped and unwrapped formats
                 const domoDocumentId = planWrapper.id; // Preserve Domo document ID from wrapper
                 
+                // 🎯 Enhance plays with new task management fields
+                const enhancedPlays = (plan.plays || []).map(play => {
+                    return this.enhancePlayWithTaskManagement(play);
+                });
+                
                 return {
                     id: plan.id,  // Use the actual plan ID from content, not wrapper document ID
                     domoDocumentId: domoDocumentId, // 🔧 FIX: Store Domo document ID for API updates
@@ -793,7 +850,7 @@ class SignalsRepository {
                     updatedAt: plan.updatedAt || new Date().toISOString(),
                     planTitle: plan.planTitle || `Action Plan - ${plan.accountId}`,
                     description: plan.description || '',
-                    plays: plan.plays || [],
+                    plays: enhancedPlays,  // Use enhanced plays with task management fields
                     priority: plan.priority || 'medium',
                     dueDate: plan.dueDate,
                     actionItems: plan.actionItems || [],
