@@ -776,11 +776,15 @@ class SignalsRepository {
             console.log(`✅ Loaded ${data.length} action plans from fallback (error recovery)`);
             
             // Transform the fallback data to match expected format
-            // Extract content from the wrapper document structure
+            // Extract content from the wrapper document structure and preserve Domo document ID
             return data.map(planWrapper => {
                 const plan = planWrapper.content || planWrapper; // Handle both wrapped and unwrapped formats
+                const domoDocumentId = planWrapper.id; // Preserve Domo document ID from wrapper
+                
                 return {
                     id: plan.id,  // Use the actual plan ID from content, not wrapper document ID
+                    domoDocumentId: domoDocumentId, // 🔧 FIX: Store Domo document ID for API updates
+                    recordId: domoDocumentId, // Legacy compatibility
                     accountId: plan.accountId,
                     actionId: plan.actionId,
                     title: plan.title,
@@ -858,7 +862,13 @@ class SignalsRepository {
                 
                 if (response && response.id) {
                     console.log('✅ Action plan saved to Domo API');
-                    return { success: true, data: { ...planData, recordId: response.id } };
+                    // Store both internal ID and Domo document ID for proper updates
+                    const planWithDomoId = { 
+                        ...planData, 
+                        domoDocumentId: response.id,  // Domo-generated document ID for API calls
+                        recordId: response.id         // Legacy compatibility
+                    };
+                    return { success: true, data: planWithDomoId };
                 }
             } catch (apiError) {
                 console.warn('⚠️ Failed to save to Domo API, using local storage:', apiError);
@@ -886,18 +896,51 @@ class SignalsRepository {
         try {
             console.log('📝 Updating action plan:', planId, updates);
             
-            // Try to update in Domo API
+            // 🔧 FIX: Look up the plan to get Domo document ID for proper API updates
+            let documentId = planId; // Default to planId
+            let planData = null;
+            
+            // Try to find the plan data with domoDocumentId
             try {
-                const response = await domo.put(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${planId}`, {
+                // First check the SignalsStore for the plan
+                if (window.signalsStore) {
+                    const state = window.signalsStore.getState();
+                    if (state.actionPlans && state.actionPlans.has(planId)) {
+                        planData = state.actionPlans.get(planId);
+                        if (planData.domoDocumentId) {
+                            documentId = planData.domoDocumentId;
+                            console.log(`🔧 Found Domo document ID: ${documentId} for plan: ${planId}`);
+                        }
+                    }
+                }
+                
+                // Fallback: Check local storage
+                if (!planData || !planData.domoDocumentId) {
+                    const storageKey = 'signalai_action_plans';
+                    const existingPlans = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                    const storedPlan = existingPlans.find(p => p.id === planId);
+                    if (storedPlan && storedPlan.domoDocumentId) {
+                        documentId = storedPlan.domoDocumentId;
+                        console.log(`🔧 Found Domo document ID in storage: ${documentId} for plan: ${planId}`);
+                    }
+                }
+            } catch (lookupError) {
+                console.warn('⚠️ Error looking up plan data:', lookupError);
+                // Continue with original planId
+            }
+            
+            // Try to update in Domo API using the correct document ID
+            try {
+                const response = await domo.put(`/domo/datastores/v1/collections/SignalAI.ActionPlans/documents/${documentId}`, {
                     content: updates
                 });
                 
                 if (response) {
-                    console.log('✅ Action plan updated in Domo API');
+                    console.log(`✅ Action plan updated in Domo API using document ID: ${documentId}`);
                     return { success: true, data: response };
                 }
             } catch (apiError) {
-                console.warn('⚠️ Failed to update in Domo API, using local storage:', apiError);
+                console.warn(`⚠️ Failed to update in Domo API using ${documentId}:`, apiError);
             }
             
             // Fallback: Update in local storage

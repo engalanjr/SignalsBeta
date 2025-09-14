@@ -41,8 +41,18 @@ The application is a frontend-only web application utilizing vanilla HTML5, CSS3
 - **External Data Sources:** Utilizes CSV datasets (e.g., "View of SignalsAI _ CORE _ WIP _ PDP_1757418159244.csv") for comprehensive signal and action plan data.
 - **action-plans-fallback.json:** Used as a fallback data source for action plans when Domo endpoints fail.
 
-## Recent Changes (v8.4)
-- **CRITICAL PRODUCTION BUG FIX - Action Plan Modal State Management:**
+## Recent Changes (v8.5)
+- **CRITICAL PRODUCTION BUG FIX - Action Plan Update 404 Errors:**
+  - **Issue:** Action plan updates (priority, status, etc.) failed with 404 Not Found errors in production
+  - **Root Cause:** Domo document ID mismatch - updates used internal plan IDs ("plan-1757788917605") but Domo API expected document IDs ("fa56f089-a6f5-4ded-921a-f93f677a44d2")
+  - **Solution:** Implemented comprehensive ID tracking system:
+    - Modified `saveActionPlan()` to store both internal ID and Domo document ID during creation
+    - Enhanced `updateActionPlan()` to lookup correct Domo document ID before API calls  
+    - Fixed `loadFallbackActionPlans()` to extract Domo document ID from wrapper structure
+  - **Result:** Action plan updates now successfully use correct Domo document IDs for API calls
+  - **Files Modified:** `js/flux/repositories/SignalsRepository.js` (saveActionPlan, updateActionPlan, loadFallbackActionPlans methods)
+
+- **CRITICAL PRODUCTION BUG FIX - Action Plan Modal State Management (v8.4):**
   - **Issue:** Action plan modals failed to open in production despite displaying correctly in list view
   - **Root Cause:** State object reference mismatch between rendering and modal opening
     - Tab rendering used `signalsStore.getState()` with cached action plans
