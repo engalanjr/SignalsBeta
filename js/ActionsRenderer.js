@@ -1375,19 +1375,31 @@ class ActionsRenderer {
             </div>
             
             <div class="plays-drawer-section">
-                <h3><i class="fas fa-play"></i> Associated CS Plays (${plays.length})</h3>
-                <div class="plays-description">
-                    Mark plays as complete to track progress on this action plan task.
+                <div class="subtasks-header">
+                    <h3><i class="fas fa-tasks"></i> Subtasks & Plays</h3>
+                    <div class="subtasks-progress">
+                        <div class="progress-info">
+                            <span class="completed-count">${plays.filter(p => p.status === 'complete').length}</span>
+                            <span class="total-count">of ${plays.length} completed</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${plays.length > 0 ? Math.round((plays.filter(p => p.status === 'complete').length / plays.length) * 100) : 0}%"></div>
+                        </div>
+                        <span class="progress-percentage">${plays.length > 0 ? Math.round((plays.filter(p => p.status === 'complete').length / plays.length) * 100) : 0}%</span>
+                    </div>
                 </div>
                 
-                <div class="plays-list">
+                <div class="subtasks-list">
         `;
         
         if (plays.length === 0) {
             html += `
-                <div class="no-plays-message">
-                    <i class="fas fa-info-circle"></i>
-                    No CS plays are associated with this action plan task.
+                <div class="no-subtasks-message">
+                    <div class="empty-state">
+                        <i class="fas fa-tasks empty-state-icon"></i>
+                        <div class="empty-state-title">No subtasks defined</div>
+                        <div class="empty-state-description">This action plan doesn't have any associated plays or subtasks yet.</div>
+                    </div>
                 </div>
             `;
         } else {
@@ -1403,75 +1415,101 @@ class ActionsRenderer {
                 const dueDate = play.dueDate || '';
                 const assignee = play.assignee || play.executing_role || '';
                 
-                // Status styling
-                const statusClass = status.replace('-', ''); // Convert 'in-progress' to 'inprogress' for CSS
+                // Status and priority styling
+                const statusClass = status.replace('-', '');
                 const priorityClass = priority.toLowerCase();
                 const isCompleted = status === 'complete';
+                const isOverdue = dueDate && new Date(dueDate) < new Date() && !isCompleted;
+                
+                // Status icon mapping
+                const statusIcon = {
+                    'pending': '📋',
+                    'in-progress': '🔄', 
+                    'complete': '✅',
+                    'cancelled': '❌',
+                    'on-hold': '⏸️'
+                }[status] || '📋';
                 
                 html += `
-                    <div class="enhanced-play-item" data-action-id="${actionId}" data-play-id="${playId}" data-play-index="${index}">
-                        <div class="play-header">
-                            <div class="play-title-section">
-                                <div class="play-title ${isCompleted ? 'completed' : ''}" data-title="${playTitle}"></div>
-                                ${playDescription ? `<div class="play-description" data-description="${playDescription}"></div>` : ''}
+                    <div class="subtask-card ${statusClass} ${isOverdue ? 'overdue' : ''}" 
+                         data-action-id="${actionId}" 
+                         data-play-id="${playId}" 
+                         data-play-index="${index}">
+                        
+                        <div class="subtask-main">
+                            <div class="subtask-status-indicator">
+                                <span class="status-icon">${statusIcon}</span>
                             </div>
-                            <div class="play-id-badge">ID: ${playId}</div>
+                            
+                            <div class="subtask-content">
+                                <div class="subtask-title-row">
+                                    <div class="subtask-title ${isCompleted ? 'completed' : ''}" data-title="${playTitle}"></div>
+                                    <div class="subtask-badges">
+                                        <span class="priority-badge priority-${priorityClass}" title="${priority.charAt(0).toUpperCase() + priority.slice(1)} Priority">
+                                            ${priority === 'high' ? '🔴' : priority === 'medium' ? '🟡' : '🟢'}
+                                        </span>
+                                        <span class="play-id-badge" title="Play ID">${playId}</span>
+                                    </div>
+                                </div>
+                                
+                                ${playDescription ? `<div class="subtask-description" data-description="${playDescription}"></div>` : ''}
+                                
+                                <div class="subtask-meta">
+                                    ${assignee ? `
+                                        <div class="subtask-assignee">
+                                            <i class="fas fa-user-circle"></i>
+                                            <span class="assignee-name">${assignee}</span>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    ${dueDate ? `
+                                        <div class="subtask-due-date ${isOverdue ? 'overdue' : ''}">
+                                            <i class="fas fa-calendar-alt"></i>
+                                            <span class="due-date-text">${ActionsRenderer.formatDueDate(dueDate)}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
                         </div>
                         
-                        <div class="play-management-controls">
-                            <div class="control-row">
-                                <div class="control-group">
-                                    <label class="control-label">Status</label>
-                                    <select class="play-status-select" 
+                        <div class="subtask-controls">
+                            <div class="subtask-control-row">
+                                <div class="control-group compact">
+                                    <select class="subtask-status-select" 
                                             data-play-id="${playId}" 
                                             data-action-id="${actionId}"
-                                            onchange="ActionsRenderer.updatePlayStatus('${actionId}', '${playId}', this.value)">
-                                        <option value="pending" ${status === 'pending' ? 'selected' : ''}>📋 Pending</option>
-                                        <option value="in-progress" ${status === 'in-progress' ? 'selected' : ''}>🔄 In Progress</option>
-                                        <option value="complete" ${status === 'complete' ? 'selected' : ''}>✅ Complete</option>
-                                        <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>❌ Cancelled</option>
-                                        <option value="on-hold" ${status === 'on-hold' ? 'selected' : ''}>⏸️ On Hold</option>
+                                            onchange="ActionsRenderer.updatePlayStatus('${actionId}', '${playId}', this.value)"
+                                            title="Change Status">
+                                        <option value="pending" ${status === 'pending' ? 'selected' : ''}>Pending</option>
+                                        <option value="in-progress" ${status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+                                        <option value="complete" ${status === 'complete' ? 'selected' : ''}>Complete</option>
+                                        <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                                        <option value="on-hold" ${status === 'on-hold' ? 'selected' : ''}>On Hold</option>
                                     </select>
                                 </div>
                                 
-                                <div class="control-group">
-                                    <label class="control-label">Priority</label>
-                                    <select class="play-priority-select" 
+                                <div class="control-group compact">
+                                    <select class="subtask-priority-select" 
                                             data-play-id="${playId}" 
                                             data-action-id="${actionId}"
-                                            onchange="ActionsRenderer.updatePlayPriority('${actionId}', '${playId}', this.value)">
-                                        <option value="low" ${priority === 'low' ? 'selected' : ''}>🟢 Low</option>
-                                        <option value="medium" ${priority === 'medium' ? 'selected' : ''}>🟡 Medium</option>
-                                        <option value="high" ${priority === 'high' ? 'selected' : ''}>🔴 High</option>
+                                            onchange="ActionsRenderer.updatePlayPriority('${actionId}', '${playId}', this.value)"
+                                            title="Change Priority">
+                                        <option value="low" ${priority === 'low' ? 'selected' : ''}>Low</option>
+                                        <option value="medium" ${priority === 'medium' ? 'selected' : ''}>Medium</option>
+                                        <option value="high" ${priority === 'high' ? 'selected' : ''}>High</option>
                                     </select>
                                 </div>
                                 
-                                <div class="control-group">
-                                    <label class="control-label">Due Date</label>
+                                <div class="control-group compact">
                                     <input type="date" 
-                                           class="play-due-date-input" 
+                                           class="subtask-due-date-input" 
                                            data-play-id="${playId}" 
                                            data-action-id="${actionId}"
                                            value="${dueDate}"
-                                           onchange="ActionsRenderer.updatePlayDueDate('${actionId}', '${playId}', this.value)">
+                                           onchange="ActionsRenderer.updatePlayDueDate('${actionId}', '${playId}', this.value)"
+                                           title="Set Due Date">
                                 </div>
                             </div>
-                            
-                            ${assignee ? `
-                                <div class="control-row">
-                                    <div class="assignee-info">
-                                        <i class="fas fa-user"></i>
-                                        <span class="assignee-label">Assigned to:</span>
-                                        <span class="assignee-name">${assignee}</span>
-                                    </div>
-                                </div>
-                            ` : ''}
-                        </div>
-                        
-                        <div class="play-status-badges">
-                            <span class="status-badge ${statusClass}">${ActionsRenderer.getStatusDisplayText(status)}</span>
-                            <span class="priority-badge ${priorityClass}">${priority.toUpperCase()}</span>
-                            ${dueDate ? `<span class="due-date-badge"><i class="fas fa-calendar"></i> ${ActionsRenderer.formatDueDate(dueDate)}</span>` : ''}
                         </div>
                     </div>
                 `;

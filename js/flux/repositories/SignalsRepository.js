@@ -426,12 +426,15 @@ class SignalsRepository {
         const accountId = rawSignal.account_id || rawSignal['account id'];
         const actionId = rawSignal.action_id;
         
+        // 🎯 Get signal priority for intelligent play defaults
+        const signalPriority = this.normalizeSignalPriority(rawSignal.priority || 'medium');
+        
         // Extract plays from signal
         const plays = [];
         if (rawSignal.plays && Array.isArray(rawSignal.plays)) {
             // 🔧 Enhance existing plays with new task management fields
             const enhancedPlays = rawSignal.plays.map(play => {
-                return this.enhancePlayWithTaskManagement(play);
+                return this.enhancePlayWithTaskManagement(play, signalPriority);
             });
             plays.push(...enhancedPlays);
         } else {
@@ -449,11 +452,11 @@ class SignalsRepository {
                         executing_role: rawSignal[`play_${i}_executing_role`] || '',
                         doc_location: rawSignal[`play_${i}_doc_location`] || '',
                         
-                        // 🎯 Enhanced task management fields
-                        status: 'pending',           // pending, in-progress, complete, cancelled, on-hold
-                        priority: 'medium',          // high, medium, low
-                        dueDate: null,               // Individual due date per play
-                        assignee: rawSignal[`play_${i}_executing_role`] || null,
+                        // 🎯 Enhanced task management fields with intelligent defaults
+                        status: 'pending',           // Always start with pending
+                        priority: signalPriority,    // Inherit from signal priority
+                        dueDate: this.calculateDefaultDueDate(10), // Today + 10 days
+                        assignee: rawSignal[`play_${i}_executing_role`] || null, // Use executing role as assignee
                         createdAt: new Date().toISOString(),
                         updatedAt: new Date().toISOString()
                     });
@@ -479,7 +482,7 @@ class SignalsRepository {
      * Enhance play object with new task management fields
      * Handles migration from old format to new enhanced format
      */
-    static enhancePlayWithTaskManagement(play) {
+    static enhancePlayWithTaskManagement(play, signalPriority = 'medium') {
         // Handle string plays (legacy format)
         if (typeof play === 'string') {
             return {
@@ -487,8 +490,8 @@ class SignalsRepository {
                 name: play,
                 description: '',
                 status: 'pending',
-                priority: 'medium',
-                dueDate: null,
+                priority: signalPriority, // 🎯 Use signal priority
+                dueDate: this.calculateDefaultDueDate(10), // 🎯 Today + 10 days
                 assignee: null,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
@@ -500,8 +503,8 @@ class SignalsRepository {
             ...play,
             // Migrate old completed boolean to status
             status: play.status || (play.completed ? 'complete' : 'pending'),
-            priority: play.priority || 'medium',
-            dueDate: play.dueDate || null,
+            priority: play.priority || signalPriority, // 🎯 Use signal priority as default
+            dueDate: play.dueDate || this.calculateDefaultDueDate(10), // 🎯 Today + 10 days
             assignee: play.assignee || play.executing_role || null,
             createdAt: play.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -513,6 +516,34 @@ class SignalsRepository {
         }
         
         return enhancedPlay;
+    }
+    
+    /**
+     * Normalize signal priority to play priority format
+     */
+    static normalizeSignalPriority(signalPriority) {
+        const priorityMap = {
+            'High': 'high',
+            'high': 'high',
+            'HIGH': 'high',
+            'Medium': 'medium', 
+            'medium': 'medium',
+            'MEDIUM': 'medium',
+            'Low': 'low',
+            'low': 'low',
+            'LOW': 'low'
+        };
+        return priorityMap[signalPriority] || 'medium';
+    }
+    
+    /**
+     * Calculate default due date (today + specified days)
+     */
+    static calculateDefaultDueDate(daysFromToday = 10) {
+        const today = new Date();
+        const dueDate = new Date(today);
+        dueDate.setDate(today.getDate() + daysFromToday);
+        return dueDate.toISOString().split('T')[0]; // Return YYYY-MM-DD format
     }
     
     /**
