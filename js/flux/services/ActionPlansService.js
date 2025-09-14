@@ -130,6 +130,12 @@ class ActionPlansService {
         const operationId = requestAction.payload.operationId; // Store in broader scope for catch block
         
         try {
+            // 🎯 ENHANCE PLAYS: Convert strings to enhanced objects with task management fields
+            const normalizedPriority = SignalsRepository.normalizeSignalPriority(priority);
+            const enhancedPlays = (plays || []).map(play => {
+                return SignalsRepository.enhancePlayWithTaskManagement(play, normalizedPriority);
+            });
+            
             // Create plan object matching exact database model
             const now = new Date();
             const planData = {
@@ -138,7 +144,7 @@ class ActionPlansService {
                 accountId, // Account ID
                 title: title.trim(),
                 description: description?.trim() || '',
-                plays: plays || [], // Changed from tasks to plays
+                plays: enhancedPlays, // ✅ Use enhanced plays with task management fields
                 status: 'pending', // Initial status
                 priority: priority || 'Medium', // Capitalized priority
                 dueDate: dueDate || now.toISOString().split('T')[0], // YYYY-MM-DD format
