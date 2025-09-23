@@ -17,8 +17,17 @@ class WhitespaceRenderer {
             
             console.log(`🔍 Processing ${signals.length} signals`);
             
-            // Process signals into matrix format
-            const { matrix, signalTypes, accountNames, stats, signalPolarities } = this.processSignalsMatrix(signals, accounts);
+            // Load signal dimensions for complete whitespace analysis
+            const signalDimensionService = new SignalDimensionService();
+            await signalDimensionService.loadSignalDimensions();
+            
+            // Process signals into matrix format with complete signal dimensions
+            const { matrix, signalTypes, accountNames, stats, signalPolarities, allSignalDimensions } = this.processSignalsMatrixWithDimensions(signals, accounts, signalDimensionService);
+            
+            // Debug: Check what's being returned
+            console.log('🔍 renderWhitespace - allSignalDimensions:', allSignalDimensions);
+            console.log('🔍 renderWhitespace - allSignalDimensions type:', typeof allSignalDimensions);
+            console.log('🔍 renderWhitespace - allSignalDimensions keys:', allSignalDimensions ? Array.from(allSignalDimensions.keys()) : 'undefined');
             
             console.log(`📊 Processed ${stats.totalAccounts} accounts, ${stats.totalSignalTypes} signal types, ${stats.totalOccurrences} total occurrences`);
             
@@ -39,7 +48,7 @@ class WhitespaceRenderer {
             }
             
             // Render the heatmap content
-            whitespaceTab.innerHTML = this.generateWhitespaceHTML(matrix, signalTypes, accountNames, stats, signalPolarities);
+            whitespaceTab.innerHTML = this.generateWhitespaceHTML(matrix, signalTypes, accountNames, stats, signalPolarities, allSignalDimensions);
             
             // Setup event listeners
             this.setupEventListeners();
@@ -52,7 +61,222 @@ class WhitespaceRenderer {
     }
     
     /**
-     * Process signals data into heatmap matrix format
+     * Process signals data into heatmap matrix format with complete signal dimensions
+     */
+    static processSignalsMatrixWithDimensions(signals, accounts, signalDimensionService) {
+        console.log('🔄 Processing signals into complete whitespace matrix...');
+        
+        const matrix = {};
+        const signalTypesMap = new Map();
+        const accountMap = new Map();
+        const signalPolarities = {};
+        
+        let totalOccurrences = 0;
+        
+        // First pass: Process all signals to collect account info and actual signal occurrences
+        for (let signal of signals) {
+            if (!signal || !signal.account_id) {
+                continue;
+            }
+            
+            const accountId = signal.account_id;
+            
+            // Get account name - handle different account data structures
+            let accountName = signal.account_name || signal.accountName || `Account ${accountId}`;
+            if (accounts) {
+                if (accounts.get && typeof accounts.get === 'function') {
+                    const account = accounts.get(accountId);
+                    if (account) accountName = account.name || accountName;
+                } else if (accounts[accountId]) {
+                    accountName = accounts[accountId].name || accountName;
+                }
+            }
+            
+            // Store account info
+            if (!accountMap.has(accountId)) {
+                accountMap.set(accountId, accountName);
+            }
+            
+            // Create signal type key - use code if available, otherwise truncate name
+            const signalCode = signal.code || signal.signal_code || '';
+            const signalName = signal.name || signal.signal_name || 'Unknown';
+            const signalKey = signalCode || signalName.substring(0, 20);
+            
+            // Only track polarity for actual signals - don't add to signalTypesMap here
+            const polarity = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
+            signalPolarities[signalKey] = polarity;
+        }
+        
+        // Second pass: Add ALL accounts from accounts data (even those with no signals)
+        if (accounts) {
+            if (accounts.get && typeof accounts.get === 'function') {
+                // Handle Map structure
+                for (let [accountId, account] of accounts) {
+                    if (!accountMap.has(accountId)) {
+                        const accountName = account.name || `Account ${accountId}`;
+                        accountMap.set(accountId, accountName);
+                    }
+                }
+            } else if (typeof accounts === 'object') {
+                // Handle object structure
+                for (let accountId in accounts) {
+                    if (!accountMap.has(accountId)) {
+                        const account = accounts[accountId];
+                        const accountName = account.name || `Account ${accountId}`;
+                        accountMap.set(accountId, accountName);
+                    }
+                }
+            }
+        }
+        
+        // Third pass: Get ALL signal dimensions from the service and populate signalTypesMap FIRST
+        const allSignalDimensions = signalDimensionService.getAllSignalDimensions();
+        console.log(`📋 Found ${allSignalDimensions.size} signal dimensions from service`);
+        
+        // Debug: Check allSignalDimensions right after getting it
+        console.log('🔍 allSignalDimensions right after getting it:', allSignalDimensions);
+        console.log('🔍 allSignalDimensions type right after getting it:', typeof allSignalDimensions);
+        console.log('🔍 allSignalDimensions keys right after getting it:', allSignalDimensions ? Array.from(allSignalDimensions.keys()) : 'undefined');
+        
+        // Debug: Log all signal codes from dimension service
+        console.log('🔍 Signal codes from dimension service:', Array.from(allSignalDimensions.keys()));
+        
+        // Add all signal dimensions to our signal types map FIRST (before processing actual signals)
+        for (let [signalCode, dimension] of allSignalDimensions) {
+            signalTypesMap.set(signalCode, {
+                code: dimension.code,
+                name: dimension.name,
+                category: dimension.category
+            });
+            
+            // Store polarity from dimension service
+            signalPolarities[signalCode] = dimension.polarity;
+        }
+        
+        console.log('🔍 signalTypesMap after adding dimensions:', Array.from(signalTypesMap.keys()));
+        
+        // Debug: Log signal codes from actual signals data
+        const actualSignalCodes = new Set();
+        for (let signal of signals) {
+            if (signal && signal.account_id) {
+                const signalCode = signal.code || signal.signal_code || '';
+                if (signalCode) {
+                    actualSignalCodes.add(signalCode);
+                }
+            }
+        }
+        console.log('🔍 Signal codes from actual signals data:', Array.from(actualSignalCodes));
+        
+        // Fourth pass: Process actual signal occurrences
+        for (let signal of signals) {
+            if (!signal || !signal.account_id) {
+                continue;
+            }
+            
+            const accountId = signal.account_id;
+            
+            // Get account name
+            let accountName = signal.account_name || signal.accountName || `Account ${accountId}`;
+            if (accounts) {
+                if (accounts.get && typeof accounts.get === 'function') {
+                    const account = accounts.get(accountId);
+                    if (account) accountName = account.name || accountName;
+                } else if (accounts[accountId]) {
+                    accountName = accounts[accountId].name || accountName;
+                }
+            }
+            
+            // Create signal type key
+            const signalCode = signal.code || signal.signal_code || '';
+            const signalName = signal.name || signal.signal_name || 'Unknown';
+            const signalKey = signalCode || signalName.substring(0, 20);
+            
+            // Initialize matrix structure for this account-signal combination
+            if (!matrix[accountName]) {
+                matrix[accountName] = {};
+            }
+            
+            if (!matrix[accountName][signalKey]) {
+                const polarity = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
+                matrix[accountName][signalKey] = {
+                    count: 0,
+                    polarity: polarity,
+                    accountId: accountId,
+                    fullSignalName: signalName
+                };
+            }
+            
+            // Increment count
+            matrix[accountName][signalKey].count++;
+            totalOccurrences++;
+        }
+        
+        // Fifth pass: Initialize empty cells (whitespace) for ALL account-signal combinations
+        // Use the sorted signal types from the dimension service, not from signalTypesMap
+        const allSignalTypes = Array.from(allSignalDimensions.keys()).sort();
+        const allAccountNames = Array.from(accountMap.values());
+        
+        for (let accountName of allAccountNames) {
+            if (!matrix[accountName]) {
+                matrix[accountName] = {};
+            }
+            
+            for (let signalKey of allSignalTypes) {
+                if (!matrix[accountName][signalKey]) {
+                    // Create empty cell for whitespace
+                    const dimensionInfo = allSignalDimensions.get(signalKey);
+                    
+                    matrix[accountName][signalKey] = {
+                        count: 0,
+                        polarity: signalPolarities[signalKey] || (dimensionInfo ? dimensionInfo.polarity : 'enrichment'),
+                        accountId: null, // Will be filled when we find the actual account
+                        fullSignalName: dimensionInfo ? dimensionInfo.name : signalKey,
+                        isWhitespace: true, // Mark as whitespace
+                        dimension: dimensionInfo // Store full dimension info
+                    };
+                }
+            }
+        }
+        
+        // Sort accounts and signal types
+        const sortedAccounts = allAccountNames.sort();
+        const sortedSignalTypes = allSignalTypes; // Already sorted from dimension service
+        
+        // Debug: Log the final signal types being used
+        console.log('🔍 Final sorted signal types:', sortedSignalTypes);
+        console.log('🔍 First 5 signal types:', sortedSignalTypes.slice(0, 5));
+        console.log('🔍 Last 5 signal types:', sortedSignalTypes.slice(-5));
+        
+        // Debug: Check signalTypesMap alignment
+        console.log('🔍 signalTypesMap keys:', Array.from(signalTypesMap.keys()));
+        console.log('🔍 First 5 signalTypesMap entries:', Array.from(signalTypesMap.entries()).slice(0, 5));
+        
+        // Calculate statistics
+        const stats = {
+            totalAccounts: sortedAccounts.length,
+            totalSignalTypes: sortedSignalTypes.length,
+            totalOccurrences,
+            avgSignalsPerAccount: sortedAccounts.length > 0 ? (totalOccurrences / sortedAccounts.length).toFixed(1) : 0,
+            totalPossibleCells: sortedAccounts.length * sortedSignalTypes.length,
+            whitespaceCells: (sortedAccounts.length * sortedSignalTypes.length) - totalOccurrences
+        };
+        
+        console.log(`✅ Complete whitespace matrix processing complete:`, stats);
+        console.log(`📊 Showing ${sortedAccounts.length} accounts × ${sortedSignalTypes.length} signal types = ${stats.totalPossibleCells} total cells`);
+        console.log(`🔍 ${stats.whitespaceCells} whitespace cells (${((stats.whitespaceCells / stats.totalPossibleCells) * 100).toFixed(1)}%)`);
+        
+        return {
+            matrix,
+            signalTypes: sortedSignalTypes,
+            accountNames: sortedAccounts,
+            stats,
+            signalPolarities,
+            signalTypesMap
+        };
+    }
+
+    /**
+     * Process signals data into heatmap matrix format (legacy method)
      */
     static processSignalsMatrix(signals, accounts) {
         console.log('🔄 Processing signals into heatmap matrix...');
@@ -64,7 +288,7 @@ class WhitespaceRenderer {
         
         let totalOccurrences = 0;
         
-        // Process each signal from the signals array
+        // First pass: Process all signals to collect signal types and account info
         for (let signal of signals) {
             if (!signal || !signal.account_id) {
                 continue;
@@ -105,13 +329,61 @@ class WhitespaceRenderer {
             // Store polarity for this signal type
             const polarity = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
             signalPolarities[signalKey] = polarity;
+        }
+        
+        // Second pass: Add ALL accounts from accounts data (even those with no signals)
+        if (accounts) {
+            if (accounts.get && typeof accounts.get === 'function') {
+                // Handle Map structure
+                for (let [accountId, account] of accounts) {
+                    if (!accountMap.has(accountId)) {
+                        const accountName = account.name || `Account ${accountId}`;
+                        accountMap.set(accountId, accountName);
+                    }
+                }
+            } else if (typeof accounts === 'object') {
+                // Handle object structure
+                for (let accountId in accounts) {
+                    if (!accountMap.has(accountId)) {
+                        const account = accounts[accountId];
+                        const accountName = account.name || `Account ${accountId}`;
+                        accountMap.set(accountId, accountName);
+                    }
+                }
+            }
+        }
+        
+        // Third pass: Process signals again to build the matrix with counts
+        for (let signal of signals) {
+            if (!signal || !signal.account_id) {
+                continue;
+            }
             
-            // Initialize matrix structure
+            const accountId = signal.account_id;
+            
+            // Get account name
+            let accountName = signal.account_name || signal.accountName || `Account ${accountId}`;
+            if (accounts) {
+                if (accounts.get && typeof accounts.get === 'function') {
+                    const account = accounts.get(accountId);
+                    if (account) accountName = account.name || accountName;
+                } else if (accounts[accountId]) {
+                    accountName = accounts[accountId].name || accountName;
+                }
+            }
+            
+            // Create signal type key
+            const signalCode = signal.code || signal.signal_code || '';
+            const signalName = signal.name || signal.signal_name || 'Unknown';
+            const signalKey = signalCode || signalName.substring(0, 20);
+            
+            // Initialize matrix structure for this account-signal combination
             if (!matrix[accountName]) {
                 matrix[accountName] = {};
             }
             
             if (!matrix[accountName][signalKey]) {
+                const polarity = signal.signal_polarity || signal['Signal Polarity'] || 'Enrichment';
                 matrix[accountName][signalKey] = {
                     count: 0,
                     polarity: polarity,
@@ -125,9 +397,32 @@ class WhitespaceRenderer {
             totalOccurrences++;
         }
         
+        // Fourth pass: Initialize empty cells (whitespace) for all account-signal combinations
+        const allSignalTypes = Array.from(signalTypesMap.keys());
+        const allAccountNames = Array.from(accountMap.values());
+        
+        for (let accountName of allAccountNames) {
+            if (!matrix[accountName]) {
+                matrix[accountName] = {};
+            }
+            
+            for (let signalKey of allSignalTypes) {
+                if (!matrix[accountName][signalKey]) {
+                    // Create empty cell for whitespace
+                    const signalInfo = signalTypesMap.get(signalKey);
+                    matrix[accountName][signalKey] = {
+                        count: 0,
+                        polarity: signalPolarities[signalKey] || 'Enrichment',
+                        accountId: null, // Will be filled when we find the actual account
+                        fullSignalName: signalInfo ? signalInfo.name : signalKey
+                    };
+                }
+            }
+        }
+        
         // Sort accounts and signal types
-        const sortedAccounts = Array.from(accountMap.values()).sort();
-        const sortedSignalTypes = Array.from(signalTypesMap.keys()).sort();
+        const sortedAccounts = allAccountNames.sort();
+        const sortedSignalTypes = allSignalTypes.sort();
         
         // Calculate statistics
         const stats = {
@@ -137,32 +432,41 @@ class WhitespaceRenderer {
             avgSignalsPerAccount: sortedAccounts.length > 0 ? (totalOccurrences / sortedAccounts.length).toFixed(1) : 0
         };
         
-        console.log(`✅ Matrix processing complete:`, stats);
+        console.log(`✅ Matrix processing complete with whitespace:`, stats);
+        console.log(`📊 Showing ${sortedAccounts.length} accounts × ${sortedSignalTypes.length} signal types = ${sortedAccounts.length * sortedSignalTypes.length} total cells`);
         
-        return {
+        // Debug: Check what we're returning
+        console.log('🔍 About to return allSignalDimensions:', allSignalDimensions);
+        console.log('🔍 allSignalDimensions type:', typeof allSignalDimensions);
+        console.log('🔍 allSignalDimensions keys:', allSignalDimensions ? Array.from(allSignalDimensions.keys()) : 'undefined');
+        
+        const returnObject = {
             matrix,
             signalTypes: sortedSignalTypes,
             accountNames: sortedAccounts,
             stats,
             signalPolarities,
-            signalTypesMap
+            allSignalDimensions
         };
+        
+        console.log('🔍 Return object allSignalDimensions:', returnObject.allSignalDimensions);
+        console.log('🔍 Return object allSignalDimensions type:', typeof returnObject.allSignalDimensions);
+        console.log('🔍 Return object allSignalDimensions keys:', returnObject.allSignalDimensions ? Array.from(returnObject.allSignalDimensions.keys()) : 'undefined');
+        
+        return returnObject;
     }
     
     /**
      * Generate the HTML structure for the Whitespace view
      */
-    static generateWhitespaceHTML(matrix, signalTypes, accountNames, stats, signalPolarities) {
+    static generateWhitespaceHTML(matrix, signalTypes, accountNames, stats, signalPolarities, allSignalDimensions) {
+        // Debug: Check if allSignalDimensions is defined
+        console.log('🔍 generateWhitespaceHTML - allSignalDimensions:', allSignalDimensions);
+        console.log('🔍 generateWhitespaceHTML - allSignalDimensions type:', typeof allSignalDimensions);
+        console.log('🔍 generateWhitespaceHTML - allSignalDimensions keys:', allSignalDimensions ? Array.from(allSignalDimensions.keys()) : 'undefined');
+        
         return `
             <div class="whitespace-container">
-                <div class="whitespace-header">
-                    <div class="whitespace-header-content">
-                        <i class="fas fa-th whitespace-header-icon"></i>
-                        <h1 class="whitespace-title">Whitespace Analysis</h1>
-                        <p class="whitespace-subtitle">Signal distribution patterns across your portfolio</p>
-                    </div>
-                </div>
-                
                 <div class="whitespace-stats">
                     <div class="whitespace-stat-card">
                         <div class="stat-value">${stats.totalAccounts}</div>
@@ -184,7 +488,7 @@ class WhitespaceRenderer {
                 
                 <div class="whitespace-table-container">
                     <div class="heatmap-scroll-wrapper">
-                        ${this.generateHeatmapTable(matrix, signalTypes, accountNames, signalPolarities)}
+                        ${this.generateHeatmapTable(matrix, signalTypes, accountNames, signalPolarities, allSignalDimensions)}
                     </div>
                 </div>
                 
@@ -229,65 +533,52 @@ class WhitespaceRenderer {
     /**
      * Generate the heatmap table HTML
      */
-    static generateHeatmapTable(matrix, signalTypes, accountNames, signalPolarities) {
+    static generateHeatmapTable(matrix, signalTypes, accountNames, signalPolarities, allSignalDimensions) {
+        // Create extended array with Account Name at the beginning
+        const allColumns = ['Account Name', ...signalTypes];
         let tableHTML = `
-            <table class="whitespace-heatmap-table">
-                <thead>
-                    <tr class="heatmap-header-row">
-                        <th class="heatmap-corner-cell">Account Name</th>
-                        ${signalTypes.map(signalType => {
-                            const sanitizedSignal = SecurityUtils.sanitizeHTML(signalType);
-                            return `
-                                <th class="heatmap-header-cell">
-                                    <div class="rotated-header" title="${sanitizedSignal}">
-                                        <span>${sanitizedSignal}</span>
-                                    </div>
-                                </th>
-                            `;
-                        }).join('')}
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        
-        // Generate rows for each account
-        accountNames.forEach(accountName => {
-            const sanitizedAccountName = SecurityUtils.sanitizeHTML(accountName);
-            tableHTML += `
-                <tr class="heatmap-row">
-                    <td class="heatmap-account-cell">${sanitizedAccountName}</td>
-            `;
-            
-            signalTypes.forEach(signalType => {
+<table class="whitespace-heatmap-table">
+<thead>
+<tr class="heatmap-header-row">
+                    ${allColumns.map((column, index) => {
+                        if (index === 0) {
+                            return `<th class="heatmap-corner-cell">${column}</th>`;
+                        }
+                        const signalType = column;  // This is now a signal type
+                        const sanitizedSignal = SecurityUtils.sanitizeHTML(signalType);
+                        const dimensionInfo = allSignalDimensions ? allSignalDimensions.get(signalType) : null;
+                        const fullSignalName = dimensionInfo ? dimensionInfo.name : signalType;
+                        const sanitizedFullName = SecurityUtils.sanitizeHTML(fullSignalName);
+                        return `<th class="heatmap-header-cell"><div class="rotated-header" title="${sanitizedFullName}"><span>${sanitizedSignal}</span></div></th>`;
+                    }).join('')}
+</tr>
+</thead>
+<tbody>
+    `;
+    // Generate rows
+    accountNames.forEach(accountName => {
+        const sanitizedAccountName = SecurityUtils.sanitizeHTML(accountName);
+        tableHTML += `<tr class="heatmap-row">`;
+        allColumns.forEach((column, index) => {
+            if (index === 0) {
+                // Account name column
+                tableHTML += `<td class="heatmap-account-cell">${sanitizedAccountName}</td>`;
+            } else {
+                // Signal data columns
+                const signalType = column;
                 const cellData = matrix[accountName]?.[signalType];
                 const count = cellData?.count || 0;
                 const polarity = cellData?.polarity || signalPolarities[signalType] || 'Enrichment';
-                
                 const colorClass = this.getColorClass(count, polarity);
                 const sanitizedSignalType = SecurityUtils.sanitizeHTML(signalType);
                 const fullSignalName = cellData?.fullSignalName || signalType;
-                
-                tableHTML += `
-                    <td class="heatmap-data-cell ${colorClass}" 
-                        data-account="${sanitizedAccountName}"
-                        data-signal="${sanitizedSignalType}"
-                        data-signal-full="${SecurityUtils.sanitizeHTML(fullSignalName)}"
-                        data-count="${count}"
-                        data-polarity="${polarity}">
-                        ${count > 0 ? count : ''}
-                    </td>
-                `;
-            });
-            
-            tableHTML += `</tr>`;
+                tableHTML += `<td class="heatmap-data-cell ${colorClass}" data-account="${sanitizedAccountName}" data-signal="${sanitizedSignalType}" data-signal-full="${SecurityUtils.sanitizeHTML(fullSignalName)}" data-count="${count}" data-polarity="${polarity}">${count > 0 ? count : ''}</td>`;
+            }
         });
-        
-        tableHTML += `
-                </tbody>
-            </table>
-        `;
-        
-        return tableHTML;
+        tableHTML += `</tr>`;
+    });
+    tableHTML += `</tbody></table>`;
+    return tableHTML;
     }
     
     /**
@@ -357,30 +648,43 @@ class WhitespaceRenderer {
         const count = cell.dataset.count;
         const polarity = cell.dataset.polarity;
         
-        if (count && count !== '0') {
-            // Sanitize and normalize polarity for safe class usage
-            const normalizedPolarity = this.normalizePolarity(polarity);
-            
-            tooltip.innerHTML = `
-                <div class="tooltip-content">
-                    <div class="tooltip-header">${SecurityUtils.sanitizeHTML(account)}</div>
-                    <div class="tooltip-signal">${SecurityUtils.sanitizeHTML(signalFull || signal)}</div>
-                    <div class="tooltip-stats">
-                        <span class="tooltip-count">Count: ${count}</span>
-                        <span class="tooltip-polarity ${normalizedPolarity}">${SecurityUtils.sanitizeHTML(polarity)}</span>
-                    </div>
+        // Show tooltip for both populated and empty cells
+        const normalizedPolarity = this.normalizePolarity(polarity);
+        const isWhitespace = !count || count === '0';
+        
+        // Format signal display with code and name
+        const signalCode = signal; // This is the signal key (e.g., "ARCH-02")
+        const signalName = signalFull || signal; // This is the full name (e.g., "CDW Identified")
+        const signalDisplay = signalCode && signalName && signalCode !== signalName ? 
+            `${SecurityUtils.sanitizeHTML(signalCode)}: ${SecurityUtils.sanitizeHTML(signalName)}` :
+            SecurityUtils.sanitizeHTML(signalName);
+        
+        tooltip.innerHTML = `
+            <div class="tooltip-content">
+                <div class="tooltip-header">${SecurityUtils.sanitizeHTML(account)}</div>
+                <div class="tooltip-signal">${signalDisplay}</div>
+                <div class="tooltip-stats">
+                    ${isWhitespace ? 
+                        `<span class="tooltip-whitespace">No signals detected</span>` :
+                        `<span class="tooltip-count">Count: ${count}</span>`
+                    }
+                    <span class="tooltip-polarity ${normalizedPolarity}">${SecurityUtils.sanitizeHTML(polarity)}</span>
                 </div>
-            `;
-            
-            // Improved positioning with viewport awareness
-            const rect = cell.getBoundingClientRect();
-            const scrollX = window.scrollX || window.pageXOffset;
-            const scrollY = window.scrollY || window.pageYOffset;
-            
-            tooltip.style.display = 'block';
-            tooltip.style.left = (rect.left + rect.width / 2 + scrollX) + 'px';
-            tooltip.style.top = (rect.top + scrollY - 10) + 'px';
-        }
+                ${isWhitespace ? 
+                    `<div class="tooltip-opportunity">💡 Opportunity for engagement</div>` : 
+                    ''
+                }
+            </div>
+        `;
+        
+        // Improved positioning with viewport awareness
+        const rect = cell.getBoundingClientRect();
+        const scrollX = window.scrollX || window.pageXOffset;
+        const scrollY = window.scrollY || window.pageYOffset;
+        
+        tooltip.style.display = 'block';
+        tooltip.style.left = (rect.left + rect.width / 2 + scrollX) + 'px';
+        tooltip.style.top = (rect.top + scrollY - 10) + 'px';
     }
     
     /**
@@ -407,4 +711,5 @@ class WhitespaceRenderer {
             // Future: Navigate to filtered signal view
         }
     }
+    
 }

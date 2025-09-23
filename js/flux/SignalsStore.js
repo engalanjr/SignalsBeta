@@ -61,7 +61,7 @@ class SignalsStore extends Store {
             actionPlansByAccount: new Map(),
             
             // UI state
-            currentTab: 'signal-feed',
+            currentTab: 'whitespace',
             selectedSignal: null,
             filteredSignals: [],
             loading: false,
@@ -80,7 +80,8 @@ class SignalsStore extends Store {
                 pagination: {
                     page: 1,
                     pageSize: 20
-                }
+                },
+                viewedSignals: new Set() // 🔧 CRITICAL FIX: Initialize viewedSignals set
             },
             
             // Modal/Drawer state
@@ -150,6 +151,9 @@ class SignalsStore extends Store {
                 break;
             case Actions.Types.FEEDBACK_FAILED:
                 this.handleFeedbackFailed(payload);
+                break;
+            case Actions.Types.FEEDBACK_REMOVED:
+                this.handleFeedbackRemoved(payload);
                 break;
                 
             // Comments
@@ -278,10 +282,16 @@ class SignalsStore extends Store {
         // Update denormalized signals array for backward compatibility
         this.state.signals = Array.from(this.normalizedData.signals.values());
         
+        // 🔧 CRITICAL FIX: Update filtered signals to include new page data
+        const updatedFilteredSignals = this.applyFilters(this.state.viewState.filters);
+        this.setState({ 
+            filteredSignals: updatedFilteredSignals 
+        });
+        
         // Clear cache to force re-render
         this.state.viewCache.lastUpdate = Date.now();
         
-        this.emit('data:page-loaded');
+        this.emitChange('data:page-loaded');
     }
     
     /**
@@ -385,9 +395,14 @@ class SignalsStore extends Store {
             i.interactionType === 'like' || i.interactionType === 'not-accurate'
         );
         
+        // Calculate feedback counts
+        const likeCount = interactions.filter(i => i.interactionType === 'like').length;
+        const notAccurateCount = interactions.filter(i => i.interactionType === 'not-accurate').length;
+        
         return {
             ...signal,
             id: signal.signal_id,
+            action_id: signal.action_id, // Explicitly preserve action_id
             
             // Merge account data (for backward compatibility)
             account_name: account?.account_name || signal.account_name,
@@ -414,7 +429,11 @@ class SignalsStore extends Store {
             // UI state
             isViewed: hasUserInteraction || signal.isViewed,
             currentUserFeedback: userFeedback?.interactionType,
-            feedback: userFeedback?.interactionType
+            feedback: userFeedback?.interactionType,
+            
+            // Feedback counts
+            likeCount: likeCount,
+            notAccurateCount: notAccurateCount
         };
     }
     
@@ -805,14 +824,14 @@ class SignalsStore extends Store {
         this.emitChange('signals:filtered', filteredSignals);
     }
     
-    handleSignalViewed(payload) {
+    async handleSignalViewed(payload) {
         const interaction = {
             id: `interaction-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             signalId: payload.signalId,
             interactionType: 'signal_viewed',
             timestamp: new Date().toISOString(),
-            userId: this.getState().userInfo?.userId,
-            userName: this.getState().userInfo?.userName,
+            userId: this.getState().userInfo?.userId || 'user-1',
+            userName: this.getState().userInfo?.userName || 'User',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -826,11 +845,31 @@ class SignalsStore extends Store {
         }
         this.indexes.interactionsBySignal.get(interaction.signalId).add(interaction.id);
         
+        // 🔧 CRITICAL FIX: Save interaction to appdb
+        try {
+            await SignalsRepository.saveInteraction(interaction);
+            console.log(`✅ Signal view interaction saved to appdb for signal ${payload.signalId}`);
+        } catch (error) {
+            console.error(`❌ Failed to save signal view interaction:`, error);
+        }
+        
         // Mark signal as viewed
         const signal = this.normalizedData.signals.get(payload.signalId);
         if (signal) {
             signal.isViewed = true;
         }
+        
+        // 🔧 CRITICAL FIX: Add signal to viewedSignals set
+        if (!this.state.viewState.viewedSignals) {
+            this.state.viewState.viewedSignals = new Set();
+        }
+        this.state.viewState.viewedSignals.add(payload.signalId);
+        
+        // 🔧 CRITICAL FIX: Update filtered signals to reflect the new viewed status
+        const updatedFilteredSignals = this.applyFilters(this.getState().viewState.filters);
+        this.setState({ 
+            filteredSignals: updatedFilteredSignals 
+        });
         
         this.emitChange('signal:viewed', payload.signalId);
     }
@@ -845,6 +884,13 @@ class SignalsStore extends Store {
         
         // Create snapshot for rollback
         this.createSnapshot(operationId);
+        
+        // Get current signal
+        const signal = this.state.signalsById.get(signalId);
+        if (!signal) {
+            console.error(`Signal ${signalId} not found for feedback update`);
+            return;
+        }
         
         // Add interaction
         const interaction = {
@@ -867,7 +913,54 @@ class SignalsStore extends Store {
         }
         this.indexes.interactionsBySignal.get(interaction.signalId).add(interaction.id);
         
+        // OPTIMISTIC UI UPDATE: Immediately update signal state
+        const currentFeedback = signal.currentUserFeedback;
+        let updatedSignal = { ...signal };
+        
+        if (currentFeedback === feedbackType) {
+            // User is removing their feedback - revert to no feedback
+            updatedSignal.currentUserFeedback = null;
+            
+            // Decrease counts
+            if (feedbackType === 'like') {
+                updatedSignal.likeCount = Math.max(0, (updatedSignal.likeCount || 0) - 1);
+            } else if (feedbackType === 'not-accurate') {
+                updatedSignal.notAccurateCount = Math.max(0, (updatedSignal.notAccurateCount || 0) - 1);
+            }
+        } else {
+            // User is adding new feedback
+            updatedSignal.currentUserFeedback = feedbackType;
+            
+            // Increase counts
+            if (feedbackType === 'like') {
+                updatedSignal.likeCount = (updatedSignal.likeCount || 0) + 1;
+            } else if (feedbackType === 'not-accurate') {
+                updatedSignal.notAccurateCount = (updatedSignal.notAccurateCount || 0) + 1;
+            }
+            
+            // If switching from one feedback type to another, decrease the old count
+            if (currentFeedback === 'like' && feedbackType === 'not-accurate') {
+                updatedSignal.likeCount = Math.max(0, (updatedSignal.likeCount || 0) - 1);
+            } else if (currentFeedback === 'not-accurate' && feedbackType === 'like') {
+                updatedSignal.notAccurateCount = Math.max(0, (updatedSignal.notAccurateCount || 0) - 1);
+            }
+        }
+        
+        // Update signal in store
+        this.state.signalsById.set(signalId, updatedSignal);
+        
+        // Update in signalsByAccount as well
+        const accountSignals = this.state.signalsByAccount.get(signal.accountId) || [];
+        const updatedAccountSignals = accountSignals.map(s => 
+            s.id === signalId ? updatedSignal : s
+        );
+        this.state.signalsByAccount.set(signal.accountId, updatedAccountSignals);
+        
+        console.log(`🎯 Optimistic update: Signal ${signalId} ${feedbackType} - Counts: like=${updatedSignal.likeCount}, notAccurate=${updatedSignal.notAccurateCount}`);
+        
         this.emitChange('feedback:requested', { signalId, feedbackType });
+        this.emitChange('feedback-updated', { signalId, feedbackType, updatedSignal });
+        console.log(`🔄 Emitted feedback-updated event for signal ${signalId}`);
     }
     
     handleFeedbackSucceeded(payload) {
@@ -883,6 +976,30 @@ class SignalsStore extends Store {
             message: { text: 'Failed to save feedback', type: 'error' }
         });
         this.emitChange('feedback:failed', { error });
+    }
+    
+    handleFeedbackRemoved(payload) {
+        const { signalId, userId } = payload;
+        
+        // Update signal to remove current user feedback
+        const signal = this.state.signalsById.get(signalId);
+        if (signal) {
+            const updatedSignal = {
+                ...signal,
+                currentUserFeedback: null
+            };
+            
+            this.state.signalsById.set(signalId, updatedSignal);
+            
+            // Update in signalsByAccount as well
+            const accountSignals = this.state.signalsByAccount.get(signal.accountId) || [];
+            const updatedAccountSignals = accountSignals.map(s => 
+                s.id === signalId ? updatedSignal : s
+            );
+            this.state.signalsByAccount.set(signal.accountId, updatedAccountSignals);
+            
+            this.emitChange('feedback:removed', { signalId, userId });
+        }
     }
     
     handleCommentRequested(payload) {
@@ -919,7 +1036,24 @@ class SignalsStore extends Store {
             this.indexes.commentsByAccount.get(comment.accountId).add(comment.id);
         }
         
+        // Update state for backward compatibility
+        this.state.comments = new Map(this.normalizedData.comments);
+        
+        console.log('💬 Comment added optimistically:', comment);
+        console.log('💬 Total comments in store:', this.normalizedData.comments.size);
+        
+        if (signalId) {
+            console.log('💬 Comments for signal', signalId, ':', this.getComments(signalId));
+        }
+        if (accountId) {
+            console.log('💬 Comments for account', accountId, ':', this.getComments(accountId));
+        }
+        
         this.emitChange('comment:requested', comment);
+        this.emitChange('comments-updated', comment);
+        
+        // Call API to save comment
+        this.saveCommentToAPI(comment, operationId);
     }
     
     handleCommentSucceeded(payload) {
@@ -945,28 +1079,52 @@ class SignalsStore extends Store {
     }
     
     handleActionPlanRequested(payload) {
-        const { signalId, title, description, tasks, userId, operationId } = payload;
+        const { signalId, title, description, tasks, userId, accountId, operationId } = payload;
         
         this.createSnapshot(operationId);
         
-        const plan = this.createActionPlan({
-            signalId,
-            title,
-            description,
-            tasks: tasks || [],
-            userId: userId || this.getState().userInfo?.userId,
-            isOptimistic: true
-        });
-        
-        this.emitChange('action_plan:requested', plan);
+        // 🔧 FIX: Don't create optimistic plan here - wait for handleActionPlanSucceeded
+        // This avoids ID mismatch and ensures we get the complete plan data from ActionPlansService
+        this.emitChange('action_plan:requested', { operationId, signalId, title, description, tasks, userId, accountId });
     }
     
     handleActionPlanSucceeded(payload) {
         const { plan, operationId } = payload;
         
-        const existingPlan = this.normalizedData.actionPlans.get(plan.id);
-        if (existingPlan) {
-            this.normalizedData.actionPlans.set(plan.id, { ...plan, isOptimistic: false });
+        // 🔧 DEBUG: Log the plan data to see what fields are present
+        console.log('🔍 [DEBUG] handleActionPlanSucceeded received plan:', plan);
+        console.log(' [DEBUG] Plan actionId:', plan.actionId);
+        console.log('🔍 [DEBUG] Plan accountId:', plan.accountId);
+        
+        // 🔧 CRITICAL FIX: Always store the plan in normalizedData.actionPlans
+        // Whether it exists or not, we need to store the complete plan data
+        this.normalizedData.actionPlans.set(plan.id, { ...plan, isOptimistic: false });
+        
+        // Update indexes for account-based lookups
+        if (plan.accountId) {
+            if (!this.indexes.plansByAccount.has(plan.accountId)) {
+                this.indexes.plansByAccount.set(plan.accountId, new Set());
+            }
+            this.indexes.plansByAccount.get(plan.accountId).add(plan.id);
+        }
+        
+        // 🔧 CRITICAL FIX: Also add the new action plan to app.actionPlans for ActionsRenderer
+        if (plan && plan.id) {
+            // Ensure app.actionPlans exists
+            if (!this.state.app || !this.state.app.actionPlans) {
+                if (!this.state.app) this.state.app = {};
+                this.state.app.actionPlans = new Map();
+            }
+            
+            // Add the new action plan with accountName fallback
+            const accountName = plan.accountName || `Account ${plan.accountId}`;
+            this.state.app.actionPlans.set(plan.id, {
+                ...plan,
+                accountName: accountName
+            });
+            
+            console.log(`🔧 [CRITICAL FIX] Added new action plan ${plan.id} to app.actionPlans for ActionsRenderer`);
+            console.log('🔍 [DEBUG] Stored plan data:', this.state.app.actionPlans.get(plan.id));
         }
         
         this.commitSnapshot(operationId);
@@ -1055,7 +1213,10 @@ class SignalsStore extends Store {
     applyFilters(filters) {
         let signals = this.getDenormalizedSignals();
         
-        if (!filters) return signals;
+        if (!filters) {
+            // 🔧 CRITICAL FIX: Sort signals by viewed status even without filters
+            return this.sortSignalsByViewedStatus(signals);
+        }
         
         if (filters.priority && filters.priority !== 'all') {
             signals = signals.filter(s => s.priority === filters.priority);
@@ -1064,7 +1225,11 @@ class SignalsStore extends Store {
             signals = signals.filter(s => s.category === filters.category);
         }
         if (filters.signalType && filters.signalType !== 'all') {
-            signals = signals.filter(s => s.category === filters.signalType);
+            signals = signals.filter(s => {
+                const signalPolarity = s.signal_polarity || s['Signal Polarity'] || 'Enrichment';
+                const normalizedPolarity = FormatUtils.normalizePolarityKey(signalPolarity);
+                return normalizedPolarity === filters.signalType.toLowerCase();
+            });
         }
         if (filters.polarity && filters.polarity !== 'all') {
             signals = signals.filter(s => s.signal_polarity === filters.polarity);
@@ -1081,7 +1246,92 @@ class SignalsStore extends Store {
             );
         }
         
-        return signals;
+        // 🔧 CRITICAL FIX: Always sort by viewed status after filtering
+        return this.sortSignalsByViewedStatus(signals);
+    }
+    
+    /**
+     * Sort signals to show unviewed signals first, then viewed signals
+     */
+    sortSignalsByViewedStatus(signals) {
+        return signals.sort((a, b) => {
+            const aViewed = this.isSignalViewed(a.id || a.signal_id);
+            const bViewed = this.isSignalViewed(b.id || b.signal_id);
+            
+            // 🔧 DEBUG: Log sorting decisions for first few signals (reduced frequency)
+            if (signals.indexOf(a) < 3 && Math.random() < 0.3) {
+                console.log(`🔍 [SORT DEBUG] Signal ${a.id || a.signal_id}: viewed=${aViewed}, priority=${a.priority}`);
+            }
+            
+            // Unviewed signals first (false comes before true)
+            if (aViewed !== bViewed) {
+                return aViewed ? 1 : -1;
+            }
+            
+            // Within each group, sort by priority (High > Medium > Low)
+            const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+            const aPriority = priorityOrder[a.priority] || 0;
+            const bPriority = priorityOrder[b.priority] || 0;
+            
+            if (aPriority !== bPriority) {
+                return bPriority - aPriority; // Higher priority first
+            }
+            
+            // Finally, sort by date (newest first)
+            const aDate = new Date(a.created_at || a.createdAt || 0);
+            const bDate = new Date(b.created_at || b.createdAt || 0);
+            return bDate - aDate;
+        });
+    }
+    
+    /**
+     * Check if a signal has been viewed by the user
+     */
+    isSignalViewed(signalId) {
+        // Check if signal is in viewedSignals set
+        if (this.state.viewState?.viewedSignals?.has(signalId)) {
+            return true;
+        }
+        
+        // Check if user has any interaction with this signal
+        const signal = this.normalizedData.signals.get(signalId);
+        if (signal?.currentUserFeedback) {
+            return true;
+        }
+        
+        // Check if user has created action plans for this account
+        if (signal?.account_id) {
+            const hasActionPlan = Array.from(this.normalizedData.actionPlans.values())
+                .some(plan => plan.accountId === signal.account_id);
+            if (hasActionPlan) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    async saveCommentToAPI(comment, operationId) {
+        try {
+            console.log('💾 Saving comment to API:', comment);
+            const result = await SignalsRepository.saveComment(comment);
+            
+            if (result.success) {
+                // Update the comment with the API response
+                const updatedComment = { ...comment, ...result.data, isOptimistic: false };
+                this.normalizedData.comments.set(comment.id, updatedComment);
+                this.state.comments = new Map(this.normalizedData.comments);
+                
+                // Dispatch success action
+                dispatcher.dispatch(Actions.commentSucceeded(updatedComment, operationId));
+            } else {
+                throw new Error(result.error || 'Failed to save comment');
+            }
+        } catch (error) {
+            console.error('❌ Failed to save comment to API:', error);
+            // Dispatch failure action
+            dispatcher.dispatch(Actions.commentFailed(operationId, error.message));
+        }
     }
 }
 

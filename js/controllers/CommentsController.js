@@ -98,12 +98,31 @@ class CommentsController {
     
     // Signal comment methods
     addSignalComment(signalId, commentText) {
+        console.log('💬 CommentsController.addSignalComment called:', { signalId, commentText });
+        
         if (!signalId || !commentText.trim()) {
             console.error('Signal ID and comment text are required');
             return;
         }
         
-        dispatcher.dispatch(Actions.addComment(signalId, commentText.trim()));
+        // Get the signal to find the accountId
+        const state = signalsStore.getState();
+        const signal = state.signalsById.get(signalId);
+        
+        if (!signal) {
+            console.error('Signal not found:', signalId);
+            return;
+        }
+        
+        const accountId = signal.accountId || signal.account_id;
+        if (!accountId) {
+            console.error('Account ID not found for signal:', signalId);
+            return;
+        }
+        
+        const userId = state.currentUser?.id || 1; // Default user ID
+        console.log('💬 Dispatching comment request:', { signalId, accountId, commentText, userId });
+        dispatcher.dispatch(Actions.requestComment(signalId, accountId, commentText.trim(), userId));
         this.showCommentMessage('Comment added successfully', 'success');
     }
     

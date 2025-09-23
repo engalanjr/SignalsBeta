@@ -11,7 +11,10 @@ class FeedbackService {
         // Get current user if not provided
         userId = userId || signalsStore.getState().userInfo.userId || 'user-1';
         
-        console.log(`🎯 FeedbackService: Handling ${feedbackType} for signal ${signalId}`);
+        // Check if user already has this type of feedback
+        const currentFeedback = this.getUserFeedback(signalId, userId);
+        
+        console.log(`🎯 FeedbackService: Handling ${feedbackType} for signal ${signalId}, current feedback: ${currentFeedback}`);
         
         // Dispatch optimistic request action
         const requestAction = Actions.requestFeedback(signalId, feedbackType, userId);
@@ -20,15 +23,25 @@ class FeedbackService {
         const operationId = requestAction.payload.operationId;
         
         try {
-            // Make API call in background
-            const result = await SignalsRepository.saveFeedbackInteraction(signalId, feedbackType, userId);
+            let result;
+            
+            if (currentFeedback === feedbackType) {
+                // User is removing their feedback (toggle off)
+                console.log(`🔄 Toggling off ${feedbackType} feedback for signal ${signalId}`);
+                result = await SignalsRepository.removeFeedbackInteraction(signalId, userId);
+            } else {
+                // User is adding new feedback (or switching from one type to another)
+                console.log(`➕ Adding ${feedbackType} feedback for signal ${signalId}`);
+                result = await SignalsRepository.saveFeedbackInteraction(signalId, feedbackType, userId);
+            }
             
             if (result.success) {
                 // Dispatch success action
                 dispatcher.dispatch(Actions.feedbackSucceeded(signalId, feedbackType, operationId));
                 
                 // Show success message
-                dispatcher.dispatch(Actions.showMessage(`Signal marked as ${feedbackType}`, 'success'));
+                const action = currentFeedback === feedbackType ? 'removed' : 'added';
+                dispatcher.dispatch(Actions.showMessage(`Signal ${action} ${feedbackType} feedback`, 'success'));
                 
             } else {
                 // Dispatch failure action
@@ -59,8 +72,22 @@ class FeedbackService {
         
         console.log(`🎯 FeedbackService: Removing feedback for signal ${signalId}`);
         
-        // Dispatch remove feedback action
+        // Dispatch remove feedback action (optimistic update)
         dispatcher.dispatch(Actions.removeFeedback(signalId, userId));
+        
+        try {
+            // Remove from API
+            const result = await SignalsRepository.removeFeedbackInteraction(signalId, userId);
+            
+            if (result.success) {
+                console.log('✅ Feedback removed successfully');
+            } else {
+                console.error('❌ Failed to remove feedback:', result.error);
+                // Note: We don't revert the optimistic update for feedback removal
+            }
+        } catch (error) {
+            console.error('❌ Critical error removing feedback:', error);
+        }
         
         // Show success message
         dispatcher.dispatch(Actions.showMessage('Feedback removed', 'info'));
@@ -76,12 +103,30 @@ class FeedbackService {
         const state = signalsStore.getState();
         userId = userId || state.userInfo.userId || 'user-1';
         
-        const interactions = state.interactions.get(signalId) || [];
-        const userInteraction = interactions.find(i => 
-            i.userId === userId && (i.interactionType === 'like' || i.interactionType === 'not-accurate')
-        );
+        // First check the signal's currentUserFeedback property (most reliable)
+        const signal = state.signalsById?.get(signalId);
+        if (signal && signal.currentUserFeedback) {
+            return signal.currentUserFeedback;
+        }
         
-        return userInteraction ? userInteraction.interactionType : null;
+        // Fallback: Get interactions from the normalized data structure
+        const interactions = state.normalizedData?.interactions || new Map();
+        const interactionsBySignal = state.indexes?.interactionsBySignal || new Map();
+        
+        // Get interaction IDs for this signal
+        const signalInteractionIds = interactionsBySignal.get(signalId) || new Set();
+        
+        // Find user's feedback interaction
+        for (const interactionId of signalInteractionIds) {
+            const interaction = interactions.get(interactionId);
+            if (interaction && 
+                interaction.userId === userId && 
+                (interaction.interactionType === 'like' || interaction.interactionType === 'not-accurate')) {
+                return interaction.interactionType;
+            }
+        }
+        
+        return null;
     }
     
     /**
@@ -91,10 +136,28 @@ class FeedbackService {
      */
     static getSignalCounts(signalId) {
         const state = signalsStore.getState();
-        const interactions = state.interactions.get(signalId) || [];
         
-        const likes = interactions.filter(i => i.interactionType === 'like' || i.type === 'like').length;
-        const notAccurate = interactions.filter(i => i.interactionType === 'not-accurate' || i.type === 'not-accurate').length;
+        // Get interactions from the normalized data structure
+        const interactions = state.normalizedData?.interactions || new Map();
+        const interactionsBySignal = state.indexes?.interactionsBySignal || new Map();
+        
+        // Get interaction IDs for this signal
+        const signalInteractionIds = interactionsBySignal.get(signalId) || new Set();
+        
+        let likes = 0;
+        let notAccurate = 0;
+        
+        // Count interactions
+        for (const interactionId of signalInteractionIds) {
+            const interaction = interactions.get(interactionId);
+            if (interaction) {
+                if (interaction.interactionType === 'like') {
+                    likes++;
+                } else if (interaction.interactionType === 'not-accurate') {
+                    notAccurate++;
+                }
+            }
+        }
         
         return { likes, notAccurate };
     }

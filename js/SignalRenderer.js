@@ -1,7 +1,6 @@
 // Signal Renderer - Pure view for rendering signal feed
 class SignalRenderer {
     
-    static virtualScrollManager = null;
     static cachedSignals = [];
     static lastRenderTime = 0;
 
@@ -39,78 +38,42 @@ class SignalRenderer {
             return dateB - dateA;
         });
 
-        // Check FIRST if we should use virtual scrolling to avoid pre-rendering
-        const shouldUseVirtualScroll = sortedSignals.length > 100;
-        
-        if (shouldUseVirtualScroll) {
-            // Use virtual scrolling for large datasets
-            this.renderWithVirtualScroll(sortedSignals, viewState, comments, interactions, actionPlans);
-        } else {
-            // Only build HTML for small datasets
-            const newSignals = sortedSignals.filter(signal => !this.hasUserInteraction(signal, viewState, interactions, actionPlans));
-            const viewedSignals = sortedSignals.filter(signal => this.hasUserInteraction(signal, viewState, interactions, actionPlans));
+        // 🔧 CRITICAL FIX: Disable virtual scrolling to fix bounce issues
+        // Always render all signals directly to avoid virtual scroll problems
+        const newSignals = sortedSignals.filter(signal => !this.hasUserInteraction(signal, viewState, interactions, actionPlans));
+        const viewedSignals = sortedSignals.filter(signal => this.hasUserInteraction(signal, viewState, interactions, actionPlans));
 
-            let html = '';
+        let html = '';
 
-            // Add new signals section header
-            html += this.renderNewSignalsHeader(newSignals.length);
+        // Add new signals section header
+        html += this.renderNewSignalsHeader(newSignals.length);
 
-            newSignals.forEach(signal => {
-                html += this.renderSignalCard(signal, comments, true);
-            });
+        newSignals.forEach(signal => {
+            html += this.renderSignalCard(signal, comments, true);
+        });
 
-            if (newSignals.length > 0 && viewedSignals.length > 0) {
-                html += this.renderSeparator();
-            }
-
-            viewedSignals.forEach(signal => {
-                html += this.renderSignalCard(signal, comments, false);
-            });
-
-            container.innerHTML = html;
-            this.attachEventListeners(container);
+        if (newSignals.length > 0 && viewedSignals.length > 0) {
+            html += this.renderSeparator();
         }
+
+        // Add viewed signals section header
+        if (viewedSignals.length > 0) {
+            html += this.renderViewedSignalsHeader(viewedSignals.length);
+        }
+
+        viewedSignals.forEach(signal => {
+            html += this.renderSignalCard(signal, comments, false);
+        });
+
+        container.innerHTML = html;
+        this.attachEventListeners(container);
         
         // Cache the signals for fast tab switching
         this.cachedSignals = sortedSignals;
         this.lastRenderTime = Date.now();
     }
     
-    /**
-     * Render signals using virtual scrolling for performance
-     */
-    static renderWithVirtualScroll(signals, viewState, comments, interactions, actionPlans) {
-        const container = document.getElementById('signalsList');
-        if (!container) return;
-        
-        // Initialize virtual scroll manager if not exists
-        if (!this.virtualScrollManager) {
-            this.virtualScrollManager = new VirtualScrollManager({
-                itemHeight: 250, // Estimated height for signal cards
-                bufferSize: 3,
-                pageSize: 30,
-                renderCallback: (signal, index) => {
-                    const isNew = !this.hasUserInteraction(signal, viewState, interactions, actionPlans);
-                    return this.renderSignalCard(signal, comments, isNew);
-                },
-                loadMoreCallback: async () => {
-                    // Load next page of signals
-                    const result = await SignalsRepository.loadNextPage();
-                    if (result.hasMore) {
-                        // Get updated signals from store
-                        const updatedSignals = SignalsStore.getAllSignals();
-                        this.virtualScrollManager.setItems(updatedSignals, true);
-                    }
-                    return result.hasMore;
-                }
-            });
-        }
-        
-        // Initialize with signals
-        this.virtualScrollManager.initialize('signalsList', signals);
-        
-        console.log(`🚀 Virtual scrolling enabled for ${signals.length} signals`);
-    }
+    // Virtual scrolling removed - now renders all signals directly for better UX
 
     static renderSignalCard(signal, comments, isNew) {
         // Safety check for signal data
@@ -118,14 +81,24 @@ class SignalRenderer {
             console.error('Invalid signal data:', signal);
             return '';
         }
+        
+        // Debug: Check if this signal has comments
+        const signalComments = comments.get(signal.id) || [];
+        if (signalComments.length > 0) {
+            console.log(`🎨 renderSignalCard: Signal ${signal.id} has ${signalComments.length} comments:`, signalComments);
+        }
 
-        const feedbackClass = signal.currentUserFeedback ? `signal-${signal.currentUserFeedback}` : '';
+        const userFeedback = FeedbackService.getUserFeedback(signal.id);
+        const feedbackClass = userFeedback ? `signal-${userFeedback}` : '';
         const feedbackStyle = this.getFeedbackStyle(signal);
         const likeButtonHtml = this.getLikeButtonHtml(signal);
         const notAccurateButtonHtml = this.getNotAccurateButtonHtml(signal);
         const priority = signal.priority || 'Low';
         const cardClass = isNew ? 'signal-new' : 'signal-viewed';
         const priorityClass = priority.toLowerCase();
+        
+        // 🔧 CRITICAL FIX: Add proper styling classes for new vs viewed signals
+        const additionalClasses = isNew ? 'new-signal-card' : 'viewed-signal-card';
 
         // Ensure required fields have fallback values and sanitize user content
         const accountName = SecurityUtils.sanitizeHTML(signal.account_name || 'Unknown Account');
@@ -139,7 +112,7 @@ class SignalRenderer {
         const polarityClass = FormatUtils.normalizePolarityKey(signalPolarity);
 
         return `
-            <div class="signal-card ${cardClass} ${priorityClass}-priority ${feedbackClass}" data-signal-id="${signal.id}" style="${feedbackStyle}">
+            <div class="signal-card ${cardClass} ${priorityClass}-priority ${feedbackClass} ${additionalClasses}" data-signal-id="${signal.id}" style="${feedbackStyle}">
                 <div class="signal-header">
                     <div class="signal-info">
                         <div class="signal-title">${accountName}</div>
@@ -201,8 +174,26 @@ class SignalRenderer {
         `;
     }
 
+    static renderViewedSignalsHeader(count) {
+        if (count === 0) return '';
+        
+        return `
+            <div class="signals-section-header viewed-signals">
+                <div class="section-header-content">
+                    <i class="fas fa-eye"></i>
+                    <h3>Signals Viewed (${count})</h3>
+                    <span class="section-subtitle">Previously viewed signals sorted by account and date</span>
+                </div>
+            </div>
+        `;
+    }
+
     static renderInlineCommentsSection(signalId, comments) {
         const signalComments = comments.get(signalId) || [];
+        
+        if (signalComments.length > 0) {
+            console.log(`🎨 SignalRenderer rendering ${signalComments.length} comments for signal ${signalId}:`, signalComments);
+        }
         
         // Only show comments section if there are comments or to allow adding new ones
         return `
@@ -250,40 +241,45 @@ class SignalRenderer {
     }
 
     static getFeedbackStyle(signal) {
-        if (signal.currentUserFeedback === 'like') {
-            return 'background-color: #d4f6d4; border-left: 4px solid #28a745; border: 1px solid #c3e6cb;';
-        } else if (signal.currentUserFeedback === 'not-accurate') {
-            return 'background-color: #f8d7da; border-left: 4px solid #dc3545; border: 1px solid #f5c6cb;';
+        const userFeedback = FeedbackService.getUserFeedback(signal.id);
+        if (userFeedback === 'like') {
+            return 'background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%); border-left: 4px solid #4caf50; border: 1px solid #c8e6c9; box-shadow: 0 2px 8px rgba(76, 175, 80, 0.1);';
+        } else if (userFeedback === 'not-accurate') {
+            return 'background: linear-gradient(135deg, #ffebee 0%, #fce4ec 100%); border-left: 4px solid #f44336; border: 1px solid #ffcdd2; box-shadow: 0 2px 8px rgba(244, 67, 54, 0.1);';
         }
         return '';
     }
 
     static getLikeButtonHtml(signal) {
-        const likeCount = signal.likeCount || 0;
-        const isLiked = signal.currentUserFeedback === 'like';
+        // Get feedback counts from the store
+        const counts = FeedbackService.getSignalCounts(signal.id);
+        const likeCount = counts.likes;
+        const isLiked = FeedbackService.getUserFeedback(signal.id) === 'like';
         
         if (isLiked) {
             return `<button class="btn btn-secondary liked-btn" data-action="like" data-signal-id="${signal.id}">
-                <i class="fas fa-check"></i> Liked! ${likeCount > 0 ? `(${likeCount})` : ''}
+                <i class="fas fa-check"></i> Liked! ${likeCount > 0 ? `<span class="count-badge">${likeCount}</span>` : ''}
             </button>`;
         } else {
             return `<button class="btn btn-secondary" data-action="like" data-signal-id="${signal.id}">
-                <i class="fas fa-thumbs-up"></i> Like ${likeCount > 0 ? `(${likeCount})` : ''}
+                <i class="fas fa-thumbs-up"></i> Like ${likeCount > 0 ? `<span class="count-badge">${likeCount}</span>` : ''}
             </button>`;
         }
     }
 
     static getNotAccurateButtonHtml(signal) {
-        const notAccurateCount = signal.notAccurateCount || 0;
-        const isNotAccurate = signal.currentUserFeedback === 'not-accurate';
+        // Get feedback counts from the store
+        const counts = FeedbackService.getSignalCounts(signal.id);
+        const notAccurateCount = counts.notAccurate;
+        const isNotAccurate = FeedbackService.getUserFeedback(signal.id) === 'not-accurate';
         
         if (isNotAccurate) {
             return `<button class="btn btn-secondary not-accurate-btn" data-action="not-accurate" data-signal-id="${signal.id}">
-                <i class="fas fa-thumbs-down"></i> Not Accurate ${notAccurateCount > 0 ? `(${notAccurateCount})` : ''}
+                <i class="fas fa-thumbs-down"></i> Not Accurate ${notAccurateCount > 0 ? `<span class="count-badge">${notAccurateCount}</span>` : ''}
             </button>`;
         } else {
             return `<button class="btn btn-secondary" data-action="not-accurate" data-signal-id="${signal.id}">
-                <i class="fas fa-thumbs-down"></i> Not Accurate ${notAccurateCount > 0 ? `(${notAccurateCount})` : ''}
+                <i class="fas fa-thumbs-down"></i> Not Accurate ${notAccurateCount > 0 ? `<span class="count-badge">${notAccurateCount}</span>` : ''}
             </button>`;
         }
     }
@@ -376,35 +372,21 @@ class SignalRenderer {
             const target = e.target.closest('[data-action]');
             if (!target) return;
             
-            e.stopPropagation();
-            e.preventDefault();
-            
             const action = target.getAttribute('data-action');
             const signalId = target.getAttribute('data-signal-id');
             const commentId = target.getAttribute('data-comment-id');
             
+            // Only handle specific actions, let others bubble up
             switch (action) {
-                case 'like':
-                    const userId = signalsStore.getState().userInfo?.userId || 'user-1';
-                    dispatcher.dispatch(Actions.requestFeedback(signalId, 'like', userId));
-                    break;
-                case 'not-accurate':
-                    const userId2 = signalsStore.getState().userInfo?.userId || 'user-1';
-                    dispatcher.dispatch(Actions.requestFeedback(signalId, 'not-accurate', userId2));
-                    break;
+                // Like and not-accurate actions are handled by FeedbackController
+                // No need to handle them here to avoid duplication
                 case 'remove-signal':
+                    e.stopPropagation();
+                    e.preventDefault();
                     dispatcher.dispatch(Actions.removeSignalFromFeed(signalId));
                     break;
                 case 'add-comment':
-                    const inputElement = document.getElementById(`inlineCommentText-${signalId}`);
-                    if (inputElement && inputElement.value.trim()) {
-                        const state = signalsStore.getState();
-                        const signal = state.signalsById.get(signalId);
-                        const accountId = signal?.account_id || signal?.account_name || 'unknown';
-                        const userId3 = state.userInfo?.userId || 'user-1';
-                        dispatcher.dispatch(Actions.requestComment(signalId, accountId, inputElement.value.trim(), userId3));
-                        inputElement.value = '';
-                    }
+                    // Let CommentsController handle this - don't process here
                     break;
                 case 'edit-comment':
                     const commentElement = document.getElementById(`comment-text-${commentId}`);

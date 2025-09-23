@@ -17,41 +17,6 @@ class ActionsRenderer {
         // Get action plans and convert to display format
         const actionPlans = await this.getFormattedActionPlans(app);
 
-        // 🔧 CRITICAL FIX: Cache the formatted action plans back to app.actionPlans for modal access
-        if (actionPlans.length > 0) {
-            console.log(`🔧 [DATA PERSISTENCE FIX] Caching ${actionPlans.length} formatted action plans to app.actionPlans for modal access`);
-            
-            // Ensure app.actionPlans is initialized as Map
-            if (!app.actionPlans || !(app.actionPlans instanceof Map)) {
-                app.actionPlans = new Map();
-            }
-            
-            // Store each action plan with its proper structure for modal access
-            actionPlans.forEach(formattedPlan => {
-                const planData = formattedPlan.planData;
-                if (planData && planData.id) {
-                    // Store the plan data with all necessary fields for modal
-                    app.actionPlans.set(planData.id, {
-                        ...planData,
-                        accountId: formattedPlan.accountId,
-                        accountName: formattedPlan.accountName,
-                        // Ensure all required fields are preserved
-                        title: planData.title,
-                        description: planData.description,
-                        actionId: planData.actionId,
-                        status: planData.status,
-                        priority: planData.priority,
-                        plays: planData.plays || [],
-                        dueDate: planData.dueDate,
-                        createdDate: planData.createdDate
-                    });
-                    console.log(`🔧 Cached plan ${planData.id} for account ${formattedPlan.accountName}`);
-                }
-            });
-            
-            console.log(`🔧 [DATA PERSISTENCE FIX] Successfully cached ${app.actionPlans.size} action plans for modal access`);
-        }
-
         if (actionPlans.length === 0) {
             container.innerHTML = this.renderEmptyState();
             return;
@@ -171,14 +136,31 @@ class ActionsRenderer {
         }
         
         for (let [planId, planData] of app.actionPlans) {
+            //  DEBUG: Log the plan data being processed
+            console.log(`🔍 [DEBUG] Processing plan with key: ${planId}`);
+            console.log(`🔍 [DEBUG] Plan data:`, planData);
+            console.log(`🔍 [DEBUG] Plan actionId:`, planData.actionId);
+            console.log(` [DEBUG] Plan accountId:`, planData.accountId);
+            
             // Extract account ID from plan data (since map key is now planId, not accountId)
             const accountId = planData.accountId;
             
             // Handle missing app.accounts gracefully - use fallback from planData
             const account = (app.accounts && app.accounts.get) ? app.accounts.get(accountId) : null;
             
+            // 🔧 FIX: Try to get account from signalsStore if not found in app.accounts
+            let accountName = null;
+            if (account) {
+                accountName = account.name || account.account_name;
+            } else if (window.signalsStore) {
+                const storeAccount = window.signalsStore.getAccount(accountId);
+                if (storeAccount) {
+                    accountName = storeAccount.name || storeAccount.account_name;
+                }
+            }
+            
             // 🔧 FIX: Allow plans to proceed even without account data - we have fallback logic at line 200
-            if (!account && !planData.accountName) {
+            if (!accountName && !planData.accountName) {
                 console.log(`⚠️ Processing plan ${planId} without account data for ${accountId} - using fallback name`);
                 // Don't skip - let the fallback logic handle this
             }
@@ -199,7 +181,7 @@ class ActionsRenderer {
 
             actionPlans.push({
                 accountId: accountId,
-                accountName: account?.name || planData.accountName || `Account ${accountId}`,
+                accountName: accountName || planData.accountName || `Account ${accountId}`,
                 accountHealth: this.getHealthFromRiskCategory(account?.at_risk_cat || 'Unknown'),
                 signalsCount: (account && account.signals) ? account.signals.length : 0,
                 highPriorityCount: highPrioritySignals.length,
@@ -285,6 +267,26 @@ class ActionsRenderer {
                 
                 // 🔧 CRITICAL FIX: Return same wrapper structure as Domo path
                 // Instead of returning raw fallbackPlans, rebuild from app.actionPlans for consistency
+                // 🔧 CRITICAL FIX: Update SignalsStore state with fallback data
+                if (window.signalsStore) {
+                    console.log('Updating SignalsStore state with fallback action plans...');
+                    const currentState = window.signalsStore.getState();
+                    const updatedActionPlans = new Map(currentState.actionPlans);
+                    
+                    // Add fallback plans to the state
+                    for (let [planId, planData] of app.actionPlans) {
+                        updatedActionPlans.set(planId, planData);
+                    }
+                    
+                    // Update the state
+                    window.signalsStore.setState({ actionPlans: updatedActionPlans });
+                    console.log(`Updated SignalsStore with ${updatedActionPlans.size} action plans`);
+                    
+        // Trigger re-render of Portfolio view
+        console.log('🔔 Emitting action-plans-updated event to trigger Portfolio re-render');
+        window.signalsStore.emitChange('action-plans-updated', 'action-plans-updated');
+                }
+                
                 console.log('Rebuilding formatted plans from app.actionPlans for consistent structure...');
                 
                 const formattedFallbackPlans = [];
@@ -301,9 +303,20 @@ class ActionsRenderer {
                     // Handle missing account.signals gracefully
                     const highPrioritySignals = (account && account.signals) ? account.signals.filter(s => s.priority === 'High') : [];
                     
+                    // Try to get account name from signalsStore if not found in app.accounts
+                    let fallbackAccountName = null;
+                    if (account) {
+                        fallbackAccountName = account.name || account.account_name;
+                    } else if (window.signalsStore) {
+                        const storeAccount = window.signalsStore.getAccount(accountId);
+                        if (storeAccount) {
+                            fallbackAccountName = storeAccount.name || storeAccount.account_name;
+                        }
+                    }
+                    
                     formattedFallbackPlans.push({
                         accountId: accountId,
-                        accountName: account?.name || planData.accountName || `Account ${accountId}`,
+                        accountName: fallbackAccountName || planData.accountName || `Account ${accountId}`,
                         accountHealth: this.getHealthFromRiskCategory(account?.at_risk_cat || 'Unknown'),
                         signalsCount: (account && account.signals) ? account.signals.length : 0,
                         highPriorityCount: highPrioritySignals.length,
@@ -898,33 +911,68 @@ class ActionsRenderer {
         
         // Find the action plan and update it via ActionPlanService
         try {
-            const app = window.app;
-            if (!app) {
-                console.error('SignalsAI app instance not found');
-                return;
-            }
+            // Try to get app instance, but don't fail if it doesn't exist
+            const app = window.app || {};
             
             // Find the plan ID associated with this task
             let planId = null;
             let planData = null;
             
-            // Search through action plans to find the one containing this action
-            // Handle new single-action-per-plan data model where each plan represents one action
-            for (let [id, plan] of app.actionPlans) {
-                // Check if this plan's actionId matches the task's actionId
-                const planActionId = plan.actionId || plan.planData?.actionId;
-                
-                if (planActionId === actionId) {
-                    planId = id;
-                    planData = plan;
-                    break;
+            // Try to get actionPlans from multiple sources
+            let actionPlansMap = null;
+            
+            // First try: signalsStore (most reliable)
+            if (window.signalsStore) {
+                const state = window.signalsStore.getState();
+                if (state && state.actionPlans) {
+                    actionPlansMap = state.actionPlans;
+                    console.log('Using actionPlans from signalsStore');
                 }
             }
             
-            // If we didn't find by actionId, try to find by the task ID itself (fallback)
-            if (!planId && app.actionPlans.has(taskId)) {
+            // Second try: app.actionPlans
+            if (!actionPlansMap && app.actionPlans) {
+                actionPlansMap = app.actionPlans;
+                console.log('Using actionPlans from app');
+            }
+            
+            // If still no actionPlans, try to find the plan by taskId directly
+            if (!actionPlansMap) {
+                console.warn('No actionPlans found in app or signalsStore, trying direct lookup');
+                // Use taskId as planId as fallback
                 planId = taskId;
-                planData = app.actionPlans.get(taskId);
+                planData = { status: newStatus, actionId: actionId };
+            } else {
+                // Ensure actionPlans is iterable (Map or Object)
+                if (!(actionPlansMap instanceof Map)) {
+                    if (Array.isArray(actionPlansMap)) {
+                        actionPlansMap = new Map(actionPlansMap.map(plan => [plan.id, plan]));
+                    } else if (typeof actionPlansMap === 'object') {
+                        actionPlansMap = new Map(Object.entries(actionPlansMap));
+                    } else {
+                        console.error('actionPlans is not iterable:', typeof actionPlansMap);
+                        return;
+                    }
+                }
+                
+                // Search through action plans to find the one containing this action
+                // Handle new single-action-per-plan data model where each plan represents one action
+                for (let [id, plan] of actionPlansMap) {
+                    // Check if this plan's actionId matches the task's actionId
+                    const planActionId = plan.actionId || plan.planData?.actionId;
+                    
+                    if (planActionId === actionId) {
+                        planId = id;
+                        planData = plan;
+                        break;
+                    }
+                }
+                
+                // If we didn't find by actionId, try to find by the task ID itself (fallback)
+                if (!planId && actionPlansMap.has(taskId)) {
+                    planId = taskId;
+                    planData = actionPlansMap.get(taskId);
+                }
             }
             
             if (planId && planData) {
@@ -939,6 +987,22 @@ class ActionsRenderer {
                 
                 if (updateResult.success) {
                     console.log(`Successfully updated action plan status for task ${taskId} to ${newStatus}`);
+                    
+                    // Update local data for immediate UI consistency
+                    if (actionPlansMap && actionPlansMap.has(planId)) {
+                        actionPlansMap.set(planId, planData);
+                    }
+                    
+                    // Also update signalsStore if available
+                    if (window.signalsStore) {
+                        const state = window.signalsStore.getState();
+                        if (state.actionPlans && state.actionPlans.has(planId)) {
+                            const storePlan = state.actionPlans.get(planId);
+                            storePlan.status = newStatus;
+                            storePlan.updatedAt = new Date().toISOString();
+                            state.actionPlans.set(planId, storePlan);
+                        }
+                    }
                 } else {
                     console.error('Failed to update action plan:', updateResult.error);
                     // Revert UI changes if save failed
@@ -1139,32 +1203,51 @@ class ActionsRenderer {
         this.removeDeleteModal();
 
         try {
-            // Group tasks by account/plan for efficient processing
+            // Group tasks by plan for efficient processing
             const tasksByPlan = {};
             
             for (const taskId of selectedTaskIds) {
-                // Parse the task ID to get account and task index (e.g., "0013000000DXZ1fAAH-1")
-                const [accountId, taskIndex] = taskId.split('-');
+                // The taskId is actually a plan ID, we need to find which plan it belongs to
+                const state = window.signalsStore ? window.signalsStore.getState() : null;
+                let planData = null;
+                let planId = null;
                 
-                if (!tasksByPlan[accountId]) {
-                    tasksByPlan[accountId] = [];
+                if (state && state.actionPlans) {
+                    // Find the plan that contains this task
+                    for (const [id, plan] of state.actionPlans) {
+                        if (plan && plan.actionItems) {
+                            const taskIndex = plan.actionItems.findIndex(item => item.id === taskId);
+                            if (taskIndex !== -1) {
+                                planData = plan;
+                                planId = id;
+                                
+                                if (!tasksByPlan[planId]) {
+                                    tasksByPlan[planId] = {
+                                        planData: planData,
+                                        tasks: []
+                                    };
+                                }
+                                tasksByPlan[planId].tasks.push({
+                                    taskId: taskId,
+                                    taskIndex: taskIndex
+                                });
+                                break;
+                            }
+                        }
+                    }
                 }
-                tasksByPlan[accountId].push({
-                    taskId: taskId,
-                    taskIndex: parseInt(taskIndex)
-                });
             }
 
             let deletedCount = 0;
             
             // Process each action plan
-            for (const [accountId, tasksToDelete] of Object.entries(tasksByPlan)) {
+            for (const [planId, planInfo] of Object.entries(tasksByPlan)) {
                 try {
-                    // Get the action plan for this account
-                    const planData = window.app.actionPlans.get(accountId);
+                    const planData = planInfo.planData;
+                    const tasksToDelete = planInfo.tasks;
                     
                     if (!planData || !planData.actionItems) {
-                        console.warn(`Could not find action plan for account: ${accountId}`);
+                        console.warn(`Could not find action plan: ${planId}`);
                         continue;
                     }
 
@@ -1195,7 +1278,10 @@ class ActionsRenderer {
                         console.log(`Successfully deleted ${sortedTasks.length} tasks from action plan ${planData.id}`);
                         
                         // Update the local data immediately for UI consistency
-                        window.app.actionPlans.set(accountId, result.plan || updatedPlanData);
+                        const state = window.signalsStore ? window.signalsStore.getState() : null;
+                        if (state && state.actionPlans && planId) {
+                            state.actionPlans.set(planId, result.plan || updatedPlanData);
+                        }
                     } else {
                         console.error(`Failed to update action plan ${planData.id}:`, result ? result.error : 'No response');
                         // Revert the deleted count for failed operations
@@ -1213,18 +1299,18 @@ class ActionsRenderer {
             // Show appropriate notification and refresh
             if (deletedCount > 0) {
                 const taskText = deletedCount === 1 ? 'task' : 'tasks';
-                window.app.showSuccessMessage(`Successfully deleted ${deletedCount} ${taskText}`);
+                console.log(`✅ Successfully deleted ${deletedCount} ${taskText}`);
                 
                 // Refresh the Action Plans view to show updated data
                 console.log('Refreshing Action Plans view after task deletion');
-                window.app.renderCurrentTab();
+                this.renderActions();
             } else {
-                window.app.showErrorMessage('Failed to delete tasks. Please try again.');
+                console.error('Failed to delete tasks. Please try again.');
             }
 
         } catch (error) {
             console.error('Error during task deletion:', error);
-            window.app.showErrorMessage('An error occurred while deleting tasks');
+            console.error('An error occurred while deleting tasks');
             this.clearTaskSelection();
         }
     }
@@ -1405,7 +1491,7 @@ class ActionsRenderer {
         } else {
             plays.forEach((play, index) => {
                 // Handle both string plays and enhanced object plays
-                const playTitle = typeof play === 'string' ? play : (play.name || play.playTitle || play.playName || `Play ${index + 1}`);
+                const playTitle = typeof play === 'string' ? play : (play.title || play.name || play.playTitle || play.playName || `Play ${index + 1}`);
                 const playId = typeof play === 'string' ? `play_${index + 1}` : (play.id || play.playId || `play_${index + 1}`);
                 const playDescription = typeof play === 'string' ? '' : (play.description || play.full_description || '');
                 
@@ -1413,7 +1499,7 @@ class ActionsRenderer {
                 const status = play.status || 'pending';
                 const priority = play.priority || 'medium';
                 const dueDate = play.dueDate || '';
-                const assignee = play.assignee || play.executing_role || '';
+                const assignee = play.assignee || play.executingRole || play.executing_role || '';
                 
                 // Status and priority styling
                 const statusClass = status.replace('-', '');
@@ -1998,9 +2084,20 @@ class ActionsRenderer {
                 const accountId = planData.accountId;
                 const account = (app.accounts && app.accounts.get) ? app.accounts.get(accountId) : null;
                 
+                // Try to get account name from signalsStore if not found in app.accounts
+                let modalAccountName = null;
+                if (account) {
+                    modalAccountName = account.name || account.account_name;
+                } else if (window.signalsStore) {
+                    const storeAccount = window.signalsStore.getAccount(accountId);
+                    if (storeAccount) {
+                        modalAccountName = storeAccount.name || storeAccount.account_name;
+                    }
+                }
+                
                 formattedActionPlans.push({
                     accountId: accountId,
-                    accountName: account?.name || planData.accountName || `Account ${accountId}`,
+                    accountName: modalAccountName || planData.accountName || `Account ${accountId}`,
                     planData: { ...planData, id: planId }
                 });
             }
@@ -2173,8 +2270,8 @@ class ActionsRenderer {
             html += '<div class="plays-list">';
             plays.forEach((play, index) => {
                 // Handle both string plays and object plays
-                const playTitle = typeof play === 'string' ? play : (play.playTitle || play.playName || `Play ${index + 1}`);
-                const playId = typeof play === 'string' ? `play_${index + 1}` : (play.playId || `play_${index + 1}`);
+                const playTitle = typeof play === 'string' ? play : (play.title || play.name || play.playTitle || play.playName || `Play ${index + 1}`);
+                const playId = typeof play === 'string' ? `play_${index + 1}` : (play.id || play.playId || `play_${index + 1}`);
                 const isCompleted = play.completed || false;
                 
                 // Extract play details - handle both string and object formats
@@ -2318,8 +2415,22 @@ class ActionsRenderer {
             if (updates.status) {
                 const statusElement = taskRow.querySelector('.status-badge');
                 if (statusElement) {
-                    statusElement.textContent = updates.status;
-                    statusElement.className = `status-badge ${StatusUtils.getStatusCSSClass(StatusUtils.normalizeStatusToCanonical(updates.status))}`;
+                    const safeStatus = StatusUtils.normalizeStatusToCanonical(updates.status) || 'pending';
+                    const safeStatusDisplay = StatusUtils.getStatusDisplayLabel ? StatusUtils.getStatusDisplayLabel(safeStatus) : (updates.status || 'Pending');
+                    statusElement.textContent = safeStatusDisplay;
+                    statusElement.className = `status-badge ${StatusUtils.getStatusCSSClass(safeStatus)}`;
+                    
+                    // Update completion state
+                    const isComplete = safeStatus === 'complete';
+                    if (isComplete) {
+                        taskRow.classList.add('action-plan-completed');
+                        const checkbox = taskRow.querySelector('.task-checkbox');
+                        if (checkbox) checkbox.checked = true;
+                    } else {
+                        taskRow.classList.remove('action-plan-completed');
+                        const checkbox = taskRow.querySelector('.task-checkbox');
+                        if (checkbox) checkbox.checked = false;
+                    }
                 }
             }
             
@@ -2443,15 +2554,20 @@ class ActionsRenderer {
                 console.log(`🔄 Updated modal data for ${propertyName}`);
             }
             
-            // 🎉 IMMEDIATE UI FEEDBACK: Always refresh the Action Plans table 
-            if (window.app && typeof window.app.renderCurrentTab === 'function') {
-                // Debounce UI refresh to avoid thrashing during rapid changes
-                if (this.uiRefreshTimeout) clearTimeout(this.uiRefreshTimeout);
-                this.uiRefreshTimeout = setTimeout(() => {
-                    window.app.renderCurrentTab();
-                    console.log(`🎉 [OPTIMISTIC] Refreshed UI to show ${propertyName} change`);
-                }, 100);
+            // Update the signalsStore data as well
+            const state = window.signalsStore ? window.signalsStore.getState() : null;
+            if (state && state.actionPlans && planId) {
+                const currentPlan = state.actionPlans.get(planId);
+                if (currentPlan) {
+                    Object.assign(currentPlan, updateData);
+                    state.actionPlans.set(planId, currentPlan);
+                    console.log(`🔄 Updated signalsStore data for ${propertyName}`);
+                }
             }
+            
+            // 🎉 IMMEDIATE UI FEEDBACK: updateTaskRowDisplay call above handles immediate updates
+            // No need for full refresh - the immediate update should be sufficient
+            console.log(`🎉 [OPTIMISTIC] Immediate update applied for ${propertyName}`);
             
             // Result handling (success/warning messages are handled by the service)
             if (result && result.success) {
@@ -2608,7 +2724,7 @@ class ActionsRenderer {
             }
             
             // Update the visual state immediately
-            const playElement = document.querySelector(`[data-play-id="${playId}"] .play-title`);
+            const playElement = document.querySelector(`[data-play-id="${playId}"] .toolbox-play-title`);
             if (playElement) {
                 if (isChecked) {
                     playElement.classList.add('completed');
@@ -2626,16 +2742,22 @@ class ActionsRenderer {
             let planKey = null;
             if (window.app && window.app.actionPlans) {
                 for (let [key, plan] of window.app.actionPlans) {
-                    if (plan.id === planData.id || key === planData.id) {
+                    // Check multiple possible ID matches
+                    if (plan.id === planData.id || 
+                        key === planData.id || 
+                        plan.actionId === actionId ||
+                        key === taskId) {
                         planKey = key;
+                        console.log(`Found plan key: ${key} for plan ID: ${planData.id}`);
                         break;
                     }
                 }
             }
             
+            // Fallback: use taskId as planKey if we can't find a match
             if (!planKey) {
-                console.error('Could not find plan key for update');
-                return;
+                planKey = taskId;
+                console.log(`Using taskId as fallback plan key: ${taskId}`);
             }
             
             const result = await ActionPlansService.updateActionPlan(planKey, updateData, window.app);
@@ -2653,6 +2775,19 @@ class ActionsRenderer {
                     }
                     window.app.actionPlans.set(planKey, plan);
                     
+                    // Also update signalsStore if available
+                    if (window.signalsStore) {
+                        const state = window.signalsStore.getState();
+                        if (state.actionPlans && state.actionPlans.has(planKey)) {
+                            const storePlan = state.actionPlans.get(planKey);
+                            storePlan.plays = plays;
+                            if (storePlan.planData) {
+                                storePlan.planData.plays = plays;
+                            }
+                            state.actionPlans.set(planKey, storePlan);
+                        }
+                    }
+                    
                     // Trigger cache update events for UI consistency
                     if (window.DataCache && window.DataCache.emit) {
                         window.DataCache.emit('actionPlansChanged');
@@ -2666,6 +2801,7 @@ class ActionsRenderer {
                 console.error('Failed to update play completion:', result ? result.error : 'Unknown error');
                 
                 // Revert the visual state on failure
+                const playElement = document.querySelector(`[data-play-id="${playId}"] .toolbox-play-title`);
                 if (playElement) {
                     if (isChecked) {
                         playElement.classList.remove('completed');
@@ -2800,50 +2936,6 @@ class ActionsRenderer {
         }
     }
     
-    static updateTaskRowDisplay(taskId, updates) {
-        const taskRow = document.querySelector(`[data-task-id="${taskId}"]`);
-        if (!taskRow) return;
-        
-        // Update due date display
-        if (updates.dueDate) {
-            const dueDateElement = taskRow.querySelector('.due-date');
-            if (dueDateElement) {
-                const formattedDate = new Date(updates.dueDate).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric' 
-                });
-                dueDateElement.textContent = formattedDate;
-            }
-        }
-        
-        // Update priority badge
-        if (updates.priority) {
-            const priorityElement = taskRow.querySelector('.priority-badge');
-            if (priorityElement) {
-                priorityElement.className = `priority-badge priority-${updates.priority.toLowerCase()}`;
-                priorityElement.textContent = updates.priority;
-            }
-        }
-        
-        // Update assignee initials
-        if (updates.assignee) {
-            const assigneeElement = taskRow.querySelector('.assignee-initials');
-            if (assigneeElement) {
-                assigneeElement.textContent = updates.assignee;
-            }
-        }
-        
-        // Update task completion status
-        if (updates.status === 'Complete') {
-            taskRow.classList.add('action-plan-completed');
-            const checkbox = taskRow.querySelector('.task-checkbox');
-            if (checkbox) checkbox.checked = true;
-        } else {
-            taskRow.classList.remove('action-plan-completed');
-            const checkbox = taskRow.querySelector('.task-checkbox');
-            if (checkbox) checkbox.checked = false;
-        }
-    }
     
     static deletePlay(actionId, playId, playIndex) {
         if (confirm('Are you sure you want to delete this CS play?')) {

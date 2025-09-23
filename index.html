@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SignalsAI v8.0 - Customer Success Management</title>
+    <title>SignalsAI Beta - Signals to Accelerate Adoption</title>
     
     <!-- Web App Manifest -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -47,7 +47,11 @@
 
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
-            <button class="nav-tab active" data-tab="signal-feed">
+            <button class="nav-tab active" data-tab="whitespace">
+                <i class="fas fa-th"></i>
+                Whitespace
+            </button>
+            <button class="nav-tab" data-tab="signal-feed">
                 <i class="fas fa-stream"></i>
                 Signal Feed
             </button>
@@ -59,22 +63,22 @@
                 <i class="fas fa-tasks"></i>
                 Action Plans
             </button>
-            <button class="nav-tab" data-tab="whitespace">
-                <i class="fas fa-th"></i>
-                Whitespace
-            </button>
         </nav>
 
         <!-- Main Content Area -->
         <main class="main-content">
+            <!-- Whitespace Tab -->
+            <div id="whitespace" class="tab-content active">
+                <!-- Whitespace content will be dynamically generated here -->
+            </div>
+            
             <!-- Signal Feed Tab -->
-            <div id="signal-feed" class="tab-content active">
+            <div id="signal-feed" class="tab-content">
                 <!-- Priority Alert Banner -->
                 <div class="priority-alert-banner">
                     <div class="alert-content">
                         <i class="fas fa-exclamation-triangle alert-icon"></i>
-                        <span class="alert-text">6 High priority signals identified representing $350k of Renewal
-                            Baseline</span>
+                        <span class="alert-text" id="signal-feed-summary">Loading signal summary...</span>
                     </div>
                 </div>
 
@@ -105,26 +109,32 @@
             <div id="my-portfolio" class="tab-content">
                 <!-- Dashboard Summary Cards -->
                 <div class="portfolio-dashboard-cards">
-                    <div class="dashboard-card attention-card">
-                        <div class="card-icon">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <div class="card-content">
-                            <div class="card-title">Risks</div>
-                            <div class="card-value" id="requiresAttentionCount">6</div>
-                            <div class="card-description">Addressable Risks Identified</div>
-                        </div>
-                    </div>
-                    <div class="dashboard-card priority-card">
-                        <div class="card-icon">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <div class="card-content">
-                            <div class="card-title">Opportunities</div>
-                            <div class="card-value" id="highPriorityDashboard">6</div>
-                            <div class="card-description">Opportunities to Explore</div>
-                        </div>
-                    </div>
+        <div class="dashboard-card attention-card">
+            <div class="card-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-title">Risks</div>
+                <div class="card-value" id="requiresAttentionCount">6</div>
+                <div class="card-description">Accounts with risk signals</div>
+            </div>
+            <div class="card-filter" id="riskFilter" data-filter-type="risk">
+                <i class="fas fa-filter"></i>
+            </div>
+        </div>
+        <div class="dashboard-card priority-card">
+            <div class="card-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="card-content">
+                <div class="card-title">Opportunities</div>
+                <div class="card-value" id="highPriorityDashboard">6</div>
+                <div class="card-description">Accounts with opportunity signals</div>
+            </div>
+            <div class="card-filter" id="opportunityFilter" data-filter-type="opportunity">
+                <i class="fas fa-filter"></i>
+            </div>
+        </div>
                     <div class="dashboard-card accounts-card">
                         <div class="card-icon">
                             <i class="fas fa-building"></i>
@@ -289,6 +299,7 @@
     <script src="js/flux/services/FeedbackService.js"></script>
     <script src="js/flux/services/CommentsService.js"></script>
     <script src="js/flux/services/ActionPlansService.js"></script>
+    <script src="js/flux/services/SignalDimensionService.js"></script>
     
     <!-- Flux Testing (Development Only) -->
     <script src="js/flux/FluxTest.js"></script>

@@ -230,6 +230,11 @@ class Actions {
         };
     }
     
+    // Alias for submitFeedback (for backward compatibility)
+    static submitFeedback(signalId, feedbackType, userId = null) {
+        return this.requestFeedback(signalId, feedbackType, userId);
+    }
+    
     // Comment Actions
     static requestComment(signalId, accountId, text, userId) {
         return {
@@ -243,6 +248,16 @@ class Actions {
             },
             timestamp: Date.now()
         };
+    }
+    
+    // Alias for backward compatibility
+    static addComment(signalId, text, userId = null) {
+        return this.requestComment(signalId, null, text, userId);
+    }
+    
+    // Alias for account comments
+    static addAccountComment(accountId, text, userId = null) {
+        return this.requestComment(null, accountId, text, userId);
     }
     
     static commentSucceeded(comment, operationId) {
@@ -295,7 +310,7 @@ class Actions {
     }
     
     // Action Plan Actions
-    static requestActionPlan(signalId, title, description, tasks, userId) {
+    static requestActionPlan(signalId, title, description, tasks, userId, accountId = null) {
         return {
             type: this.Types.ACTION_PLAN_REQUESTED,
             payload: { 
@@ -304,6 +319,7 @@ class Actions {
                 description, 
                 tasks, 
                 userId,
+                accountId,
                 operationId: `plan_${signalId}_${Date.now()}`
             },
             timestamp: Date.now()

@@ -293,6 +293,7 @@ class SignalsStore extends Store {
         return {
             ...signal,
             id: signal.signal_id,
+            action_id: signal.action_id, // Explicitly preserve action_id
             
             // Merge account data (for backward compatibility)
             account_name: account?.account_name || signal.account_name,
@@ -961,7 +962,11 @@ class SignalsStore extends Store {
             signals = signals.filter(s => s.category === filters.category);
         }
         if (filters.signalType && filters.signalType !== 'all') {
-            signals = signals.filter(s => s.category === filters.signalType);
+            signals = signals.filter(s => {
+                const signalPolarity = s.signal_polarity || s['Signal Polarity'] || 'Enrichment';
+                const normalizedPolarity = FormatUtils.normalizePolarityKey(signalPolarity);
+                return normalizedPolarity === filters.signalType.toLowerCase();
+            });
         }
         if (filters.polarity && filters.polarity !== 'all') {
             signals = signals.filter(s => s.signal_polarity === filters.polarity);

@@ -27,6 +27,8 @@ class VirtualScrollManager {
         this.scrollDebounceTimer = null;
         this.renderFrame = null;
         this.lastRenderTime = 0;
+        this.isRendering = false; // Prevent concurrent renders
+        this.lastScrollTop = 0; // Track scroll position changes
     }
     
     /**
@@ -113,6 +115,10 @@ class VirtualScrollManager {
      * Update items list and re-render
      */
     setItems(items, append = false) {
+        // 🔧 PERFORMANCE FIX: Store current scroll position to prevent jumping
+        const currentScrollTop = this.viewport.scrollTop;
+        const currentScrollPercentage = this.getScrollProgress();
+        
         if (append) {
             this.items = [...this.items, ...items];
         } else {
@@ -122,6 +128,13 @@ class VirtualScrollManager {
         // Update total height based on all items
         this.totalHeight = this.items.length * this.itemHeight;
         this.scrollContainer.style.height = `${this.totalHeight}px`;
+        
+        // 🔧 PERFORMANCE FIX: Maintain scroll position to prevent jumping
+        if (append && currentScrollPercentage > 0) {
+            // Maintain relative scroll position when appending items
+            const newScrollTop = (this.totalHeight - this.containerHeight) * (currentScrollPercentage / 100);
+            this.viewport.scrollTop = Math.min(newScrollTop, this.totalHeight - this.containerHeight);
+        }
         
         // Update visible items
         this.updateVisibleItems();
@@ -134,21 +147,29 @@ class VirtualScrollManager {
         this.viewport.addEventListener('scroll', (e) => {
             this.scrollTop = e.target.scrollTop;
             
-            // Debounce scroll updates for performance
+            // Debounce scroll updates for performance - increased timeout
             if (this.scrollDebounceTimer) {
                 clearTimeout(this.scrollDebounceTimer);
             }
             
             this.scrollDebounceTimer = setTimeout(() => {
                 this.handleScroll();
-            }, 10);
-        });
+            }, 50); // Increased from 10ms to 50ms for better performance
+        }, { passive: true }); // Use passive listener for better performance
     }
     
     /**
      * Handle scroll event
      */
     handleScroll() {
+        // 🔧 PERFORMANCE FIX: Only update if scroll position actually changed significantly
+        const scrollDelta = Math.abs(this.scrollTop - this.lastScrollTop);
+        if (scrollDelta < 5) { // Only update if scrolled at least 5px
+            return;
+        }
+        
+        this.lastScrollTop = this.scrollTop;
+        
         // Update visible items
         this.updateVisibleItems();
         
@@ -160,6 +181,11 @@ class VirtualScrollManager {
      * Calculate and render visible items
      */
     updateVisibleItems() {
+        // 🔧 PERFORMANCE FIX: Prevent concurrent renders
+        if (this.isRendering) {
+            return;
+        }
+        
         // Cancel previous render frame if pending
         if (this.renderFrame) {
             cancelAnimationFrame(this.renderFrame);
@@ -176,21 +202,30 @@ class VirtualScrollManager {
             this.containerHeight = this.viewport.clientHeight;
             
             // Calculate visible range with buffer
-            this.startIndex = Math.max(0, 
+            const newStartIndex = Math.max(0, 
                 Math.floor(this.scrollTop / this.itemHeight) - this.bufferSize
             );
             
-            this.endIndex = Math.min(this.items.length - 1,
+            const newEndIndex = Math.min(this.items.length - 1,
                 Math.ceil((this.scrollTop + this.containerHeight) / this.itemHeight) + this.bufferSize
             );
             
-            // Get visible items
-            this.visibleItems = this.items.slice(this.startIndex, this.endIndex + 1);
-            
-            // Render visible items
-            this.render();
-            
-            this.lastRenderTime = now;
+            // 🔧 CRITICAL FIX: Only re-render if the visible range has actually changed
+            if (newStartIndex !== this.startIndex || newEndIndex !== this.endIndex) {
+                this.isRendering = true;
+                
+                this.startIndex = newStartIndex;
+                this.endIndex = newEndIndex;
+                
+                // Get visible items
+                this.visibleItems = this.items.slice(this.startIndex, this.endIndex + 1);
+                
+                // Render visible items
+                this.render();
+                
+                this.lastRenderTime = now;
+                this.isRendering = false;
+            }
         });
     }
     
@@ -224,8 +259,8 @@ class VirtualScrollManager {
         
         this.contentContainer.appendChild(fragment);
         
-        // Log performance metrics
-        if (this.visibleItems.length > 0) {
+        // Log performance metrics (reduced frequency to prevent spam)
+        if (this.visibleItems.length > 0 && Math.random() < 0.1) { // Only log 10% of renders
             console.log(`🎯 Rendering ${this.visibleItems.length} of ${this.items.length} items (indices ${this.startIndex}-${this.endIndex})`);
         }
     }

@@ -124,7 +124,7 @@ class ActionPlansService {
         console.log(`🎯 ActionPlansService: Creating action plan for action ${actionId}`);
         
         // Dispatch optimistic request action
-        const requestAction = Actions.requestActionPlan(actionId, title.trim(), description?.trim() || '', plays, userId);
+        const requestAction = Actions.requestActionPlan(actionId, title.trim(), description?.trim() || '', plays, userId, accountId);
         dispatcher.dispatch(requestAction);
         
         const operationId = requestAction.payload.operationId; // Store in broader scope for catch block
@@ -132,8 +132,8 @@ class ActionPlansService {
         try {
             // 🎯 ENHANCE PLAYS: Convert strings to enhanced objects with task management fields
             const normalizedPriority = SignalsRepository.normalizeSignalPriority(priority);
-            const enhancedPlays = (plays || []).map(play => {
-                return SignalsRepository.enhancePlayWithTaskManagement(play, normalizedPriority);
+            const enhancedPlays = (plays || []).map((play, index) => {
+                return SignalsRepository.enhancePlayWithTaskManagement(play, normalizedPriority, index);
             });
             
             // Create plan object matching exact database model

@@ -8,12 +8,27 @@ class PortfolioController {
     
     subscribeToStore() {
         // Subscribe to store changes relevant to portfolio
-        signalsStore.subscribe('portfolio-controller', (eventType) => {
-            if (eventType === 'accounts-updated' || 
-                eventType === 'action-plans-updated' || 
-                eventType === 'comments-updated') {
-                this.render();
-            }
+        console.log('🔌 PortfolioController: Setting up store subscription');
+        
+        signalsStore.subscribe('accounts-updated', (state, data) => {
+            console.log(`📡 PortfolioController: Received accounts-updated event`);
+            this.render();
+        });
+        
+        signalsStore.subscribe('action-plans-updated', (state, data) => {
+            console.log(`📡 PortfolioController: Received action-plans-updated event`);
+            this.render();
+        });
+        
+        signalsStore.subscribe('comments-updated', (state, data) => {
+            console.log(`📡 PortfolioController: Received comments-updated event`);
+            console.log(`💬 PortfolioController: Comments updated, total comments in store:`, state.comments?.size || 0);
+            this.render();
+        });
+        
+        signalsStore.subscribe('data:loaded', (state, data) => {
+            console.log(`📡 PortfolioController: Received data:loaded event`);
+            this.render();
         });
     }
     
@@ -29,11 +44,16 @@ class PortfolioController {
                 const accountId = target.getAttribute('data-account-id');
                 const signalId = target.getAttribute('data-signal-id');
                 
+                console.log('💬 PortfolioController: Click event captured:', { action, accountId, signalId, target });
+                
                 // Only handle portfolio-related actions (excluding comments and view-signal)
                 if (this.isPortfolioAction(action)) {
+                    console.log('💬 PortfolioController: Handling portfolio action:', action);
                     e.preventDefault();
                     e.stopPropagation();
                     this.handlePortfolioAction(action, accountId, signalId, target);
+                } else {
+                    console.log('💬 PortfolioController: Action not handled:', action);
                 }
             });
         }
@@ -123,14 +143,25 @@ class PortfolioController {
     }
     
     handleAddAccountComment(accountId, target) {
+        console.log('💬 PortfolioController.handleAddAccountComment called:', { accountId, target });
+        
         const inputElement = document.getElementById(`accountCommentInput-${accountId}`);
         if (inputElement && inputElement.value.trim()) {
-            dispatcher.dispatch(Actions.addAccountComment(accountId, inputElement.value.trim()));
+            const commentText = inputElement.value.trim();
+            console.log('💬 Adding account comment:', { accountId, commentText });
+            
+            const state = signalsStore.getState();
+            const userId = state.currentUser?.id || 1; // Default user ID
+            console.log('💬 Dispatching addAccountComment:', { accountId, commentText, userId });
+            
+            dispatcher.dispatch(Actions.addAccountComment(accountId, commentText, userId));
             inputElement.value = '';
+        } else {
+            console.log('💬 No comment text or input element not found');
         }
     }
     
-    render(state = null) {
+    async render(state = null) {
         if (!state) {
             state = signalsStore.getState();
         }
@@ -138,22 +169,89 @@ class PortfolioController {
         // Check if we're on the portfolio tab
         if (document.getElementById('my-portfolio')?.classList.contains('active')) {
             
+            // Check if we need to load action plans data
+            if (!state.actionPlans || state.actionPlans.size === 0) {
+                console.log('🔄 PortfolioController: No action plans in state, loading fallback data...');
+                await this.loadFallbackActionPlans();
+                // Get updated state after loading
+                state = signalsStore.getState();
+            }
+            
             // Call the pure PortfolioRenderer with store data
             PortfolioRenderer.renderMyPortfolio(
                 state.accounts,
                 state.actionPlans,
-                state.comments
+                state.comments,
+                state
             );
             
-            // Initialize call tooltips after rendering
-            PortfolioRenderer.initializeCallTooltips();
-            
-            // 🎯 Initialize button states for optimistic UI
-            setTimeout(() => {
-                PortfolioRenderer.initializePlanButtonStates(state);
-            }, 50); // Small delay to ensure DOM is updated
+                // Initialize call tooltips after rendering
+                PortfolioRenderer.initializeCallTooltips();
+                
+                // Initialize hero card filters
+                PortfolioRenderer.initializeHeroFilters();
+                
+                // 🎯 Initialize button states for optimistic UI
+                setTimeout(() => {
+                    PortfolioRenderer.initializePlanButtonStates(state);
+                }, 50); // Small delay to ensure DOM is updated
             
             console.log(`🎨 Rendered ${state.accounts.size} accounts in portfolio`);
+        }
+    }
+
+    async loadFallbackActionPlans() {
+        try {
+            console.log('📋 Loading fallback action plans...');
+            const response = await fetch('/action-plans-fallback.json');
+            const fallbackData = await response.json();
+            
+            if (fallbackData && fallbackData.length > 0) {
+                console.log(`📦 Loaded ${fallbackData.length} action plans from fallback`);
+                console.log('📋 Fallback data sample:', fallbackData[0]);
+                
+                // Process and store the action plans
+                const actionPlans = new Map();
+                fallbackData.forEach((record, index) => {
+                    // Extract the actual plan data from the nested content structure
+                    const content = record.content || record;
+                    const planId = content.id || `plan-${Date.now()}-${index}`;
+                    const planData = {
+                        id: planId,
+                        actionId: content.actionId,
+                        accountId: content.accountId,
+                        title: content.title,
+                        status: content.status || 'pending',
+                        priority: content.priority || 'Medium',
+                        dueDate: content.dueDate,
+                        assignee: content.assignee,
+                        createdDate: content.createdDate || content.createdAt || new Date().toISOString(),
+                        createdAt: content.createdAt || content.createdDate,
+                        updatedAt: content.updatedAt,
+                        planTitle: content.planTitle,
+                        createdBy: content.createdBy,
+                        createdByUserId: content.createdByUserId,
+                        signalPolarity: content.signalPolarity,
+                        description: content.description,
+                        accountName: `Account ${content.accountId}`, // Fallback name
+                        // Add plays data if available
+                        plays: content.plays || []
+                    };
+                    actionPlans.set(planId, planData);
+                    console.log(`📋 Processed plan ${index}:`, {
+                        id: planData.id,
+                        actionId: planData.actionId,
+                        accountId: planData.accountId,
+                        title: planData.title
+                    });
+                });
+                
+                // Update the state with the loaded action plans
+                signalsStore.setState({ actionPlans: actionPlans });
+                console.log(`✅ Updated state with ${actionPlans.size} action plans`);
+            }
+        } catch (error) {
+            console.error('❌ Failed to load fallback action plans:', error);
         }
     }
     

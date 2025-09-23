@@ -7,7 +7,7 @@ class FeedbackController {
     
     setupEventListeners() {
         // Set up delegated event handling for feedback interactions
-        document.addEventListener('click', (e) => {
+        document.addEventListener('click', async (e) => {
             const target = e.target.closest('[data-action]');
             if (!target) return;
             
@@ -18,7 +18,7 @@ class FeedbackController {
             if (this.isFeedbackAction(action)) {
                 e.preventDefault();
                 e.stopPropagation();
-                this.handleFeedbackAction(action, signalId, target);
+                await this.handleFeedbackAction(action, signalId, target);
             }
         });
     }
@@ -28,22 +28,22 @@ class FeedbackController {
         return feedbackActions.includes(action);
     }
     
-    handleFeedbackAction(action, signalId, target) {
+    async handleFeedbackAction(action, signalId, target) {
         switch (action) {
             case 'like':
-                this.submitFeedback(signalId, 'like');
+                await this.submitFeedback(signalId, 'like');
                 break;
                 
             case 'not-accurate':
-                this.submitFeedback(signalId, 'not-accurate');
+                await this.submitFeedback(signalId, 'not-accurate');
                 break;
                 
             case 'helpful':
-                this.submitFeedback(signalId, 'helpful');
+                await this.submitFeedback(signalId, 'helpful');
                 break;
                 
             case 'not-helpful':
-                this.submitFeedback(signalId, 'not-helpful');
+                await this.submitFeedback(signalId, 'not-helpful');
                 break;
                 
             default:
@@ -51,7 +51,7 @@ class FeedbackController {
         }
     }
     
-    submitFeedback(signalId, feedbackType) {
+    async submitFeedback(signalId, feedbackType) {
         // Get current signal state
         const state = signalsStore.getState();
         const signal = state.signalsById.get(signalId);
@@ -61,18 +61,8 @@ class FeedbackController {
             return;
         }
         
-        // Check if user already has feedback for this signal
-        const currentFeedback = signal.currentUserFeedback;
-        
-        if (currentFeedback === feedbackType) {
-            // User is removing their feedback
-            dispatcher.dispatch(Actions.removeFeedback(signalId, feedbackType));
-            this.showFeedbackMessage(`Removed ${feedbackType} feedback`, 'info');
-        } else {
-            // User is submitting new feedback
-            dispatcher.dispatch(Actions.submitFeedback(signalId, feedbackType));
-            this.showFeedbackMessage(`Signal marked as ${feedbackType}`, 'success');
-        }
+        // Use FeedbackService to handle the feedback (includes toggle logic)
+        await FeedbackService.handleFeedback(signalId, feedbackType);
     }
     
     showFeedbackMessage(message, type = 'info') {
@@ -104,7 +94,8 @@ class FeedbackController {
             return;
         }
         
-        dispatcher.dispatch(Actions.removeFeedback(signalId, signal.currentUserFeedback));
+        const userId = state.currentUser?.id || 1; // Default user ID
+        dispatcher.dispatch(Actions.removeFeedback(signalId, userId));
         this.showFeedbackMessage('Feedback cleared', 'info');
     }
     

@@ -1,7 +1,7 @@
 // Portfolio Renderer - Pure view for rendering portfolio tab
 class PortfolioRenderer {
 
-    static renderMyPortfolio(accounts, actionPlans, comments) {
+    static renderMyPortfolio(accounts, actionPlans, comments, state = null) {
         const container = document.getElementById('accountsList');
         if (!container) return;
 
@@ -9,7 +9,63 @@ class PortfolioRenderer {
         this.updateDashboardCards(accounts, actionPlans);
 
         // Get all accounts
-        const allAccounts = Array.from(accounts.values());
+        let allAccounts = Array.from(accounts.values());
+
+        // Apply filters if any are active
+        if (window.portfolioFilters) {
+            if (window.portfolioFilters.risk || window.portfolioFilters.opportunity) {
+                console.log('🔍 Applying filters:', window.portfolioFilters);
+                const originalCount = allAccounts.length;
+                
+                allAccounts = allAccounts.filter(account => {
+                    const hasRiskSignals = account.signals.some(signal => {
+                        const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                        const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
+                        return normalizedPolarity === 'risk';
+                    });
+                    
+                    const hasOpportunitySignals = account.signals.some(signal => {
+                        const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                        const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
+                        return normalizedPolarity === 'opportunities';
+                    });
+
+                    let shouldInclude = false;
+                    if (window.portfolioFilters.risk && window.portfolioFilters.opportunity) {
+                        shouldInclude = hasRiskSignals || hasOpportunitySignals;
+                    } else if (window.portfolioFilters.risk) {
+                        shouldInclude = hasRiskSignals;
+                    } else if (window.portfolioFilters.opportunity) {
+                        shouldInclude = hasOpportunitySignals;
+                    }
+                    
+                    // Enhanced debugging for Home Depot specifically
+                    if (account.name && account.name.toLowerCase().includes('home depot')) {
+                        console.log(`🏠 Home Depot Debug:`, {
+                            name: account.name,
+                            signalCount: account.signals.length,
+                            hasRiskSignals,
+                            hasOpportunitySignals,
+                            shouldInclude,
+                            riskFilter: window.portfolioFilters.risk,
+                            opportunityFilter: window.portfolioFilters.opportunity,
+                            signalPolarities: account.signals.map(s => ({
+                                polarity: s.signal_polarity || s['Signal Polarity'],
+                                normalized: FormatUtils.normalizePolarityKey(s.signal_polarity || s['Signal Polarity'])
+                            }))
+                        });
+                    }
+                    
+                    if (shouldInclude) {
+                        console.log(`🔍 Including account: ${account.name} (Risk: ${hasRiskSignals}, Opportunity: ${hasOpportunitySignals})`);
+                    }
+                    
+                    return shouldInclude;
+                });
+                
+                console.log(`🔍 Filtered from ${originalCount} to ${allAccounts.length} accounts`);
+            }
+        }
 
         // Filter accounts with recent high priority Risk or Opportunities signals
         const accountsWithRiskOrOpportunitySignals = allAccounts
@@ -80,9 +136,27 @@ class PortfolioRenderer {
         if (accountsWithRiskOrOpportunitySignals.length > 0) {
             html += `
                 <div class="portfolio-section">
-                    <h3 class="portfolio-section-header">Accounts with Risk or Opportunities Identified</h3>
+                    <div class="portfolio-section-header-with-legend">
+                        <h3 class="portfolio-section-header">Accounts with Risk or Opportunities Identified (${accountsWithRiskOrOpportunitySignals.length})</h3>
+                        <!-- Signal Legend -->
+                        <div class="signal-legend-compact">
+                            <span class="legend-label">Signal Types:</span>
+                            <span class="legend-item-compact">
+                                <span class="legend-circle-compact risk-circle">1</span>
+                                <span class="legend-text-compact">Risk</span>
+                            </span>
+                            <span class="legend-item-compact">
+                                <span class="legend-circle-compact opportunity-circle">1</span>
+                                <span class="legend-text-compact">Opportunity</span>
+                            </span>
+                            <span class="legend-item-compact">
+                                <span class="legend-circle-compact enrichment-circle">1</span>
+                                <span class="legend-text-compact">Enrichment</span>
+                            </span>
+                        </div>
+                    </div>
                     <div class="portfolio-section-content">
-                        ${accountsWithRiskOrOpportunitySignals.map(account => this.renderAccountCard(account, actionPlans, comments, ['Risk', 'Opportunities'])).join('')}
+                        ${accountsWithRiskOrOpportunitySignals.map(account => this.renderAccountCard(account, actionPlans, comments, ['Risk', 'Opportunities'], state)).join('')}
                     </div>
                 </div>
             `;
@@ -91,9 +165,9 @@ class PortfolioRenderer {
         // Render "All Accounts" section
         html += `
             <div class="portfolio-section">
-                <h3 class="portfolio-section-header">All Accounts</h3>
+                <h3 class="portfolio-section-header">All Accounts (${sortedAllAccounts.length})</h3>
                 <div class="portfolio-section-content">
-                    ${sortedAllAccounts.map(account => this.renderAccountCard(account, actionPlans, comments)).join('')}
+                    ${sortedAllAccounts.map(account => this.renderAccountCard(account, actionPlans, comments, null, state)).join('')}
                 </div>
             </div>
         `;
@@ -102,43 +176,67 @@ class PortfolioRenderer {
     }
 
     static updateDashboardCards(accounts, actionPlans) {
-        const allSignals = Array.from(accounts.values()).flatMap(account => account.signals);
-        const accountsWithSignals = Array.from(accounts.values()).filter(account => account.signals.length > 0);
+        const allAccounts = Array.from(accounts.values());
+        const accountsWithSignals = allAccounts.filter(account => account.signals.length > 0);
 
-        // Count recommended actions by signal polarity
-        const recommendedActionsWithPolarity = allSignals.filter(signal => 
-            signal.recommended_action && 
-            signal.recommended_action.trim() && 
-            signal.recommended_action !== 'No actions specified' &&
-            signal.action_id &&
-            signal.action_id.trim()
+        // Count distinct accounts with Risk signals
+        const accountsWithRiskSignals = allAccounts.filter(account => 
+            account.signals.some(signal => {
+                const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                return polarity === 'Risk';
+            })
         );
+        
+        // Count distinct accounts with Opportunity signals
+        const accountsWithOpportunitySignals = allAccounts.filter(account => 
+            account.signals.some(signal => {
+                const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                return polarity === 'Opportunity' || polarity === 'Opportunities';
+            })
+        );
+        
+        console.log(`🔍 PortfolioRenderer: Found ${accountsWithRiskSignals.length} accounts with Risk signals`);
+        console.log(`🔍 PortfolioRenderer: Found ${accountsWithOpportunitySignals.length} accounts with Opportunity signals`);
+        
+        // Show details for Risk accounts
+        console.log('🚨 Risk accounts:');
+        accountsWithRiskSignals.forEach(account => {
+            const riskSignals = account.signals.filter(signal => {
+                const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                return polarity === 'Risk';
+            });
+            console.log(`  - ${account.name} (${account.id}): ${riskSignals.length} risk signals`);
+            riskSignals.forEach(signal => {
+                console.log(`    * ${signal.name} (${signal.code}) - ${signal.signal_polarity}`);
+            });
+        });
+        
+        // Show details for Opportunity accounts
+        console.log('📈 Opportunity accounts:');
+        accountsWithOpportunitySignals.forEach(account => {
+            const opportunitySignals = account.signals.filter(signal => {
+                const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                return polarity === 'Opportunity';
+            });
+            console.log(`  - ${account.name} (${account.id}): ${opportunitySignals.length} opportunity signals`);
+            opportunitySignals.forEach(signal => {
+                console.log(`    * ${signal.name} (${signal.code}) - ${signal.signal_polarity}`);
+            });
+        });
 
-        // Count Risk polarity actions
-        const riskActionsCount = recommendedActionsWithPolarity.filter(signal => {
-            const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
-            return polarity.toLowerCase() === 'risk';
-        }).length;
-
-        // Count Opportunities polarity actions  
-        const opportunityActionsCount = recommendedActionsWithPolarity.filter(signal => {
-            const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
-            return polarity.toLowerCase() === 'opportunities';
-        }).length;
-
-        // Update Risks count
+        // Update Risks count (distinct accounts with risk signals)
         const requiresAttentionElement = document.getElementById('requiresAttentionCount');
         if (requiresAttentionElement) {
-            requiresAttentionElement.textContent = riskActionsCount;
+            requiresAttentionElement.textContent = accountsWithRiskSignals.length;
         }
 
-        // Update Opportunities count
+        // Update Opportunities count (distinct accounts with opportunity signals)
         const highPriorityElement = document.getElementById('highPriorityDashboard');
         if (highPriorityElement) {
-            highPriorityElement.textContent = opportunityActionsCount;
+            highPriorityElement.textContent = accountsWithOpportunitySignals.length;
         }
 
-        // Update Active Accounts count
+        // Update Active Accounts count (accounts with any signals)
         const activeAccountsElement = document.getElementById('activeAccountsCount');
         if (activeAccountsElement) {
             activeAccountsElement.textContent = accountsWithSignals.length;
@@ -146,7 +244,14 @@ class PortfolioRenderer {
     }
 
     static renderAccountCommentsSection(accountId, comments) {
-        const accountComments = comments.get ? comments.get(accountId) || [] : comments[accountId] || [];
+        // Use the store's getComments method to get account comments
+        const accountComments = signalsStore.getComments(accountId);
+        
+        console.log(`💬 PortfolioRenderer: Rendering comments for account ${accountId}:`, accountComments);
+        
+        if (accountComments.length > 0) {
+            console.log(`💬 PortfolioRenderer: Account ${accountId} has ${accountComments.length} comments:`, accountComments);
+        }
         
         return `
             <div class="account-comments-section">
@@ -185,7 +290,7 @@ class PortfolioRenderer {
         if (!container) return;
 
         // Generate the updated account card HTML
-        const updatedAccountHTML = this.renderAccountCard(account, actionPlans, comments);
+        const updatedAccountHTML = this.renderAccountCard(account, actionPlans, comments, null, state);
 
         // Create a temporary container to parse the HTML
         const tempDiv = document.createElement('div');
@@ -218,7 +323,86 @@ class PortfolioRenderer {
         }
     }
 
-    static renderAccountCard(account, actionPlans, comments, filterPolarities = null) {
+    static getTriangleColor(account) {
+        // Check if account has signals
+        if (!account.signals || account.signals.length === 0) {
+            return null; // No triangle if no signals
+        }
+        
+        // Calculate date 30 days ago
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        // Filter signals that are within the last 30 days
+        const recentSignals = account.signals.filter(signal => {
+            const callDate = signal.call_date || signal['Call Date'] || signal.created_at || signal.created_date;
+            if (!callDate) return false;
+            
+            const signalDate = new Date(callDate);
+            return signalDate >= thirtyDaysAgo;
+        });
+        
+        // Debug logging for Home Depot
+        if (account.name && account.name.includes('Home Depot')) {
+            console.log(`🔍 Home Depot Triangle Analysis:`, {
+                accountName: account.name,
+                totalSignals: account.signals.length,
+                recentSignals: recentSignals.length,
+                thirtyDaysAgo: thirtyDaysAgo.toISOString(),
+                recentSignalsData: recentSignals.map(s => ({
+                    id: s.id,
+                    action_id: s.action_id || '',
+                    polarity: s.signal_polarity || s['Signal Polarity'],
+                    callDate: s.call_date || s['Call Date'] || s.created_at || s.created_date
+                }))
+            });
+        }
+        
+        // If no recent signals, don't show triangle
+        if (recentSignals.length === 0) {
+            return null;
+        }
+        
+        // Count recent signals by polarity
+        const hasRiskSignals = recentSignals.some(signal => {
+            const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+            return polarity === 'Risk';
+        });
+        
+        const hasOpportunitySignals = recentSignals.some(signal => {
+            const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+            return polarity === 'Opportunity' || polarity === 'Opportunities';
+        });
+        
+        // Debug logging for Home Depot
+        if (account.name && account.name.includes('Home Depot')) {
+            console.log(`🔍 Home Depot Triangle Logic:`, {
+                hasRiskSignals,
+                hasOpportunitySignals,
+                riskSignals: recentSignals.filter(s => {
+                    const polarity = s.signal_polarity || s['Signal Polarity'] || '';
+                    return polarity.toLowerCase() === 'risk';
+                }).map(s => ({ id: s.id, polarity: s.signal_polarity || s['Signal Polarity'] })),
+                opportunitySignals: recentSignals.filter(s => {
+                    const polarity = s.signal_polarity || s['Signal Polarity'] || '';
+                    return polarity.toLowerCase() === 'opportunities' || polarity.toLowerCase() === 'opportunity';
+                }).map(s => ({ id: s.id, polarity: s.signal_polarity || s['Signal Polarity'] }))
+            });
+        }
+        
+        // Apply triangle logic
+        if (hasRiskSignals && !hasOpportunitySignals) {
+            return 'critical-warning'; // Red triangle
+        } else if (hasOpportunitySignals && !hasRiskSignals) {
+            return 'healthy-warning'; // Green triangle
+        } else if (hasRiskSignals && hasOpportunitySignals) {
+            return 'warning-warning'; // Orange triangle
+        } else {
+            return null; // No triangle if no risk or opportunity signals
+        }
+    }
+
+    static renderAccountCard(account, actionPlans, comments, filterPolarities = null, state = null) {
         // Count distinct action_id values by signal polarity (each account has 0-3 AI Recommendations)
         const uniqueActionIds = new Set();
         const riskActionIds = new Set();
@@ -241,6 +425,7 @@ class PortfolioRenderer {
         
         const riskActions = riskActionIds.size;
         const opportunityActions = opportunityActionIds.size;
+        const totalRecommendations = uniqueActionIds.size; // Total unique recommendations
         const totalSignals = account.signals.length;
 
         // Sort signals by Priority (High > Medium > Low), then by call_date DESC within each priority
@@ -284,21 +469,24 @@ class PortfolioRenderer {
             <div class="portfolio-account-card">
                 <div class="account-header-row" data-action="toggle-account-signals" data-account-id="${account.id}">
                     <div class="account-title-section">
-                        <i class="fas fa-chevron-right account-chevron" id="chevron-${account.id}"></i>
+                        <i class="fas fa-chevron-right account-chevron ${account.isExpanded ? 'rotated' : ''}" id="chevron-${account.id}"></i>
                         <div class="account-warning-icon">
-                            <i class="fas fa-exclamation-triangle ${account.health === 'critical' ? 'critical-warning' : account.health === 'warning' ? 'warning-warning' : 'healthy-warning'}"></i>
+                            ${(() => {
+                                const triangleColor = this.getTriangleColor(account);
+                                return triangleColor ? `<i class="fas fa-exclamation-triangle ${triangleColor}"></i>` : '';
+                            })()}
                         </div>
                         <div class="account-name-info">
                             <h3 class="account-name">${SecurityUtils.sanitizeHTML(account.name)}</h3>
-                            <div class="account-stats">${riskActions} Risks, ${opportunityActions} Opportunities</div>
+                            <div class="account-stats">${totalRecommendations} Recommendations</div>
                         </div>
                     </div>
                     <div class="account-actions-section">
-                        ${account.health === 'critical' ? '<span class="critical-badge">critical</span>' : ''}
+                        <!-- Critical Pill hidden as requested -->
                     </div>
                 </div>
 
-                <div class="account-details" id="signals-${account.id}">
+                <div class="account-details ${account.isExpanded ? 'expanded' : ''}" id="signals-${account.id}">
                     <div class="account-metrics">
                         <!-- Financial Metrics Box -->
                         <div class="financial-metrics-box">
@@ -313,15 +501,15 @@ class PortfolioRenderer {
                                 </div>
                                 <div class="financial-metric">
                                     <span class="financial-label">GPA</span>
-                                    <span class="financial-value">${account['Account GPA'] ? parseFloat(account['Account GPA']).toFixed(1) : '0.0'}</span>
+                                    <span class="financial-value">${account.account_gpa || account['Account GPA'] || 'N/A'}</span>
                                 </div>
                                 <div class="financial-metric">
                                     <span class="financial-label">% Pacing</span>
-                                    <span class="financial-value">${account['% Pacing'] ? (parseFloat(account['% Pacing']) * 100).toFixed(1) : '0.0'}%</span>
+                                    <span class="financial-value">${account.financial?.pacing_percentage ? (account.financial.pacing_percentage * 100).toFixed(1) : '0.0'}%</span>
                                 </div>
                                 <div class="financial-metric">
                                     <span class="financial-label">Next Renewal Date</span>
-                                    <span class="financial-value">${account['Next Renewal Date'] || 'TBD'}</span>
+                                    <span class="financial-value">${account.financial?.next_renewal_date || 'TBD'}</span>
                                 </div>
                             </div>
                         </div>
@@ -329,12 +517,18 @@ class PortfolioRenderer {
 
                     <div class="ai-recommendations-section">
                         <div class="recommendations-header">
-                            <i class="fas fa-exclamation-triangle recommendation-warning-icon"></i>
-                            <h4 class="recommendations-title">AI Recommendations</h4>
+                            <div class="recommendations-icon-container">
+                                <i class="fas fa-lightbulb recommendation-ai-icon"></i>
+                                <div class="recommendations-badge">AI</div>
+                            </div>
+                            <div class="recommendations-title-container">
+                                <h4 class="recommendations-title">🎯 Smart Actions</h4>
+                                <p class="recommendations-subtitle">Your account's signals, turned into adoption-driving actions</p>
+                            </div>
                         </div>
 
                         <div class="recommendations-list-container">
-                            ${this.getMergedRecommendationsAndRationale(account, filterPolarities)}
+                            ${this.getMergedRecommendationsAndRationale(account, filterPolarities, state)}
                         </div>
                     </div>
 
@@ -611,7 +805,7 @@ class PortfolioRenderer {
         return false;
     }
     
-    static getActionPlanInfo(actionId, appInstance) {
+    static getActionPlanInfo(actionId, state, accountId = null) {
         // First check if we have a stored timestamp for this actionId
         const actionTimestamps = this.getActionTimestamps();
         if (actionTimestamps[actionId]) {
@@ -622,11 +816,11 @@ class PortfolioRenderer {
             };
         }
         
-        // Check existing action plans for this actionId
-        if (appInstance && appInstance.actionPlans) {
-            for (const [key, plan] of appInstance.actionPlans) {
-                // Check if the plan contains this actionId
-                if (plan && plan.actionId === actionId) {
+        // Check existing action plans for this actionId and accountId
+        if (state && state.actionPlans) {
+            for (const [key, plan] of state.actionPlans) {
+                // Check if the plan contains this actionId and matches the accountId (if provided)
+                if (plan && plan.actionId === actionId && (!accountId || plan.accountId === accountId)) {
                     // Calculate time since added
                     const timeSinceAdded = this.calculateTimeSinceAdded(plan.createdDate);
                     return {
@@ -638,11 +832,14 @@ class PortfolioRenderer {
                 if (plan.actionItems) {
                     for (const actionItem of plan.actionItems) {
                         if (actionItem.associatedSignals && actionItem.associatedSignals.includes(actionId)) {
-                            const timeSinceAdded = this.calculateTimeSinceAdded(plan.createdDate);
-                            return {
-                                isInPlan: true,
-                                timeSinceAdded: timeSinceAdded
-                            };
+                            // Also check accountId if provided
+                            if (!accountId || plan.accountId === accountId) {
+                                const timeSinceAdded = this.calculateTimeSinceAdded(plan.createdDate);
+                                return {
+                                    isInPlan: true,
+                                    timeSinceAdded: timeSinceAdded
+                                };
+                            }
                         }
                     }
                 }
@@ -683,7 +880,7 @@ class PortfolioRenderer {
         }
     }
 
-    static getMergedRecommendationsAndRationale(account, filterPolarities = null) {
+    static getMergedRecommendationsAndRationale(account, filterPolarities = null, state = null) {
         const actionDataMap = new Map();
         
         // Filter signals by polarity if specified
@@ -726,7 +923,7 @@ class PortfolioRenderer {
                     const actionData = {
                         date: date,
                         actionId: actionId,
-                        accountId: account.id,
+                        accountId: account.id || account.account_id || accountId, // 🔧 FIX: Add fallback for account ID
                         priority: priority,
                         signalPolarity: signalPolarity,
                         polarityClass: polarityClass,
@@ -744,7 +941,7 @@ class PortfolioRenderer {
             
             return Array.from(actionDataMap.entries()).slice(0, 5).map(([action, data]) => {
                 // Check if already in plan and calculate time since added
-                const planInfo = this.getActionPlanInfo(data.actionId, window.app);
+                const planInfo = this.getActionPlanInfo(data.actionId, state, data.accountId);
                 const isInPlan = planInfo.isInPlan;
                 const timeSinceAdded = planInfo.timeSinceAdded;
                 
@@ -809,7 +1006,7 @@ class PortfolioRenderer {
                         </div>
                         <div class="recommendation-action-button">
                             ${isInPlan ? 
-                                `<span class="btn-added-status">${timeSinceAdded ? `Added ${timeSinceAdded} ago` : 'Added!'}</span>` : 
+                                `<span class="btn-added-status">${timeSinceAdded ? `Added on ${timeSinceAdded} ago` : 'Added!'}</span>` : 
                                 `<button class="btn-add-to-plan" data-action-id="${data.actionId}" data-action-title="${action}" data-account-id="${data.accountId}" onclick="PortfolioRenderer.openAddToPlanDrawer('${data.actionId}', '${action.replace(/'/g, "\\'")}', '${data.accountId}')">
                                     Add to Plan
                                 </button>`
@@ -974,8 +1171,12 @@ class PortfolioRenderer {
         
         // Add click event listeners to all call links
         const callLinks = document.querySelectorAll('.call-link');
-        callLinks.forEach(link => {
+        console.log(`📞 Found ${callLinks.length} call links to initialize`);
+        
+        callLinks.forEach((link, index) => {
+            console.log(`📞 Initializing call link ${index + 1}:`, link.textContent);
             link.addEventListener('click', (e) => {
+                console.log('📞 Call link clicked:', e.target.textContent);
                 e.preventDefault();
                 e.stopPropagation();
                 this.showCallModal(e);
@@ -995,11 +1196,16 @@ class PortfolioRenderer {
      * @param {Event} event - Click event
      */
     static showCallModal(event) {
+        console.log('📞 showCallModal called');
         // Hide any existing modal first
         this.hideCallModal();
         
         const callLink = event.target;
+        console.log('📞 Call link element:', callLink);
+        console.log('📞 Call data attribute:', callLink.getAttribute('data-call-info'));
+        
         const callData = JSON.parse(callLink.getAttribute('data-call-info').replace(/&quot;/g, '"'));
+        console.log('📞 Parsed call data:', callData);
         
         // Create modal overlay
         const modalOverlay = document.createElement('div');
@@ -1182,6 +1388,7 @@ class PortfolioRenderer {
                     play && play.name && play.name.trim() && 
                     play.name !== 'N/A' && play.name !== ''
                 ).map(play => ({
+                    id: play.id, // Preserve the original Play ID (PLAY-079, PLAY-002, etc.)
                     title: play.name || play.title || '',
                     description: play.description || play.full_description || 'No description available',
                     executingRole: play.executing_role || play.executingRole || 'Adoption Consulting'
@@ -1200,6 +1407,7 @@ class PortfolioRenderer {
                             play && play.name && play.name.trim() && 
                             play.name !== 'N/A' && play.name !== ''
                         ).map(play => ({
+                            id: play.id, // Preserve the original Play ID (PLAY-079, PLAY-002, etc.)
                             title: play.name || play.title || '',
                             description: play.description || play.full_description || 'No description available',
                             executingRole: play.executing_role || play.executingRole || 'Adoption Consulting'
@@ -1247,6 +1455,11 @@ class PortfolioRenderer {
             
             playsContainer.innerHTML = playCheckboxes;
         }
+
+        // Store the plays data for use in createPlanFromDrawer
+        if (window.currentDrawerData) {
+            window.currentDrawerData.plays = csPlays;
+        }
     }
 
     static async createPlanFromDrawer() {
@@ -1260,9 +1473,15 @@ class PortfolioRenderer {
         const accountId = window.currentDrawerData.accountId;
         const planDetails = document.getElementById('drawerPlanDetails').value;
         
-        // Get selected plays
+        // Get selected plays - get full play objects instead of just titles
         const selectedPlays = Array.from(document.querySelectorAll('#drawerPlaysContainer input[type="checkbox"]:checked'))
-            .map(checkbox => checkbox.value);
+            .map(checkbox => {
+                const playTitle = checkbox.value;
+                // Find the full play object from the stored drawer data
+                const playData = window.currentDrawerData.plays || [];
+                return playData.find(play => play.title === playTitle);
+            })
+            .filter(play => play !== undefined);
         
         // Get current user info for assignee
         let userName = 'Current User';
@@ -1305,7 +1524,7 @@ class PortfolioRenderer {
             actionId: actionId,
             title: actionTitle,
             description: planDetails,
-            plays: selectedPlays,
+            plays: selectedPlays, // Pass full play objects
             status: 'pending',
             priority: 'Medium', // Capitalized
             dueDate: dueDateString, // YYYY-MM-DD format
@@ -1698,5 +1917,80 @@ class PortfolioRenderer {
                 this.updateAddToPlanButtonState(accountId, 'added');
             }
         });
+    }
+
+    /**
+     * Initialize filter functionality for hero cards
+     */
+    static initializeHeroFilters() {
+        // Initialize filter functionality for hero cards
+        const riskFilter = document.getElementById('riskFilter');
+        const opportunityFilter = document.getElementById('opportunityFilter');
+        
+        if (riskFilter) {
+            riskFilter.addEventListener('click', function(e) {
+                e.stopPropagation();
+                this.classList.toggle('active');
+                PortfolioRenderer.toggleFilter('risk');
+            });
+        }
+        
+        if (opportunityFilter) {
+            opportunityFilter.addEventListener('click', function(e) {
+                e.stopPropagation();
+                this.classList.toggle('active');
+                PortfolioRenderer.toggleFilter('opportunity');
+            });
+        }
+    }
+
+    /**
+     * Toggle filter state and re-render portfolio
+     */
+    static toggleFilter(filterType) {
+        // Get current state
+        const state = window.signalsStore ? window.signalsStore.getState() : null;
+        if (!state) return;
+
+        // Toggle the filter state
+        if (!window.portfolioFilters) {
+            window.portfolioFilters = {
+                risk: false,
+                opportunity: false
+            };
+        }
+
+        window.portfolioFilters[filterType] = !window.portfolioFilters[filterType];
+        
+        console.log(`🔍 Filter toggled: ${filterType} = ${window.portfolioFilters[filterType]}`);
+        console.log('🔍 Current filter state:', window.portfolioFilters);
+
+        // Re-render the portfolio with filters applied
+        PortfolioRenderer.renderMyPortfolio(
+            state.accounts,
+            state.actionPlans,
+            state.comments,
+            state
+        );
+
+        // Update filter button states
+        PortfolioRenderer.updateFilterButtonStates();
+    }
+
+    /**
+     * Update filter button visual states
+     */
+    static updateFilterButtonStates() {
+        const riskFilter = document.getElementById('riskFilter');
+        const opportunityFilter = document.getElementById('opportunityFilter');
+        
+        if (window.portfolioFilters) {
+            if (riskFilter) {
+                riskFilter.classList.toggle('active', window.portfolioFilters.risk);
+            }
+            if (opportunityFilter) {
+                opportunityFilter.classList.toggle('active', window.portfolioFilters.opportunity);
+            }
+        }
     }
 }

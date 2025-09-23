@@ -7,6 +7,7 @@ class SignalsRepository {
     static totalSignals = 0;
     static allRawSignals = []; // Cache all raw signals
     static isInitialLoadComplete = false;
+    static signalDimensionService = null; // Cache signal dimension service
     
     /**
      * Load all application data and normalize into relational structure
@@ -26,13 +27,15 @@ class SignalsRepository {
                 interactionsResult, 
                 commentsResult,
                 actionPlansResult,
-                userInfoResult
+                userInfoResult,
+                signalDimensionServiceResult
             ] = await Promise.allSettled([
                 this.loadRawSignals(),
                 this.loadInteractions(),
                 this.loadComments(),
                 this.loadActionPlans(),
-                this.loadUserInfo()
+                this.loadUserInfo(),
+                this.loadSignalDimensionService()
             ]);
 
             // Process raw results
@@ -42,18 +45,33 @@ class SignalsRepository {
             const actionPlans = this.processResult(actionPlansResult, 'action plans', []);
             console.log(`🔍 [DEBUG] Loaded ${actionPlans.length} action plans from loadActionPlans:`, actionPlans.map(p => p.id));
             const userInfo = this.processResult(userInfoResult, 'user info', { userId: 'user-1', userName: 'Current User' });
+            const signalDimensionService = this.processResult(signalDimensionServiceResult, 'signal dimension service', null);
+            
+            // Store signal dimension service for pagination
+            this.signalDimensionService = signalDimensionService;
 
-            // Cache all raw signals for pagination
-            this.allRawSignals = rawSignals;
-            this.totalSignals = rawSignals.length;
+            // Filter out signals without action_id before caching
+            const signalsWithActionId = rawSignals.filter(signal => {
+                const hasActionId = signal.action_id && signal.action_id.trim() !== '';
+                if (!hasActionId) {
+                    console.log(`⚠️ Filtering out signal without action_id during initial load: ${signal.id || signal.name || 'unknown'}`);
+                }
+                return hasActionId;
+            });
+            
+            // Cache filtered signals for pagination
+            this.allRawSignals = signalsWithActionId;
+            this.totalSignals = signalsWithActionId.length;
+            
+            console.log(`📊 Initial load filtered signals: ${signalsWithActionId.length} of ${rawSignals.length} signals have action_id`);
             
             // For initial load, only process first page of signals
-            const firstPageSignals = rawSignals.slice(0, this.PAGE_SIZE);
+            const firstPageSignals = signalsWithActionId.slice(0, this.PAGE_SIZE);
             console.log(`📄 Loading first page: ${firstPageSignals.length} of ${this.totalSignals} total signals`);
             
             // NORMALIZE THE DATA INTO RELATIONAL STRUCTURE
             console.log(`🔍 [DEBUG] About to normalize ${actionPlans.length} action plans`);
-            const normalizedData = this.normalizeData(firstPageSignals, interactions, comments, actionPlans);
+            const normalizedData = this.normalizeData(firstPageSignals, interactions, comments, actionPlans, signalDimensionService);
             console.log(`🔍 [DEBUG] After normalization: ${normalizedData.actionPlans.size} action plans in store`);
             
             // Store metadata for pagination
@@ -111,7 +129,17 @@ class SignalsRepository {
             
             // Get next page of signals
             const nextPageSignals = this.allRawSignals.slice(startIdx, endIdx);
-            console.log(`📄 Loading page ${this.currentPage + 1}: ${nextPageSignals.length} signals (${startIdx}-${Math.min(endIdx, this.totalSignals)} of ${this.totalSignals})`);
+            
+            // Filter out signals without action_id
+            const filteredNextPageSignals = nextPageSignals.filter(signal => {
+                const hasActionId = signal.action_id && signal.action_id.trim() !== '';
+                if (!hasActionId) {
+                    console.log(`⚠️ Filtering out signal without action_id in pagination: ${signal.id || signal.name || 'unknown'}`);
+                }
+                return hasActionId;
+            });
+            
+            console.log(`📄 Loading page ${this.currentPage + 1}: ${filteredNextPageSignals.length} signals (${startIdx}-${Math.min(endIdx, this.totalSignals)} of ${this.totalSignals})`);
             
             // Normalize just the new signals
             const normalizedSignals = new Map();
@@ -119,7 +147,7 @@ class SignalsRepository {
             const newActions = new Map();
             
             // Process new signals
-            nextPageSignals.forEach(rawSignal => {
+            filteredNextPageSignals.forEach(rawSignal => {
                 // Extract account if new
                 const accountId = rawSignal.account_id;
                 if (accountId && !signalsStore.getAccount(accountId)) {
@@ -135,7 +163,7 @@ class SignalsRepository {
                 }
                 
                 // Extract normalized signal
-                const signal = this.extractNormalizedSignal(rawSignal);
+                const signal = this.extractNormalizedSignal(rawSignal, this.signalDimensionService);
                 normalizedSignals.set(signal.signal_id, signal);
             });
             
@@ -178,8 +206,11 @@ class SignalsRepository {
     /**
      * Normalize raw data into relational structure
      */
-    static normalizeData(rawSignals, interactions, comments, actionPlans) {
+    static normalizeData(rawSignals, interactions, comments, actionPlans, signalDimensionService = null) {
         console.log('🔄 Starting data normalization process...');
+        
+        // Note: rawSignals are already filtered for action_id in loadAllData
+        const signalsWithActionId = rawSignals;
         
         // Initialize normalized stores
         const accounts = new Map();
@@ -201,7 +232,7 @@ class SignalsRepository {
         
         // Step 1: Extract and normalize Accounts
         console.log('📦 Extracting unique accounts...');
-        rawSignals.forEach(rawSignal => {
+        signalsWithActionId.forEach(rawSignal => {
             const accountId = rawSignal.account_id;
             if (!accountId) return;
             
@@ -218,7 +249,7 @@ class SignalsRepository {
         
         // Step 2: Extract and normalize RecommendedActions
         console.log('📦 Extracting unique recommended actions...');
-        rawSignals.forEach(rawSignal => {
+        signalsWithActionId.forEach(rawSignal => {
             const actionId = rawSignal.action_id;
             if (!actionId) return;
             
@@ -238,8 +269,8 @@ class SignalsRepository {
         
         // Step 3: Normalize Signals (remove embedded data)
         console.log('📦 Normalizing signals...');
-        rawSignals.forEach(rawSignal => {
-            const signal = this.extractNormalizedSignal(rawSignal);
+        signalsWithActionId.forEach(rawSignal => {
+            const signal = this.extractNormalizedSignal(rawSignal, signalDimensionService);
             signals.set(signal.signal_id, signal);
             
             // Update relationship indexes
@@ -482,17 +513,17 @@ class SignalsRepository {
      * Enhance play object with new task management fields
      * Handles migration from old format to new enhanced format
      */
-    static enhancePlayWithTaskManagement(play, signalPriority = 'medium') {
+    static enhancePlayWithTaskManagement(play, signalPriority = 'medium', playIndex = 0) {
         // Handle string plays (legacy format)
         if (typeof play === 'string') {
             return {
-                id: `PLAY-${Math.random().toString(36).substr(2, 3).toUpperCase()}`, // Generate ID if missing
+                id: `PLAY-${String(playIndex + 1).padStart(2, '0')}`, // Generate sequential ID like PLAY-01, PLAY-02
                 name: play,
-                description: '',
+                description: '', // Fixed: use empty string since we don't have description for string plays
                 status: 'pending',
                 priority: signalPriority, // 🎯 Use signal priority
                 dueDate: this.calculateDefaultDueDate(10), // 🎯 Today + 10 days
-                assignee: null,
+                assignee: null, // Fixed: use null since we don't have executing_role for string plays
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
@@ -501,11 +532,13 @@ class SignalsRepository {
         // Handle object plays - enhance with new fields if missing
         const enhancedPlay = {
             ...play,
+            // Ensure ID is present - use existing or generate sequential
+            id: play.id || `PLAY-${String(playIndex + 1).padStart(2, '0')}`,
             // Migrate old completed boolean to status
             status: play.status || (play.completed ? 'complete' : 'pending'),
-            priority: play.priority || signalPriority, // 🎯 Use signal priority as default
-            dueDate: play.dueDate || this.calculateDefaultDueDate(10), // 🎯 Today + 10 days
-            assignee: play.assignee || play.executing_role || null,
+            priority: play.priority || signalPriority, // Use signal priority as default
+            dueDate: play.dueDate || this.calculateDefaultDueDate(10), // Today + 10 days
+            assignee: play.executing_role || play.executingRole || play.assignee || null, // Handle both snake_case and camelCase
             createdAt: play.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -560,7 +593,27 @@ class SignalsRepository {
     /**
      * Extract normalized Signal entity (without embedded data)
      */
-    static extractNormalizedSignal(rawSignal) {
+    static extractNormalizedSignal(rawSignal, signalDimensionService = null) {
+        // Get polarity from signal dimension service if available
+        let signalPolarity = 'Enrichment'; // Default fallback
+        
+        if (signalDimensionService) {
+            const signalCode = rawSignal.name || rawSignal.code || '';
+            const signalDimension = signalDimensionService.getSignalDimension(signalCode);
+            if (signalDimension && signalDimension.polarity) {
+                signalPolarity = signalDimension.polarity;
+                console.log(`🔍 Signal ${signalCode} mapped to polarity: ${signalPolarity}`);
+            } else {
+                console.log(`⚠️ Signal ${signalCode} not found in signal dimensions, using fallback`);
+            }
+        }
+        
+        // Fallback to raw signal data if available
+        if (!signalDimensionService || signalPolarity === 'Enrichment') {
+            signalPolarity = rawSignal.signal_polarity || rawSignal['Signal Polarity'] || 'Enrichment';
+            console.log(`🔍 Signal ${rawSignal.name || rawSignal.code} using fallback polarity: ${signalPolarity}`);
+        }
+        
         return {
             signal_id: rawSignal.id || rawSignal['Signal Id'] || `signal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             account_id: rawSignal.account_id || rawSignal['account id'],
@@ -575,7 +628,7 @@ class SignalsRepository {
             priority: rawSignal.priority || 'Medium',
             confidence: parseFloat(rawSignal.confidence) || 0,
             signal_confidence: parseFloat(rawSignal.signal_confidence) || 0,
-            signal_polarity: this.normalizeSignalPolarity(rawSignal.signal_polarity || rawSignal['Signal Polarity'] || 'Enrichment'),
+            signal_polarity: this.normalizeSignalPolarity(signalPolarity),
             
             // AI context (signal-specific)
             ai_signal_context: rawSignal.ai_signal_context || rawSignal['AI Signal Context'] || '',
@@ -865,8 +918,9 @@ class SignalsRepository {
                 const domoDocumentId = planWrapper.id; // Preserve Domo document ID from wrapper
                 
                 // 🎯 Enhance plays with new task management fields
-                const enhancedPlays = (plan.plays || []).map(play => {
-                    return this.enhancePlayWithTaskManagement(play);
+                const normalizedPriority = this.normalizeSignalPriority(plan.priority || 'Medium');
+                const enhancedPlays = (plan.plays || []).map((play, index) => {
+                    return SignalsRepository.enhancePlayWithTaskManagement(play, normalizedPriority, index);
                 });
                 
                 return {
@@ -931,6 +985,22 @@ class SignalsRepository {
             userId: 'user-1',
             userName: 'Current User'
         };
+    }
+    
+    /**
+     * Load signal dimension service
+     */
+    static async loadSignalDimensionService() {
+        try {
+            console.log('📊 Loading signal dimension service...');
+            const signalDimensionService = new SignalDimensionService();
+            await signalDimensionService.loadSignalDimensions();
+            console.log('✅ Loaded signal dimension service');
+            return signalDimensionService;
+        } catch (error) {
+            console.error('❌ Failed to load signal dimension service:', error);
+            return null;
+        }
     }
     
     // ========== ACTION PLAN CRUD OPERATIONS ==========
@@ -1309,6 +1379,48 @@ class SignalsRepository {
         };
         
         return this.saveInteraction(interactionData);
+    }
+    
+    /**
+     * Remove feedback interaction
+     */
+    static async removeFeedbackInteraction(signalId, userId) {
+        try {
+            console.log('🗑️ Removing interaction for signal:', signalId, 'user:', userId);
+            
+            // Try to remove from Domo API
+            try {
+                // First, get the interaction to find its recordId
+                const interactions = await this.getInteractions();
+                const interaction = interactions.find(i => 
+                    i.signalId === signalId && i.userId === userId && 
+                    (i.interactionType === 'like' || i.interactionType === 'not-accurate')
+                );
+                
+                if (interaction && interaction.recordId) {
+                    await domo.delete(`/domo/datastores/v1/collections/SignalAI.Interactions/documents/${interaction.recordId}`);
+                    console.log('✅ Interaction removed from Domo API');
+                    return { success: true };
+                }
+            } catch (apiError) {
+                console.warn('⚠️ Failed to remove from Domo API, using local storage:', apiError);
+            }
+            
+            // Fallback: Remove from local storage
+            const storageKey = 'signalai_interactions';
+            const existingInteractions = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            const filteredInteractions = existingInteractions.filter(i => 
+                !(i.signalId === signalId && i.userId === userId && 
+                  (i.interactionType === 'like' || i.interactionType === 'not-accurate'))
+            );
+            localStorage.setItem(storageKey, JSON.stringify(filteredInteractions));
+            console.log('✅ Interaction removed from local storage');
+            return { success: true };
+            
+        } catch (error) {
+            console.error('❌ Failed to remove interaction:', error);
+            return { success: false, error: error.message };
+        }
     }
     
     /**
