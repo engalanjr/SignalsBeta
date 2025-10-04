@@ -269,9 +269,20 @@ class SignalsRepository {
         
         // Step 3: Normalize Signals (remove embedded data)
         console.log('📦 Normalizing signals...');
-        signalsWithActionId.forEach(rawSignal => {
+        let signalsAddedToIndex = 0;
+        signalsWithActionId.forEach((rawSignal, index) => {
             const signal = this.extractNormalizedSignal(rawSignal, signalDimensionService);
             signals.set(signal.signal_id, signal);
+            
+            // Debug first signal
+            if (index === 0) {
+                console.log('🔍 First signal check:', {
+                    signal_action_id: signal.action_id,
+                    hasInIndex: signalsByAction.has(signal.action_id),
+                    indexSize: signalsByAction.size,
+                    firstIndexKey: Array.from(signalsByAction.keys())[0]
+                });
+            }
             
             // Update relationship indexes
             if (signal.account_id && signalsByAccount.has(signal.account_id)) {
@@ -279,13 +290,18 @@ class SignalsRepository {
             }
             if (signal.action_id && signalsByAction.has(signal.action_id)) {
                 signalsByAction.get(signal.action_id).add(signal.signal_id);
+                signalsAddedToIndex++;
+            } else if (signal.action_id) {
+                if (index < 3) {
+                    console.log(`⚠️ Signal ${index} has action_id ${signal.action_id} but not found in index`);
+                }
             }
             
             // Initialize interaction index for this signal
             interactionsBySignal.set(signal.signal_id, new Set());
             commentsBySignal.set(signal.signal_id, new Set());
         });
-        console.log(`✅ Normalized ${signals.size} signals`);
+        console.log(`✅ Normalized ${signals.size} signals, added ${signalsAddedToIndex} to signalsByAction index`);
         
         // Step 4: Process Interactions
         console.log('📦 Processing interactions...');
@@ -498,6 +514,7 @@ class SignalsRepository {
         return {
             action_id: actionId,
             account_id: accountId,
+            account_name: rawSignal.account_name || '', // Add account name for display
             recommended_action: rawSignal.recommended_action || '',
             signal_rationale: rawSignal.signal_rationale || '',
             // Use Call Scheduled Date as primary source, fallback to call_date
@@ -505,6 +522,8 @@ class SignalsRepository {
             // Add created_at field - when the recommended action was created
             // Due to CSV corruption, the timestamp ended up in the play_3 field
             created_at: rawSignal.play_3 || rawSignal.created_at || '',
+            // Add renewal date for filtering
+            renewal_date: rawSignal['Next Renewal Date'] || rawSignal.next_renewal_date || '',
             plays: plays
         };
     }
@@ -585,7 +604,7 @@ class SignalsRepository {
      */
     static normalizeSignalPolarity(polarity) {
         if (polarity === 'Opportunity') {
-            return 'Opportunities';
+            return 'Growth Levers';
         }
         return polarity;
     }
@@ -602,7 +621,7 @@ class SignalsRepository {
             const signalDimension = signalDimensionService.getSignalDimension(signalCode);
             if (signalDimension && signalDimension.polarity) {
                 signalPolarity = signalDimension.polarity;
-                console.log(`🔍 Signal ${signalCode} mapped to polarity: ${signalPolarity}`);
+                console.log(`🔍 Signal ${signalCode} mapped to polarity: ${signalPolarity} (from signal dimensions)`);
             } else {
                 console.log(`⚠️ Signal ${signalCode} not found in signal dimensions, using fallback`);
             }
@@ -826,22 +845,34 @@ class SignalsRepository {
                 // Extract content from wrapper if needed
                 return response.map(item => item.content || item);
             } else {
-                console.log('📦 Using default interactions (empty)');
-                return [];
+                console.log('📦 No interactions in API, checking localStorage...');
+                return this.loadFallbackInteractions();
             }
         } catch (error) {
             console.error('❌ Failed to load interactions from API:', error);
-            console.log('📁 Loading fallback interactions...');
+            console.log('📁 Loading fallback interactions from localStorage...');
             return this.loadFallbackInteractions();
         }
     }
     
     /**
-     * Load fallback interactions
+     * Load fallback interactions from localStorage
      */
     static loadFallbackInteractions() {
-        console.log('📦 Using default interactions (empty)');
-        return [];
+        try {
+            const stored = localStorage.getItem('signalai_interactions');
+            if (stored) {
+                const interactions = JSON.parse(stored);
+                console.log(`✅ Loaded ${interactions.length} interactions from localStorage`);
+                return interactions;
+            } else {
+                console.log('📦 No interactions in localStorage (empty)');
+                return [];
+            }
+        } catch (error) {
+            console.error('❌ Failed to load interactions from localStorage:', error);
+            return [];
+        }
     }
     
     /**
@@ -1455,6 +1486,67 @@ class SignalsRepository {
             
         } catch (error) {
             console.error('❌ Failed to save comment:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    /**
+     * Save action interaction (useful/not_relevant)
+     */
+    static async saveActionInteraction(actionId, interactionType, userId) {
+        const interactionData = {
+            id: `interaction-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            actionId: actionId,
+            interactionType: interactionType,
+            userId: userId || 'user-1',
+            timestamp: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+        };
+        
+        return await this.saveInteraction(interactionData);
+    }
+    
+    /**
+     * Remove action interaction
+     */
+    static async removeActionInteraction(actionId, userId, interactionType) {
+        try {
+            console.log(`🗑️ Removing action interaction: ${actionId}, ${interactionType}`);
+            
+            // Try to remove from Domo API
+            try {
+                const response = await domo.get(`/domo/datastores/v1/collections/SignalAI.Interactions/documents`, {
+                    params: { 
+                        filter: JSON.stringify({
+                            actionId: actionId,
+                            userId: userId,
+                            interactionType: interactionType
+                        })
+                    }
+                });
+                
+                if (response && response.length > 0) {
+                    const docId = response[0].id;
+                    await domo.delete(`/domo/datastores/v1/collections/SignalAI.Interactions/documents/${docId}`);
+                    console.log('✅ Action interaction removed from Domo API');
+                }
+            } catch (apiError) {
+                console.warn('⚠️ Failed to remove from Domo API:', apiError);
+            }
+            
+            // Remove from localStorage
+            const storageKey = 'signalai_interactions';
+            const existingInteractions = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            const filteredInteractions = existingInteractions.filter(i => 
+                !(i.actionId === actionId && i.userId === userId && i.interactionType === interactionType)
+            );
+            localStorage.setItem(storageKey, JSON.stringify(filteredInteractions));
+            
+            console.log('✅ Action interaction removed from local storage');
+            return { success: true };
+            
+        } catch (error) {
+            console.error('❌ Failed to remove action interaction:', error);
             return { success: false, error: error.message };
         }
     }

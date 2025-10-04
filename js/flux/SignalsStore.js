@@ -20,6 +20,7 @@ class SignalsStore extends Store {
             signalsByAction: new Map(),
             actionsByAccount: new Map(),
             interactionsBySignal: new Map(),
+            interactionsByAction: new Map(),
             commentsBySignal: new Map(),
             commentsByAccount: new Map(),
             plansByAccount: new Map(),
@@ -64,11 +65,14 @@ class SignalsStore extends Store {
             currentTab: 'whitespace',
             selectedSignal: null,
             filteredSignals: [],
+            filteredActions: [], // Filtered recommended actions for feed
             loading: false,
             message: null,
             
             // View state with filters
             viewState: {
+                feedMode: 'actions', // 'signals' or 'actions' - default to actions
+                sort: 'priority', // Sort option for current feed mode
                 filters: {
                     signalType: 'all',
                     category: 'all',
@@ -81,7 +85,8 @@ class SignalsStore extends Store {
                     page: 1,
                     pageSize: 20
                 },
-                viewedSignals: new Set() // 🔧 CRITICAL FIX: Initialize viewedSignals set
+                viewedSignals: new Set(), // 🔧 CRITICAL FIX: Initialize viewedSignals set
+                viewedActions: new Set() // Track viewed actions
             },
             
             // Modal/Drawer state
@@ -221,6 +226,17 @@ class SignalsStore extends Store {
                 this.handleShowLessSignals(payload);
                 break;
                 
+            // Action Interactions
+            case 'ACTION_VIEWED':
+                this.handleActionViewed(payload);
+                break;
+            case 'ACTION_USEFUL':
+                this.handleActionUseful(payload);
+                break;
+            case 'ACTION_NOT_RELEVANT':
+                this.handleActionNotRelevant(payload);
+                break;
+                
             // Modal/Drawer
             case Actions.Types.MODAL_OPENED:
                 this.handleModalOpened(payload);
@@ -340,6 +356,7 @@ class SignalsStore extends Store {
             signalsByAction: normalizedData.signalsByAction || new Map(),
             actionsByAccount: normalizedData.actionsByAccount || new Map(),
             interactionsBySignal: normalizedData.interactionsBySignal || new Map(),
+            interactionsByAction: normalizedData.interactionsByAction || new Map(),
             commentsBySignal: normalizedData.commentsBySignal || new Map(),
             commentsByAccount: normalizedData.commentsByAccount || new Map(),
             plansByAccount: normalizedData.plansByAccount || new Map(),
@@ -482,6 +499,127 @@ class SignalsStore extends Store {
     
     getAccounts() {
         return this.getDenormalizedAccounts();
+    }
+    
+    /**
+     * Get all recommended actions (denormalized with account and signal data)
+     * VERSION: 2024-CACHE-BUST-v2
+     */
+    getRecommendedActions() {
+        console.log('🚀🚀🚀 getRecommendedActions CALLED - NEW VERSION 2024-v2 🚀🚀🚀');
+        const actions = [];
+        console.log('🔍 getRecommendedActions - Index check:', {
+            recommendedActionsSize: this.normalizedData.recommendedActions.size,
+            signalsByActionSize: this.indexes.signalsByAction.size,
+            signalsSize: this.normalizedData.signals.size
+        });
+        
+        // Debug: Check first signal
+        const firstSignal = Array.from(this.normalizedData.signals.values())[0];
+        if (firstSignal) {
+            console.log('🔍 Sample signal:', {
+                signal_id: firstSignal.signal_id,
+                action_id: firstSignal.action_id,
+                account_id: firstSignal.account_id
+            });
+        }
+        
+        this.normalizedData.recommendedActions.forEach((action, actionId) => {
+            const account = this.normalizedData.accounts.get(action.account_id);
+            const signalIds = this.indexes.signalsByAction.get(actionId) || new Set();
+            
+            if (actions.length === 0) {
+                console.log('🔍 First action debug:', {
+                    actionId,
+                    action_id_field: action.action_id,
+                    signalIdsSize: signalIds.size,
+                    indexKeys: Array.from(this.indexes.signalsByAction.keys()).slice(0, 3)
+                });
+            }
+            
+            const signals = Array.from(signalIds)
+                .map(id => this.normalizedData.signals.get(id))
+                .filter(s => s)
+                .map(s => this.denormalizeSignal(s));
+            
+            // Get interaction data for this action
+            const interactions = this.getActionInteractions(actionId);
+            const userFeedback = interactions.find(i => 
+                i.interactionType === 'useful' || i.interactionType === 'not_relevant'
+            );
+            
+            // Get account name with multiple fallbacks
+            let accountName = 'Unknown Account';
+            if (account?.account_name) {
+                accountName = account.account_name;
+            } else if (action.account_name) {
+                accountName = action.account_name;
+            } else if (signals.length > 0 && signals[0].account_name) {
+                accountName = signals[0].account_name;
+            }
+            
+            actions.push({
+                ...action,
+                id: action.action_id || actionId, // Use action_id from the data, fallback to Map key
+                actionId: action.action_id || actionId,
+                accountId: action.account_id,
+                accountName: accountName,
+                relatedSignals: signals,
+                signalCount: signals.length,
+                currentUserFeedback: userFeedback?.interactionType,
+                // Add default values if missing
+                priority: action.priority || this.inferPriorityFromSignals(signals),
+                status: action.status || 'PENDING',
+                confidence: action.confidence || this.calculateActionConfidence(signals),
+                whySummary: action.signal_rationale || action.whySummary || '',
+                effort: action.effort || '2-3 weeks',
+                impact: action.impact || 'High impact',
+                lastUpdated: action.updatedAt || action.createdAt || action.call_date || new Date().toISOString(),
+                plays: action.plays || [],
+                createdAt: action.createdAt || action.call_date || new Date().toISOString(),
+                // Include renewal date from account data (stored in financial object)
+                renewal_date: account?.financial?.next_renewal_date || account?.renewal_date || action.renewal_date
+            });
+        });
+        
+        return actions;
+    }
+    
+    /**
+     * Get interactions for an action
+     */
+    getActionInteractions(actionId) {
+        if (!this.indexes.interactionsByAction) return [];
+        
+        const interactionIds = this.indexes.interactionsByAction.get(actionId) || new Set();
+        return Array.from(interactionIds)
+            .map(id => this.normalizedData.interactions.get(id))
+            .filter(interaction => interaction !== null);
+    }
+    
+    /**
+     * Infer priority from related signals
+     */
+    inferPriorityFromSignals(signals) {
+        if (!signals || signals.length === 0) return 'Medium';
+        
+        const highPriorityCount = signals.filter(s => s.priority === 'High').length;
+        if (highPriorityCount > 0) return 'High';
+        
+        const mediumPriorityCount = signals.filter(s => s.priority === 'Medium').length;
+        if (mediumPriorityCount > signals.length / 2) return 'Medium';
+        
+        return 'Low';
+    }
+    
+    /**
+     * Calculate action confidence from signals
+     */
+    calculateActionConfidence(signals) {
+        if (!signals || signals.length === 0) return 0.7;
+        
+        const avgConfidence = signals.reduce((sum, s) => sum + (s.confidence || 0), 0) / signals.length;
+        return avgConfidence;
     }
     
     getAccount(accountId) {
@@ -1331,6 +1469,215 @@ class SignalsStore extends Store {
             console.error('❌ Failed to save comment to API:', error);
             // Dispatch failure action
             dispatcher.dispatch(Actions.commentFailed(operationId, error.message));
+        }
+    }
+    
+    // ========== ACTION INTERACTION HANDLERS ==========
+    
+    handleActionViewed(payload) {
+        const { actionId } = payload;
+        
+        const interaction = {
+            id: `interaction-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            actionId: actionId,
+            interactionType: 'action_viewed',
+            timestamp: new Date().toISOString(),
+            userId: this.getState().userInfo?.userId || 'user-1',
+            userName: this.getState().userInfo?.userName,
+            createdAt: new Date().toISOString()
+        };
+        
+        this.normalizedData.interactions.set(interaction.id, interaction);
+        
+        if (!this.indexes.interactionsByAction) {
+            this.indexes.interactionsByAction = new Map();
+        }
+        if (!this.indexes.interactionsByAction.has(actionId)) {
+            this.indexes.interactionsByAction.set(actionId, new Set());
+        }
+        this.indexes.interactionsByAction.get(actionId).add(interaction.id);
+        
+        if (!this.state.actionInteractions) {
+            this.state.actionInteractions = new Map();
+        }
+        if (!this.state.actionInteractions.has(actionId)) {
+            this.state.actionInteractions.set(actionId, []);
+        }
+        this.state.actionInteractions.get(actionId).push(interaction);
+        
+        this.emitChange('action:viewed', actionId);
+    }
+
+    handleActionUseful(payload) {
+        const { actionId } = payload;
+        const userId = this.getState().userInfo?.userId || 'user-1';
+        
+        console.log(`👍 Processing "useful" for action ${actionId}`);
+        
+        // Check if user already marked this as useful
+        const existingUseful = this.findActionInteraction(actionId, userId, 'useful');
+        // Check if user marked as not_relevant (mutual exclusivity)
+        const existingNotRelevant = this.findActionInteraction(actionId, userId, 'not_relevant');
+        
+        if (existingUseful) {
+            // Toggle OFF: Remove the useful interaction
+            console.log(`🔄 Toggling OFF "useful" for action ${actionId}`);
+            this.removeActionInteraction(existingUseful.id, actionId);
+            
+            // OPTIMISTIC: Emit change immediately
+            this.emitChange('action:feedback-updated', actionId);
+            
+            // Persist removal
+            SignalsRepository.removeActionInteraction(actionId, userId, 'useful')
+                .catch(err => console.error('Failed to remove action interaction:', err));
+        } else {
+            // Remove opposite interaction if exists (mutual exclusivity)
+            if (existingNotRelevant) {
+                console.log(`🔄 Removing "not_relevant" before adding "useful" for action ${actionId}`);
+                this.removeActionInteraction(existingNotRelevant.id, actionId);
+                SignalsRepository.removeActionInteraction(actionId, userId, 'not_relevant')
+                    .catch(err => console.error('Failed to remove opposite interaction:', err));
+            }
+            
+            // Add new useful interaction
+            console.log(`➕ Adding "useful" for action ${actionId}`);
+            const interaction = {
+                id: `interaction-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                actionId: actionId,
+                interactionType: 'useful',
+                timestamp: new Date().toISOString(),
+                userId: userId,
+                userName: this.getState().userInfo?.userName,
+                createdAt: new Date().toISOString()
+            };
+            
+            this.normalizedData.interactions.set(interaction.id, interaction);
+            
+            if (!this.indexes.interactionsByAction) {
+                this.indexes.interactionsByAction = new Map();
+            }
+            if (!this.indexes.interactionsByAction.has(actionId)) {
+                this.indexes.interactionsByAction.set(actionId, new Set());
+            }
+            this.indexes.interactionsByAction.get(actionId).add(interaction.id);
+            
+            if (!this.state.actionInteractions) {
+                this.state.actionInteractions = new Map();
+            }
+            if (!this.state.actionInteractions.has(actionId)) {
+                this.state.actionInteractions.set(actionId, []);
+            }
+            this.state.actionInteractions.get(actionId).push(interaction);
+            
+            // OPTIMISTIC: Emit change immediately
+            this.emitChange('action:feedback-updated', actionId);
+            
+            // Persist to backend
+            SignalsRepository.saveActionInteraction(actionId, 'useful', userId)
+                .catch(err => console.error('Failed to save action interaction:', err));
+        }
+    }
+
+    handleActionNotRelevant(payload) {
+        const { actionId } = payload;
+        const userId = this.getState().userInfo?.userId || 'user-1';
+        
+        console.log(`👎 Processing "not_relevant" for action ${actionId}`);
+        
+        // Check if user already marked this as not_relevant
+        const existingNotRelevant = this.findActionInteraction(actionId, userId, 'not_relevant');
+        // Check if user marked as useful (mutual exclusivity)
+        const existingUseful = this.findActionInteraction(actionId, userId, 'useful');
+        
+        if (existingNotRelevant) {
+            // Toggle OFF: Remove the not_relevant interaction
+            console.log(`🔄 Toggling OFF "not_relevant" for action ${actionId}`);
+            this.removeActionInteraction(existingNotRelevant.id, actionId);
+            
+            // OPTIMISTIC: Emit change immediately
+            this.emitChange('action:feedback-updated', actionId);
+            
+            // Persist removal
+            SignalsRepository.removeActionInteraction(actionId, userId, 'not_relevant')
+                .catch(err => console.error('Failed to remove action interaction:', err));
+        } else {
+            // Remove opposite interaction if exists (mutual exclusivity)
+            if (existingUseful) {
+                console.log(`🔄 Removing "useful" before adding "not_relevant" for action ${actionId}`);
+                this.removeActionInteraction(existingUseful.id, actionId);
+                SignalsRepository.removeActionInteraction(actionId, userId, 'useful')
+                    .catch(err => console.error('Failed to remove opposite interaction:', err));
+            }
+            
+            // Add new not_relevant interaction
+            console.log(`➕ Adding "not_relevant" for action ${actionId}`);
+            const interaction = {
+                id: `interaction-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                actionId: actionId,
+                interactionType: 'not_relevant',
+                timestamp: new Date().toISOString(),
+                userId: userId,
+                userName: this.getState().userInfo?.userName,
+                createdAt: new Date().toISOString()
+            };
+            
+            this.normalizedData.interactions.set(interaction.id, interaction);
+            
+            if (!this.indexes.interactionsByAction) {
+                this.indexes.interactionsByAction = new Map();
+            }
+            if (!this.indexes.interactionsByAction.has(actionId)) {
+                this.indexes.interactionsByAction.set(actionId, new Set());
+            }
+            this.indexes.interactionsByAction.get(actionId).add(interaction.id);
+            
+            if (!this.state.actionInteractions) {
+                this.state.actionInteractions = new Map();
+            }
+            if (!this.state.actionInteractions.has(actionId)) {
+                this.state.actionInteractions.set(actionId, []);
+            }
+            this.state.actionInteractions.get(actionId).push(interaction);
+            
+            // OPTIMISTIC: Emit change immediately
+            this.emitChange('action:feedback-updated', actionId);
+            
+            // Persist to backend
+            SignalsRepository.saveActionInteraction(actionId, 'not_relevant', userId)
+                .catch(err => console.error('Failed to save action interaction:', err));
+        }
+    }
+
+    findActionInteraction(actionId, userId, interactionType) {
+        if (!this.indexes.interactionsByAction) return null;
+        
+        const interactionIds = this.indexes.interactionsByAction.get(actionId);
+        if (!interactionIds) return null;
+        
+        for (const interactionId of interactionIds) {
+            const interaction = this.normalizedData.interactions.get(interactionId);
+            if (interaction && 
+                interaction.userId === userId && 
+                interaction.interactionType === interactionType) {
+                return interaction;
+            }
+        }
+        return null;
+    }
+
+    removeActionInteraction(interactionId, actionId) {
+        this.normalizedData.interactions.delete(interactionId);
+        
+        if (this.indexes.interactionsByAction && this.indexes.interactionsByAction.has(actionId)) {
+            this.indexes.interactionsByAction.get(actionId).delete(interactionId);
+        }
+        
+        if (this.state.actionInteractions && this.state.actionInteractions.has(actionId)) {
+            const interactions = this.state.actionInteractions.get(actionId);
+            const index = interactions.findIndex(i => i.id === interactionId);
+            if (index !== -1) {
+                interactions.splice(index, 1);
+            }
         }
     }
 }

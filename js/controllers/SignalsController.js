@@ -65,24 +65,110 @@ class SignalsController {
             });
         }
         
+        // Feed mode toggle
+        const toggleButtons = document.querySelectorAll('.segmented-toggle .toggle-button');
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const feedMode = button.getAttribute('data-feed-mode');
+                this.switchFeedMode(feedMode);
+            });
+        });
+        
         // Filter events for signal feed
         const categoryFilter = document.getElementById('categoryFilter');
         if (categoryFilter) {
             categoryFilter.addEventListener('change', () => {
-                const signalType = document.getElementById('signalTypeFilter')?.value || 'all';
-                const category = categoryFilter.value;
-                dispatcher.dispatch(Actions.applyFilters({ signalType, category }));
+                this.applyFilters();
             });
         }
         
-        const signalTypeFilter = document.getElementById('signalTypeFilter');
-        if (signalTypeFilter) {
-            signalTypeFilter.addEventListener('change', () => {
-                const category = document.getElementById('categoryFilter')?.value || 'all';
-                const signalType = signalTypeFilter.value;
-                dispatcher.dispatch(Actions.applyFilters({ signalType, category }));
+        const priorityFilter = document.getElementById('priorityFilter');
+        if (priorityFilter) {
+            priorityFilter.addEventListener('change', () => {
+                this.applyFilters();
             });
         }
+        
+        // Search input with debounce
+        const searchInput = document.getElementById('feedSearchInput');
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    this.applyFilters();
+                }, 200);
+            });
+        }
+        
+        // Sort select
+        const sortSelect = document.getElementById('feedSortSelect');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', () => {
+                const state = signalsStore.getState();
+                state.viewState.sort = sortSelect.value;
+                this.render(state);
+            });
+        }
+    }
+    
+    switchFeedMode(feedMode) {
+        // Update toggle button states
+        document.querySelectorAll('.segmented-toggle .toggle-button').forEach(btn => {
+            const isActive = btn.getAttribute('data-feed-mode') === feedMode;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+        
+        // Update state
+        const state = signalsStore.getState();
+        state.viewState.feedMode = feedMode;
+        
+        // Update section title and count
+        const sectionTitle = document.getElementById('feedSectionTitle');
+        if (sectionTitle) {
+            sectionTitle.textContent = feedMode === 'signals' ? 'Latest Signals' : 'Recommended Actions';
+        }
+        
+        // Update sort options based on mode
+        const sortSelect = document.getElementById('feedSortSelect');
+        if (sortSelect) {
+            sortSelect.innerHTML = feedMode === 'signals' 
+                ? `<option value="newest">Sort: Newest</option>
+                   <option value="confidence">Sort: Confidence</option>
+                   <option value="priority">Sort: Priority</option>
+                   <option value="account">Sort: Account</option>`
+                : `<option value="priority">Sort: Priority</option>
+                   <option value="confidence">Sort: Confidence</option>
+                   <option value="lastUpdated">Sort: Last Updated</option>
+                   <option value="account">Sort: Account</option>`;
+        }
+        
+        // Save to localStorage
+        try {
+            localStorage.setItem('feedMode', feedMode);
+        } catch (e) {
+            console.warn('Could not save feed mode to localStorage:', e);
+        }
+        
+        // Re-render
+        this.render(state);
+    }
+    
+    applyFilters() {
+        const category = document.getElementById('categoryFilter')?.value || 'all';
+        const priority = document.getElementById('priorityFilter')?.value || 'all';
+        const searchText = document.getElementById('feedSearchInput')?.value || '';
+        
+        const state = signalsStore.getState();
+        state.viewState.filters = {
+            ...state.viewState.filters,
+            category,
+            priority,
+            searchText
+        };
+        
+        this.render(state);
     }
     
     isSignalAction(action) {
@@ -132,89 +218,212 @@ class SignalsController {
         // Check if we're on the signal feed tab
         if (document.getElementById('signal-feed')?.classList.contains('active')) {
             
-            // Update signal feed summary
-            this.updateSignalFeedSummary(state);
+            // Update feed summary
+            this.updateFeedSummary(state);
             
-            // Use the centralized filteredSignals from the store
-            // The store already manages filtering based on viewState.filters
-            const filteredSignals = state.filteredSignals || [];
+            // Determine which mode we're in
+            const feedMode = state.viewState.feedMode || 'actions';
             
-            // Create comments map for SignalRenderer
-            const commentsMap = new Map();
-            filteredSignals.forEach(signal => {
-                const signalComments = signalsStore.getComments(signal.id);
-                commentsMap.set(signal.id, signalComments);
-                if (signalComments.length > 0) {
-                    console.log(`💬 Comments for signal ${signal.id}:`, signalComments);
-                }
-            });
-            
-            // Call the pure SignalRenderer with store data
-            SignalRenderer.renderSignalFeed(
-                filteredSignals,
-                state.viewState,
-                commentsMap,
-                state.interactions,
-                state.actionPlans
-            );
-            
-            console.log(`🎨 Rendered ${filteredSignals.length} signals in feed`);
+            if (feedMode === 'signals') {
+                // Render signals
+                const filteredSignals = this.filterSignals(state);
+                
+                // Create comments map for SignalRenderer
+                const commentsMap = new Map();
+                filteredSignals.forEach(signal => {
+                    const signalComments = signalsStore.getComments(signal.id);
+                    commentsMap.set(signal.id, signalComments);
+                });
+                
+                // Call the pure SignalRenderer with store data
+                SignalRenderer.renderSignalFeed(
+                    filteredSignals,
+                    state.viewState,
+                    commentsMap,
+                    state.interactions,
+                    state.actionPlans
+                );
+                
+                // Update count
+                this.updateItemCount(filteredSignals.length, 'signal');
+                
+                console.log(`🎨 Rendered ${filteredSignals.length} signals in feed`);
+            } else {
+                // Render actions
+                const filteredActions = this.filterActions(state);
+                const allSignals = signalsStore.getSignals();
+                
+                // Call ActionFeedRenderer
+                ActionFeedRenderer.renderActionFeed(
+                    filteredActions,
+                    state.viewState,
+                    allSignals,
+                    state.interactions
+                );
+                
+                // Update count
+                this.updateItemCount(filteredActions.length, 'action');
+                
+                console.log(`🎨 Rendered ${filteredActions.length} actions in feed`);
+            }
         }
     }
     
-    updateSignalFeedSummary(state) {
+    filterSignals(state) {
+        const allSignals = signalsStore.getSignals();
+        const filters = state.viewState.filters;
+        
+        return allSignals.filter(signal => {
+            // Category filter
+            if (filters.category && filters.category !== 'all') {
+                const polarity = FormatUtils.normalizePolarityKey(signal.signal_polarity || signal['Signal Polarity'] || '');
+                if (polarity !== filters.category) return false;
+            }
+            
+            // Priority filter
+            if (filters.priority && filters.priority !== 'all') {
+                if (signal.priority !== filters.priority) return false;
+            }
+            
+            // Search filter
+            if (filters.searchText) {
+                const searchLower = filters.searchText.toLowerCase();
+                const accountName = (signal.account_name || '').toLowerCase();
+                if (!accountName.includes(searchLower)) return false;
+            }
+            
+            return true;
+        });
+    }
+    
+    filterActions(state) {
+        const allActions = signalsStore.getRecommendedActions();
+        const filters = state.viewState.filters;
+        
+        return allActions.filter(action => {
+            // Category filter (based on related signals)
+            if (filters.category && filters.category !== 'all') {
+                const hasMatchingSignal = (action.relatedSignals || []).some(signal => {
+                    const polarity = FormatUtils.normalizePolarityKey(signal.signal_polarity || signal['Signal Polarity'] || '');
+                    return polarity === filters.category;
+                });
+                if (!hasMatchingSignal) return false;
+            }
+            
+            // Priority filter
+            if (filters.priority && filters.priority !== 'all') {
+                if (action.priority !== filters.priority) return false;
+            }
+            
+            // Search filter
+            if (filters.searchText) {
+                const searchLower = filters.searchText.toLowerCase();
+                const accountName = (action.accountName || '').toLowerCase();
+                if (!accountName.includes(searchLower)) return false;
+            }
+            
+            return true;
+        });
+    }
+    
+    updateItemCount(count, type) {
+        const countElement = document.getElementById('feedItemCount');
+        if (countElement) {
+            countElement.textContent = `${count} ${type}${count !== 1 ? 's' : ''}`;
+        }
+    }
+    
+    updateFeedSummary(state) {
         try {
-            const allSignals = state.signals || [];
-            const accounts = state.accounts || new Map();
+            const feedMode = state.viewState.feedMode || 'actions';
+            const summaryElement = document.getElementById('feed-summary-text');
+            if (!summaryElement) return;
             
-            // Filter for high priority signals
-            const highPrioritySignals = allSignals.filter(signal => 
-                signal.priority === 'High' || signal.priority === 'high'
-            );
-            
-            // Get unique account IDs from high priority signals
-            const uniqueAccountIds = new Set(
-                highPrioritySignals.map(signal => signal.account_id).filter(id => id)
-            );
-            
-            // Calculate total renewal baseline for unique accounts
-            let totalRenewalBaseline = 0;
-            const processedAccountIds = new Set();
-            
-            for (const signal of highPrioritySignals) {
-                if (signal.account_id && !processedAccountIds.has(signal.account_id)) {
-                    const account = accounts.get(signal.account_id);
-                    if (account) {
-                        const renewalBaseline = account.bks_baseline_renewal_usd || 
-                                             account.bks_renewal_baseline_usd || 
-                                             account['Renewal Baseline USD'] || 
-                                             0;
-                        totalRenewalBaseline += parseFloat(renewalBaseline) || 0;
-                        processedAccountIds.add(signal.account_id);
-                    }
+            if (feedMode === 'signals') {
+                this.updateSignalSummary(state, summaryElement);
+            } else {
+                this.updateActionSummary(state, summaryElement);
+            }
+        } catch (error) {
+            console.error('Error updating feed summary:', error);
+        }
+    }
+    
+    updateSignalSummary(state, summaryElement) {
+        const allSignals = state.signals || [];
+        const accounts = state.accounts || new Map();
+        
+        // Filter for high priority signals
+        const highPrioritySignals = allSignals.filter(signal => 
+            signal.priority === 'High' || signal.priority === 'high'
+        );
+        
+        // Get unique account IDs from high priority signals
+        const uniqueAccountIds = new Set(
+            highPrioritySignals.map(signal => signal.account_id).filter(id => id)
+        );
+        
+        // Calculate total renewal baseline for unique accounts
+        let totalRenewalBaseline = 0;
+        const processedAccountIds = new Set();
+        
+        for (const signal of highPrioritySignals) {
+            if (signal.account_id && !processedAccountIds.has(signal.account_id)) {
+                const account = accounts.get(signal.account_id);
+                if (account) {
+                    const renewalBaseline = account.bks_baseline_renewal_usd || 
+                                         account.bks_renewal_baseline_usd || 
+                                         account['Renewal Baseline USD'] || 
+                                         0;
+                    totalRenewalBaseline += parseFloat(renewalBaseline) || 0;
+                    processedAccountIds.add(signal.account_id);
                 }
             }
-            
-            // Format the summary text
-            const count = uniqueAccountIds.size;
-            const formattedAmount = FormatUtils.formatCurrency(totalRenewalBaseline);
-            const summaryText = `${count} High priority signal${count !== 1 ? 's' : ''} identified representing ${formattedAmount} of Renewal Baseline`;
-            
-            // Update the DOM
-            const summaryElement = document.getElementById('signal-feed-summary');
-            if (summaryElement) {
-                summaryElement.textContent = summaryText;
-            }
-            
-            console.log(`📊 Signal Feed Summary: ${count} unique accounts, $${totalRenewalBaseline.toLocaleString()} total renewal baseline`);
-            
-        } catch (error) {
-            console.error('Error updating signal feed summary:', error);
-            const summaryElement = document.getElementById('signal-feed-summary');
-            if (summaryElement) {
-                summaryElement.textContent = 'Error calculating signal summary';
+        }
+        
+        // Format the summary text
+        const count = highPrioritySignals.length;
+        const formattedAmount = FormatUtils.formatCurrency(totalRenewalBaseline);
+        const summaryText = `${count} high priority signal${count !== 1 ? 's' : ''} identified representing ${formattedAmount} of Renewal Baseline`;
+        
+        summaryElement.textContent = summaryText;
+        console.log(`📊 Signal Feed Summary: ${count} high priority signals, ${formattedAmount} total renewal baseline`);
+    }
+    
+    updateActionSummary(state, summaryElement) {
+        const allActions = signalsStore.getRecommendedActions();
+        const accounts = state.accounts || new Map();
+        
+        // Filter for high priority actions
+        const highPriorityActions = allActions.filter(action => 
+            action.priority === 'High' || action.priority === 'high'
+        );
+        
+        // Get unique account IDs and calculate total renewal baseline
+        let totalRenewalBaseline = 0;
+        const processedAccountIds = new Set();
+        
+        for (const action of highPriorityActions) {
+            if (action.accountId && !processedAccountIds.has(action.accountId)) {
+                const account = accounts.get(action.accountId);
+                if (account) {
+                    const renewalBaseline = account.bks_baseline_renewal_usd || 
+                                         account.bks_renewal_baseline_usd || 
+                                         account['Renewal Baseline USD'] || 
+                                         0;
+                    totalRenewalBaseline += parseFloat(renewalBaseline) || 0;
+                    processedAccountIds.add(action.accountId);
+                }
             }
         }
+        
+        // Format the summary text
+        const count = highPriorityActions.length;
+        const formattedAmount = FormatUtils.formatCurrency(totalRenewalBaseline);
+        const summaryText = `${count} high priority action${count !== 1 ? 's' : ''} identified representing ${formattedAmount} of Renewal Baseline`;
+        
+        summaryElement.textContent = summaryText;
+        console.log(`📊 Action Feed Summary: ${count} high priority actions, ${formattedAmount} total renewal baseline`);
     }
     
     // DEPRECATED: Filtering is now centralized in SignalsStore

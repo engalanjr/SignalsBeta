@@ -1,5 +1,21 @@
 // Portfolio Renderer - Pure view for rendering portfolio tab
 class PortfolioRenderer {
+    
+    /**
+     * Transform polarity labels for display in portfolio view
+     */
+    static transformPolarityLabel(polarity) {
+        if (polarity === 'Opportunity') {
+            return 'Growth Lever';
+        } else if (polarity === 'Opportunities') {
+            return 'Growth Levers';
+        } else if (polarity === 'OPPORTUNITIES') {
+            return 'GROWTH LEVERS';
+        } else if (polarity === 'OPPORTUNITY') {
+            return 'GROWTH LEVER';
+        }
+        return polarity; // Return unchanged for other polarities
+    }
 
     static renderMyPortfolio(accounts, actionPlans, comments, state = null) {
         const container = document.getElementById('accountsList');
@@ -27,7 +43,8 @@ class PortfolioRenderer {
                     const hasOpportunitySignals = account.signals.some(signal => {
                         const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
                         const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
-                        return normalizedPolarity === 'opportunities';
+                        return normalizedPolarity === 'opportunities' || 
+                               polarity === 'Growth Lever' || polarity === 'Growth Levers';
                     });
 
                     let shouldInclude = false;
@@ -72,14 +89,16 @@ class PortfolioRenderer {
             .filter(account => account.signals.some(signal => {
                 const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
                 const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
-                return signal.priority === 'High' && (normalizedPolarity === 'risk' || normalizedPolarity === 'opportunities');
+                return signal.priority === 'High' && (normalizedPolarity === 'risk' || normalizedPolarity === 'opportunities' ||
+                       polarity === 'Growth Lever' || polarity === 'Growth Levers');
             }))
             .map(account => {
                 // Find the most recent high priority Risk/Opportunities signal for sorting
                 const qualifyingSignals = account.signals.filter(signal => {
                     const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
                     const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
-                    return signal.priority === 'High' && (normalizedPolarity === 'risk' || normalizedPolarity === 'opportunities');
+                    return signal.priority === 'High' && (normalizedPolarity === 'risk' || normalizedPolarity === 'opportunities' ||
+                           polarity === 'Growth Lever' || polarity === 'Growth Levers');
                 });
                 
                 // Sort qualifying signals by polarity priority (Risk > Opportunities) then by call_date DESC
@@ -89,11 +108,14 @@ class PortfolioRenderer {
                     const normalizedPolarityA = FormatUtils.normalizePolarityKey(polarityA);
                     const normalizedPolarityB = FormatUtils.normalizePolarityKey(polarityB);
                     const polarityOrder = { 'risk': 2, 'opportunities': 1, 'enrichment': 0 };
-                    const polarityScoreA = polarityOrder[normalizedPolarityA] || 0;
-                    const polarityScoreB = polarityOrder[normalizedPolarityB] || 0;
+                    // Handle Growth Levers as opportunities for sorting
+                    const scoreA = normalizedPolarityA === 'opportunities' || polarityA === 'Growth Lever' || polarityA === 'Growth Levers' ? 1 : 
+                                  normalizedPolarityA === 'risk' ? 2 : 0;
+                    const scoreB = normalizedPolarityB === 'opportunities' || polarityB === 'Growth Lever' || polarityB === 'Growth Levers' ? 1 : 
+                                  normalizedPolarityB === 'risk' ? 2 : 0;
                     
-                    if (polarityScoreA !== polarityScoreB) {
-                        return polarityScoreB - polarityScoreA; // Risk before Opportunities
+                    if (scoreA !== scoreB) {
+                        return scoreB - scoreA; // Risk before Growth Levers
                     }
                     
                     // Same polarity, sort by call_date DESC
@@ -105,9 +127,12 @@ class PortfolioRenderer {
                 const mostRecentQualifyingDate = sortedQualifyingSignals.length > 0 
                     ? new Date(sortedQualifyingSignals[0].call_date || sortedQualifyingSignals[0].created_date).getTime()
                     : 0;
-                const topSignalPolarity = sortedQualifyingSignals.length > 0 
-                    ? FormatUtils.normalizePolarityKey(sortedQualifyingSignals[0].signal_polarity || sortedQualifyingSignals[0]['Signal Polarity'] || '')
-                    : '';
+                const topSignalPolarity = sortedQualifyingSignals.length > 0 ? 
+                    (() => {
+                        const polarity = sortedQualifyingSignals[0].signal_polarity || sortedQualifyingSignals[0]['Signal Polarity'] || '';
+                        return polarity === 'Growth Lever' || polarity === 'Growth Levers' ? 'opportunities' :
+                               FormatUtils.normalizePolarityKey(polarity);
+                    })() : '';
                     
                 return { ...account, mostRecentQualifyingDate, topSignalPolarity };
             })
@@ -116,7 +141,7 @@ class PortfolioRenderer {
                 const polarityScoreA = polarityOrder[a.topSignalPolarity] || 0;
                 const polarityScoreB = polarityOrder[b.topSignalPolarity] || 0;
                 
-                // First sort by signal polarity (Risk before Opportunities)
+                // First sort by signal polarity (Risk before Growth Levers)
                 if (polarityScoreA !== polarityScoreB) {
                     return polarityScoreB - polarityScoreA;
                 }
@@ -137,7 +162,7 @@ class PortfolioRenderer {
             html += `
                 <div class="portfolio-section">
                     <div class="portfolio-section-header-with-legend">
-                        <h3 class="portfolio-section-header">Accounts with Risk or Opportunities Identified (${accountsWithRiskOrOpportunitySignals.length})</h3>
+                        <h3 class="portfolio-section-header">Accounts with Risk or Growth Levers Identified (${accountsWithRiskOrOpportunitySignals.length})</h3>
                         <!-- Signal Legend -->
                         <div class="signal-legend-compact">
                             <span class="legend-label">Signal Types:</span>
@@ -147,7 +172,7 @@ class PortfolioRenderer {
                             </span>
                             <span class="legend-item-compact">
                                 <span class="legend-circle-compact opportunity-circle">1</span>
-                                <span class="legend-text-compact">Opportunity</span>
+                                <span class="legend-text-compact">Growth Lever</span>
                             </span>
                             <span class="legend-item-compact">
                                 <span class="legend-circle-compact enrichment-circle">1</span>
@@ -187,11 +212,12 @@ class PortfolioRenderer {
             })
         );
         
-        // Count distinct accounts with Opportunity signals
+        // Count distinct accounts with Growth Lever signals (simplified)
         const accountsWithOpportunitySignals = allAccounts.filter(account => 
             account.signals.some(signal => {
                 const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
-                return polarity === 'Opportunity' || polarity === 'Opportunities';
+                console.log(`🔍 Debug: Account ${account.name}, Signal ${signal.name || signal.code}, Polarity: "${polarity}"`);
+                return polarity === 'Growth Levers';
             })
         );
         
@@ -211,16 +237,28 @@ class PortfolioRenderer {
             });
         });
         
-        // Show details for Opportunity accounts
-        console.log('📈 Opportunity accounts:');
+        // Show details for Growth Lever accounts
+        console.log('📈 Growth Lever accounts:');
         accountsWithOpportunitySignals.forEach(account => {
             const opportunitySignals = account.signals.filter(signal => {
-                const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
-                return polarity === 'Opportunity';
+                let polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                
+                // Business rule: UC-01 (Umbrella Use Case Identified) signals should be treated as Opportunity
+                if (signal.name && signal.name.includes('Umbrella Use Case Identified')) {
+                    polarity = 'Opportunity';
+                }
+                
+                return polarity === 'Opportunity' || polarity === 'Opportunities' ||
+                       polarity === 'Growth Lever' || polarity === 'Growth Levers';
             });
-            console.log(`  - ${account.name} (${account.id}): ${opportunitySignals.length} opportunity signals`);
+            console.log(`  - ${account.name} (${account.id}): ${opportunitySignals.length} growth lever signals`);
             opportunitySignals.forEach(signal => {
-                console.log(`    * ${signal.name} (${signal.code}) - ${signal.signal_polarity}`);
+                let polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
+                // Apply business rule for display
+                if (signal.name && signal.name.includes('Umbrella Use Case Identified')) {
+                    polarity = 'Opportunity';
+                }
+                console.log(`    * ${signal.name} (${signal.code}) - ${this.transformPolarityLabel(polarity)}`);
             });
         });
 
@@ -230,7 +268,7 @@ class PortfolioRenderer {
             requiresAttentionElement.textContent = accountsWithRiskSignals.length;
         }
 
-        // Update Opportunities count (distinct accounts with opportunity signals)
+        // Update Growth Levers count (distinct accounts with growth lever signals)
         const highPriorityElement = document.getElementById('highPriorityDashboard');
         if (highPriorityElement) {
             highPriorityElement.textContent = accountsWithOpportunitySignals.length;
@@ -371,7 +409,8 @@ class PortfolioRenderer {
         
         const hasOpportunitySignals = recentSignals.some(signal => {
             const polarity = signal.signal_polarity || signal['Signal Polarity'] || '';
-            return polarity === 'Opportunity' || polarity === 'Opportunities';
+            return polarity === 'Opportunity' || polarity === 'Opportunities' ||
+                   polarity === 'Growth Lever' || polarity === 'Growth Levers';
         });
         
         // Debug logging for Home Depot
@@ -385,7 +424,8 @@ class PortfolioRenderer {
                 }).map(s => ({ id: s.id, polarity: s.signal_polarity || s['Signal Polarity'] })),
                 opportunitySignals: recentSignals.filter(s => {
                     const polarity = s.signal_polarity || s['Signal Polarity'] || '';
-                    return polarity.toLowerCase() === 'opportunities' || polarity.toLowerCase() === 'opportunity';
+                    return polarity.toLowerCase() === 'opportunities' || polarity.toLowerCase() === 'opportunity' ||
+                           polarity === 'Growth Lever' || polarity === 'Growth Levers';
                 }).map(s => ({ id: s.id, polarity: s.signal_polarity || s['Signal Polarity'] }))
             });
         }
@@ -417,7 +457,7 @@ class PortfolioRenderer {
                 
                 if (normalizedPolarity === 'risk') {
                     riskActionIds.add(signal.action_id);
-                } else if (normalizedPolarity === 'opportunities') {
+                } else if (normalizedPolarity === 'opportunities' || polarity === 'Growth Lever' || polarity === 'Growth Levers') {
                     opportunityActionIds.add(signal.action_id);
                 }
             }
@@ -956,7 +996,7 @@ class PortfolioRenderer {
                         const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
                         if (normalizedPolarity === 'risk') {
                             polarityCounts.risk++;
-                        } else if (normalizedPolarity === 'opportunities') {
+                        } else if (normalizedPolarity === 'growth levers') {
                             polarityCounts.opportunities++;
                         } else {
                             polarityCounts.enrichment++;
@@ -1057,8 +1097,8 @@ class PortfolioRenderer {
         // Priority logic: Risk > Opportunities > Enrichment
         if (polarities.has('risk')) {
             return 'risk';
-        } else if (polarities.has('opportunities') && !polarities.has('risk')) {
-            return 'opportunities';
+        } else if (polarities.has('growth levers') && !polarities.has('risk')) {
+            return 'growth levers';
         } else {
             return 'enrichment';
         }
@@ -1255,9 +1295,31 @@ class PortfolioRenderer {
                     <div class="call-modal-signals-list">
                         ${callData.relatedSignals.map(signal => {
                             // Get signal polarity and normalize it - using 'polarity' field from getRelatedCallsForAction
-                            const polarity = signal.polarity || 'Enrichment';
+                            let polarity = signal.polarity || 'Enrichment';
+                            
+                            // Business rule: UC-01 (Umbrella Use Case Identified) signals should be treated as Opportunity
+                            if (signal.name && signal.name.includes('Umbrella Use Case Identified')) {
+                                polarity = 'Opportunity';
+                            }
+                            
                             const normalizedPolarity = FormatUtils.normalizePolarityKey(polarity);
-                            const polarityDisplay = normalizedPolarity === 'opportunities' ? 'Opportunity' : 
+                            
+                            // Debug logging for signal polarity
+                            if (signal.name && signal.name.includes('Umbrella Use Case')) {
+                                console.log(`🔍 Umbrella Use Case Signal Debug:`, {
+                                    signalName: signal.name,
+                                    originalPolarity: signal.polarity,
+                                    adjustedPolarity: polarity,
+                                    normalizedPolarity: normalizedPolarity,
+                                    transformedLabel: this.transformPolarityLabel(polarity),
+                                    polarityDisplay: normalizedPolarity === 'opportunities' ? this.transformPolarityLabel(polarity) : 
+                                                   normalizedPolarity === 'risk' ? 'Risk' : 'Enrichment',
+                                    polarityClass: normalizedPolarity === 'opportunities' ? 'polarity-opportunities' : 
+                                                 normalizedPolarity === 'risk' ? 'polarity-risk' : 'polarity-enrichment'
+                                });
+                            }
+                            
+                            const polarityDisplay = normalizedPolarity === 'opportunities' ? this.transformPolarityLabel(polarity) : 
                                                    normalizedPolarity === 'risk' ? 'Risk' : 'Enrichment';
                             const polarityClass = normalizedPolarity === 'opportunities' ? 'polarity-opportunities' : 
                                                  normalizedPolarity === 'risk' ? 'polarity-risk' : 'polarity-enrichment';

@@ -494,7 +494,7 @@ class WhitespaceRenderer {
                 
                 <div class="whitespace-legend">
                     <div class="legend-group">
-                        <span class="legend-label">Opportunity:</span>
+                        <span class="legend-label">Growth Lever:</span>
                         <div class="legend-items">
                             <span class="legend-item opportunity-1">1</span>
                             <span class="legend-item opportunity-2">2</span>
@@ -572,13 +572,36 @@ class WhitespaceRenderer {
                 const colorClass = this.getColorClass(count, polarity);
                 const sanitizedSignalType = SecurityUtils.sanitizeHTML(signalType);
                 const fullSignalName = cellData?.fullSignalName || signalType;
-                tableHTML += `<td class="heatmap-data-cell ${colorClass}" data-account="${sanitizedAccountName}" data-signal="${sanitizedSignalType}" data-signal-full="${SecurityUtils.sanitizeHTML(fullSignalName)}" data-count="${count}" data-polarity="${polarity}">${count > 0 ? count : ''}</td>`;
+                // Transform polarity labels for display in whitespace view
+                const displayPolarity = this.transformPolarityLabel(polarity);
+                
+                // Debug logging for polarity and color class - log ALL cells for ARCH-03
+                if (signalType === 'ARCH-03') {
+                    console.log(`🔍 Cell: ${signalType}, Original polarity: "${polarity}", Color class: "${colorClass}", Display polarity: "${displayPolarity}", Count: ${count}`);
+                }
+                tableHTML += `<td class="heatmap-data-cell ${colorClass}" data-account="${sanitizedAccountName}" data-signal="${sanitizedSignalType}" data-signal-full="${SecurityUtils.sanitizeHTML(fullSignalName)}" data-count="${count}" data-polarity="${displayPolarity}">${count > 0 ? count : ''}</td>`;
             }
         });
         tableHTML += `</tr>`;
     });
     tableHTML += `</tbody></table>`;
     return tableHTML;
+    }
+    
+    /**
+     * Transform polarity labels for display in whitespace view
+     */
+    static transformPolarityLabel(polarity) {
+        if (polarity === 'Opportunity') {
+            return 'Growth Lever';
+        } else if (polarity === 'Opportunities') {
+            return 'Growth Levers';
+        } else if (polarity === 'OPPORTUNITIES') {
+            return 'GROWTH LEVERS';
+        } else if (polarity === 'OPPORTUNITY') {
+            return 'GROWTH LEVER';
+        }
+        return polarity; // Return unchanged for other polarities
     }
     
     /**
@@ -590,9 +613,10 @@ class WhitespaceRenderer {
         const intensity = Math.min(count, 5);
         const polarityClass = (polarity || 'enrichment').toLowerCase();
         
-        // Normalize polarity variations
+        // Normalize polarity variations - handle both original and transformed values
         let normalizedPolarity = polarityClass;
-        if (polarityClass === 'opportunities' || polarityClass === 'opportunity') {
+        if (polarityClass === 'opportunities' || polarityClass === 'opportunity' || 
+            polarityClass === 'growth lever' || polarityClass === 'growth levers') {
             normalizedPolarity = 'opportunity';
         } else if (polarityClass === 'risks' || polarityClass === 'risk') {
             normalizedPolarity = 'risk';
@@ -613,7 +637,9 @@ class WhitespaceRenderer {
         const polarityLower = String(polarity).toLowerCase();
         
         // Strict whitelist - only return one of these three values
-        if (polarityLower === 'opportunity' || polarityLower === 'opportunities') {
+        // Handle both original and transformed polarity values
+        if (polarityLower === 'opportunity' || polarityLower === 'opportunities' ||
+            polarityLower === 'growth lever' || polarityLower === 'growth levers') {
             return 'opportunity';
         } else if (polarityLower === 'risk' || polarityLower === 'risks') {
             return 'risk';
@@ -650,6 +676,7 @@ class WhitespaceRenderer {
         
         // Show tooltip for both populated and empty cells
         const normalizedPolarity = this.normalizePolarity(polarity);
+        const displayPolarity = this.transformPolarityLabel(polarity);
         const isWhitespace = !count || count === '0';
         
         // Format signal display with code and name
@@ -668,10 +695,10 @@ class WhitespaceRenderer {
                         `<span class="tooltip-whitespace">No signals detected</span>` :
                         `<span class="tooltip-count">Count: ${count}</span>`
                     }
-                    <span class="tooltip-polarity ${normalizedPolarity}">${SecurityUtils.sanitizeHTML(polarity)}</span>
+                    <span class="tooltip-polarity ${normalizedPolarity}">${SecurityUtils.sanitizeHTML(displayPolarity)}</span>
                 </div>
                 ${isWhitespace ? 
-                    `<div class="tooltip-opportunity">💡 Opportunity for engagement</div>` : 
+                    `<div class="tooltip-opportunity">💡 Growth Lever for engagement</div>` : 
                     ''
                 }
             </div>

@@ -1,7 +1,7 @@
 // AppController - Main application controller for Flux architecture
 class AppController {
     constructor() {
-        this.currentTab = 'whitespace';
+        this.currentTab = 'recommendation-inbox';
         this.isInitialized = false;
         this.controllers = new Map();
         
@@ -44,6 +44,7 @@ class AppController {
         // Create focused controllers for different app areas
         this.controllers.set('signals', new SignalsController());
         this.controllers.set('portfolio', new PortfolioController());
+        this.controllers.set('inbox', new RecommendationInboxController());
         this.controllers.set('feedback', new FeedbackController());
         this.controllers.set('comments', new CommentsController());
         
@@ -119,6 +120,49 @@ class AppController {
         if (cancelPlan) {
             cancelPlan.addEventListener('click', () => {
                 dispatcher.dispatch(Actions.closePlanDrawer());
+            });
+        }
+        
+        // Add to Plan Drawer handlers (used by ActionFeedRenderer)
+        const createPlanBtn = document.getElementById('createPlanBtn');
+        if (createPlanBtn) {
+            console.log('✅ createPlanBtn event listener attached');
+            createPlanBtn.addEventListener('click', () => {
+                console.log('🖱️ createPlanBtn clicked');
+                console.log('📋 currentDrawerData:', window.currentDrawerData);
+                
+                // Check which renderer opened the drawer
+                if (window.currentDrawerData && window.ActionFeedRenderer) {
+                    console.log('🎯 Calling ActionFeedRenderer.handleCreateOrUpdatePlan');
+                    window.ActionFeedRenderer.handleCreateOrUpdatePlan();
+                } else if (window.PortfolioRenderer) {
+                    console.log('🎯 Calling PortfolioRenderer.createPlanFromDrawer');
+                    window.PortfolioRenderer.createPlanFromDrawer();
+                }
+            });
+        } else {
+            console.warn('⚠️ createPlanBtn not found in DOM');
+        }
+        
+        const cancelPlanBtn = document.getElementById('cancelPlanBtn');
+        if (cancelPlanBtn) {
+            cancelPlanBtn.addEventListener('click', () => {
+                if (window.currentDrawerData && window.ActionFeedRenderer) {
+                    window.ActionFeedRenderer.closeAddToPlanDrawer();
+                } else if (window.PortfolioRenderer) {
+                    window.PortfolioRenderer.closeAddToPlanDrawer();
+                }
+            });
+        }
+        
+        const closePlanDrawerBtn = document.getElementById('closePlanDrawerBtn');
+        if (closePlanDrawerBtn) {
+            closePlanDrawerBtn.addEventListener('click', () => {
+                if (window.currentDrawerData && window.ActionFeedRenderer) {
+                    window.ActionFeedRenderer.closeAddToPlanDrawer();
+                } else if (window.PortfolioRenderer) {
+                    window.PortfolioRenderer.closeAddToPlanDrawer();
+                }
             });
         }
         
@@ -215,6 +259,30 @@ class AppController {
                     }, 100);
                 } else {
                     console.error('🚨 CRITICAL: WhitespaceRenderer not available');
+                }
+                break;
+            case 'recommendation-inbox':
+                // Handle recommendation inbox tab
+                if (typeof RecommendationInboxRenderer !== 'undefined') {
+                    console.log('📥 Rendering Recommendation Inbox tab');
+                    const inboxTab = document.getElementById('recommendation-inbox');
+                    if (inboxTab) inboxTab.classList.add('active');
+                    
+                    // Get data for inbox - use store methods directly
+                    const actions = signalsStore.getRecommendedActions() || [];
+                    const signals = signalsStore.getDenormalizedSignals() || state.signals || [];
+                    const interactions = state.actionInteractions || new Map();
+                    
+                    console.log('📊 Inbox Data Check:', {
+                        actionsArrayLength: actions.length,
+                        signalsLength: signals.length,
+                        normalizedDataSize: signalsStore.normalizedData?.recommendedActions?.size || 0,
+                        sampleActionSignals: actions[0]?.relatedSignals?.length || 0
+                    });
+                    
+                    RecommendationInboxRenderer.renderInbox(actions, state.viewState || {}, signals, interactions);
+                } else {
+                    console.error('🚨 CRITICAL: RecommendationInboxRenderer not available');
                 }
                 break;
             case 'signal-feed':

@@ -468,6 +468,39 @@ class Actions {
             timestamp: Date.now()
         };
     }
+    
+    // Action Feed Actions
+    static markActionAsViewed(actionId) {
+        return {
+            type: 'ACTION_VIEWED',
+            payload: { actionId },
+            timestamp: Date.now()
+        };
+    }
+    
+    static markActionUseful(actionId) {
+        return {
+            type: 'ACTION_USEFUL',
+            payload: { actionId },
+            timestamp: Date.now()
+        };
+    }
+    
+    static markActionNotRelevant(actionId) {
+        return {
+            type: 'ACTION_NOT_RELEVANT',
+            payload: { actionId },
+            timestamp: Date.now()
+        };
+    }
+    
+    static createActionPlanFromFeed(actionId, selectedPlays) {
+        return {
+            type: 'ACTION_PLAN_FROM_FEED_REQUESTED',
+            payload: { actionId, selectedPlays },
+            timestamp: Date.now()
+        };
+    }
 }
 
 // Make Actions globally available

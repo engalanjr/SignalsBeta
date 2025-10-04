@@ -163,7 +163,7 @@ class SignalDimensionService {
         
         const normalized = polarity.toLowerCase().trim();
         if (normalized === 'opportunities' || normalized === 'opportunity') {
-            return 'Opportunity';
+            return 'Growth Lever';
         } else if (normalized === 'risks' || normalized === 'risk') {
             return 'Risk';
         } else {

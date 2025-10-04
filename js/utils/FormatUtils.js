@@ -163,8 +163,8 @@ class FormatUtils {
         const polarityMap = {
             'risk': 'risk',
             'risks': 'risk',
-            'opportunity': 'opportunities', 
-            'opportunities': 'opportunities',
+            'growth lever': 'growth levers', 
+            'growth levers': 'growth levers',
             'enrichment': 'enrichment'
         };
         

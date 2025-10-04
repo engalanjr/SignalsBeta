@@ -25,7 +25,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
-    <link href="app.css?v=4" rel="stylesheet" type="text/css" />
+    <link href="app.css?v=8" rel="stylesheet" type="text/css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
 </head>
@@ -36,8 +36,30 @@
         <header class="app-header">
             <div class="header-content">
                 <div class="logo-section">
-                    <i class="fas fa-chart-line"></i>
-                    <h1>SignalsAI (Beta)</h1>
+                    <div class="circular-logo">
+                        <div class="logo-ring">
+                            <div class="ring-segment segment-1"></div>
+                            <div class="ring-segment segment-2"></div>
+                            <div class="ring-segment segment-3"></div>
+                            <div class="ring-segment segment-4"></div>
+                            <div class="ring-segment segment-5"></div>
+                            <div class="ring-segment segment-6"></div>
+                            <div class="ring-segment segment-7"></div>
+                            <div class="ring-segment segment-8"></div>
+                            <div class="ring-segment segment-9"></div>
+                            <div class="ring-segment segment-10"></div>
+                            <div class="ring-segment segment-11"></div>
+                            <div class="ring-segment segment-12"></div>
+                        </div>
+                        <div class="logo-text">
+                            <span class="logo-word-1">ACCOUNT</span>
+                            <span class="logo-word-2">SIGNAL</span>
+                        </div>
+                    </div>
+                    <div class="banner-section">
+                        <h1 class="banner-title">WELCOME TO ACCOUNT SIGNAL!</h1>
+                        <p class="banner-description">Account Signal is a simple, comprehensive overview of customer health—empowering account teams to better identify growth opportunities, mitigate risk, and take action.</p>
+                    </div>
                 </div>
                 <div class="header-actions">
                     <!-- Add New Signal feature removed -->
@@ -47,13 +69,9 @@
 
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
-            <button class="nav-tab active" data-tab="whitespace">
-                <i class="fas fa-th"></i>
-                Whitespace
-            </button>
-            <button class="nav-tab" data-tab="signal-feed">
-                <i class="fas fa-stream"></i>
-                Signal Feed
+            <button class="nav-tab active" data-tab="recommendation-inbox">
+                <i class="fas fa-inbox"></i>
+                Recommendation Inbox
             </button>
             <button class="nav-tab" data-tab="my-portfolio">
                 <i class="fas fa-briefcase"></i>
@@ -63,45 +81,104 @@
                 <i class="fas fa-tasks"></i>
                 Action Plans
             </button>
+            <button class="nav-tab" data-tab="whitespace">
+                <i class="fas fa-th"></i>
+                Whitespace
+            </button>
+            <button class="nav-tab" data-tab="signal-feed">
+                <i class="fas fa-stream"></i>
+                Signal Feed
+            </button>
         </nav>
 
         <!-- Main Content Area -->
         <main class="main-content">
             <!-- Whitespace Tab -->
-            <div id="whitespace" class="tab-content active">
+            <div id="whitespace" class="tab-content">
                 <!-- Whitespace content will be dynamically generated here -->
+            </div>
+            
+            <!-- Recommendation Inbox Tab -->
+            <div id="recommendation-inbox" class="tab-content active">
+                <!-- Inbox content will be dynamically generated here -->
             </div>
             
             <!-- Signal Feed Tab -->
             <div id="signal-feed" class="tab-content">
-                <!-- Priority Alert Banner -->
-                <div class="priority-alert-banner">
-                    <div class="alert-content">
-                        <i class="fas fa-exclamation-triangle alert-icon"></i>
-                        <span class="alert-text" id="signal-feed-summary">Loading signal summary...</span>
+                <!-- Top Summary Bar -->
+                <div class="feed-summary-bar">
+                    <div class="summary-content">
+                        <i class="fas fa-bell summary-icon"></i>
+                        <span class="summary-text" id="feed-summary-text">Loading...</span>
                     </div>
                 </div>
 
-                <div class="filter-bar">
-                    <select id="categoryFilter" class="filter-select">
-                        <option value="">All Categories</option>
-                        <option value="Architecture">Architecture</option>
-                        <option value="Relationship">Relationship</option>
-                        <option value="Use Case">Use Case</option>
-                        <option value="User Engagement">User Engagement</option>
-                        <option value="Business">Business</option>
-                        <option value="Enablement">Enablement</option>
-                    </select>
-                    <select id="signalTypeFilter" class="filter-select">
-                        <option value="">All Signal Types</option>
-                        <option value="Risk">Risk</option>
-                        <option value="Opportunities">Opportunities</option>
-                        <option value="Enrichment">Enrichment</option>
-                    </select>
+                <!-- Controls Row -->
+                <div class="feed-controls-row">
+                    <!-- Filters Section -->
+                    <div class="feed-filters">
+                        <select id="categoryFilter" class="filter-select">
+                            <option value="all">All Categories</option>
+                            <option value="risk">Risk</option>
+                            <option value="opportunity">Opportunity</option>
+                            <option value="enrichment">Enrichment</option>
+                        </select>
+                        
+                        <select id="priorityFilter" class="filter-select">
+                            <option value="all">All Priorities</option>
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                        
+                        <div class="search-container">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" 
+                                   id="feedSearchInput" 
+                                   class="search-input" 
+                                   placeholder="Search by account name...">
+                        </div>
+                        
+                        <select id="feedSortSelect" class="filter-select sort-select">
+                            <option value="priority">Sort: Priority</option>
+                            <option value="confidence">Sort: Confidence</option>
+                            <option value="lastUpdated">Sort: Last Updated</option>
+                            <option value="account">Sort: Account</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Segmented Toggle -->
+                    <div class="feed-toggle-container">
+                        <div role="tablist" class="segmented-toggle" aria-label="Feed view toggle">
+                            <button role="tab" 
+                                    id="signals-tab-btn" 
+                                    class="toggle-button" 
+                                    aria-selected="false"
+                                    aria-controls="signalsList"
+                                    data-feed-mode="signals">
+                                <i class="fas fa-signal"></i> Signals
+                            </button>
+                            <button role="tab" 
+                                    id="actions-tab-btn" 
+                                    class="toggle-button active" 
+                                    aria-selected="true"
+                                    aria-controls="signalsList"
+                                    data-feed-mode="actions">
+                                <i class="fas fa-tasks"></i> Actions
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                <div id="signalsList" class="signals-list">
-                    <!-- Signals will be populated here -->
+                <!-- Section Heading -->
+                <div class="feed-section-header">
+                    <h2 class="section-title" id="feedSectionTitle">Recommended Actions</h2>
+                    <span class="item-count" id="feedItemCount">0 actions</span>
+                </div>
+
+                <!-- Feed List Container -->
+                <div id="signalsList" class="signals-list feed-list">
+                    <!-- Items will be populated here by SignalRenderer or ActionFeedRenderer -->
                 </div>
             </div>
 
@@ -246,7 +323,7 @@
             <div class="plan-drawer-content">
                 <div class="plan-drawer-header">
                     <h2>Add Action to Plan</h2>
-                    <button class="plan-drawer-close" onclick="PortfolioRenderer.closeAddToPlanDrawer()">
+                    <button class="plan-drawer-close" id="closePlanDrawerBtn">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -271,10 +348,10 @@
                 </div>
                 
                 <div class="plan-drawer-footer">
-                    <div id="planDrawerError" class="plan-drawer-error" style="display: none;"></div>
+                    <div id="drawerErrorMessage" class="plan-drawer-error" style="display: none;"></div>
                     <div class="plan-drawer-buttons">
-                        <button class="btn btn-secondary" onclick="PortfolioRenderer.closeAddToPlanDrawer()">Cancel</button>
-                        <button class="btn btn-primary" onclick="PortfolioRenderer.createPlanFromDrawer()">Create Plan</button>
+                        <button class="btn btn-secondary" id="cancelPlanBtn">Cancel</button>
+                        <button class="btn btn-primary" id="createPlanBtn">Create Plan</button>
                     </div>
                 </div>
             </div>
@@ -297,6 +374,7 @@
     <!-- Flux Repositories and Services -->
     <script src="js/flux/repositories/SignalsRepository.js"></script>
     <script src="js/flux/services/FeedbackService.js"></script>
+    <script src="js/flux/services/ActionFeedbackService.js"></script>
     <script src="js/flux/services/CommentsService.js"></script>
     <script src="js/flux/services/ActionPlansService.js"></script>
     <script src="js/flux/services/SignalDimensionService.js"></script>
@@ -316,15 +394,18 @@
     <script src="js/utils/SecurityUtils.js"></script>
     <script src="js/utils/VirtualScrollManager.js"></script>
     <script src="js/SignalRenderer.js"></script>
-    <script src="js/PortfolioRenderer.js"></script>
+    <script src="js/ActionFeedRenderer.js"></script>
+    <script src="js/RecommendationInboxRenderer.js"></script>
+    <script src="js/PortfolioRenderer.js?v=9"></script>
     <script src="js/ActionsRenderer.js"></script>
-    <script src="js/WhitespaceRenderer.js"></script>
+    <script src="js/WhitespaceRenderer.js?v=5"></script>
     
     <!-- Flux Controllers (must load after renderers and Flux infrastructure) -->
     <script src="js/controllers/FeedbackController.js"></script>
     <script src="js/controllers/CommentsController.js"></script>
     <script src="js/controllers/SignalsController.js"></script>
     <script src="js/controllers/PortfolioController.js"></script>
+    <script src="js/controllers/RecommendationInboxController.js"></script>
     <script src="js/controllers/AppController.js"></script>
 
 
