@@ -57,8 +57,6 @@ class RecommendationInboxRenderer {
      * Render toolbar with filters and search
      */
     static renderToolbar(actions, interactions) {
-        const renewalQuarters = this.generateRenewalQuarters();
-
         return `
             <div class="inbox-toolbar">
                 <div class="inbox-toolbar-left">
@@ -74,14 +72,6 @@ class RecommendationInboxRenderer {
                                class="inbox-search-input"
                                value="${this.currentFilters.search}">
                     </div>
-                    <select class="inbox-filter-select" data-filter="renewalQuarter">
-                        <option value="all">Select a Renewal Quarter</option>
-                        ${renewalQuarters.map(q => `
-                            <option value="${q.value}" ${this.currentFilters.renewalQuarter === q.value ? 'selected' : ''}>
-                                ${q.label}
-                            </option>
-                        `).join('')}
-                    </select>
                 </div>
             </div>
         `;
@@ -707,14 +697,8 @@ class RecommendationInboxRenderer {
             });
         }
 
-        // Renewal quarter filter
-        const renewalSelect = container.querySelector('[data-filter="renewalQuarter"]');
-        if (renewalSelect) {
-            renewalSelect.addEventListener('change', (e) => {
-                this.currentFilters.renewalQuarter = e.target.value;
-                this.refreshView();
-            });
-        }
+        // Renewal quarter filter is now global (in top navigation bar)
+        // No local listener needed here
     }
 
     /**
@@ -839,11 +823,12 @@ class RecommendationInboxRenderer {
             // 'all' - no filter
         }
 
-        // Filter by renewal quarter
-        if (this.currentFilters.renewalQuarter !== 'all') {
+        // Filter by renewal quarter (use global filter from store)
+        const globalQuarterFilter = signalsStore.getGlobalQuarterFilter();
+        if (globalQuarterFilter !== 'all') {
             const beforeCount = filtered.length;
-            filtered = filtered.filter(a => this.matchesRenewalQuarter(a, this.currentFilters.renewalQuarter));
-            console.log(`🗓️ Renewal filter '${this.currentFilters.renewalQuarter}': ${beforeCount} → ${filtered.length} actions`);
+            filtered = filtered.filter(a => this.matchesRenewalQuarter(a, globalQuarterFilter));
+            console.log(`🗓️ Global renewal filter '${globalQuarterFilter}': ${beforeCount} → ${filtered.length} actions`);
         }
 
         // Filter by search

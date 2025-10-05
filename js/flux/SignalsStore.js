@@ -11,7 +11,8 @@ class SignalsStore extends Store {
             recommendedActions: new Map(),
             interactions: new Map(),
             comments: new Map(),
-            actionPlans: new Map()
+            actionPlans: new Map(),
+            notes: new Map()
         };
         
         // Initialize relationship indexes
@@ -24,7 +25,9 @@ class SignalsStore extends Store {
             commentsBySignal: new Map(),
             commentsByAccount: new Map(),
             plansByAccount: new Map(),
-            plansByAction: new Map()
+            plansByAction: new Map(),
+            notesByAccount: new Map(),
+            pinnedNotes: new Set()
         };
         
         // Initialize state structure (for backward compatibility)
@@ -35,6 +38,7 @@ class SignalsStore extends Store {
             comments: new Map(),
             interactions: new Map(),
             actionPlans: new Map(),
+            notes: new Map(),
             userInfo: {},
             
             // Pagination state
@@ -79,7 +83,8 @@ class SignalsStore extends Store {
                     searchText: '',
                     priority: 'all',
                     polarity: 'all',
-                    riskCategory: 'all'
+                    riskCategory: 'all',
+                    renewalQuarter: 'all' // Global renewal quarter filter
                 },
                 pagination: {
                     page: 1,
@@ -189,6 +194,29 @@ class SignalsStore extends Store {
                 this.handleDeleteActionPlan(payload);
                 break;
                 
+            // Notes
+            case Actions.Types.NOTES_REQUESTED:
+                this.handleNotesRequested(action);
+                break;
+            case Actions.Types.NOTES_SUCCEEDED:
+                this.handleNotesSucceeded(action);
+                break;
+            case Actions.Types.NOTES_FAILED:
+                this.handleNotesFailed(action);
+                break;
+            case Actions.Types.NOTES_UPDATE_REQUESTED:
+                this.handleNotesUpdateRequested(action);
+                break;
+            case Actions.Types.NOTES_UPDATE_SUCCEEDED:
+                this.handleNotesUpdateSucceeded(action);
+                break;
+            case Actions.Types.NOTE_SELECTED:
+                this.handleNoteSelected(action);
+                break;
+            case Actions.Types.NOTE_DESELECTED:
+                this.handleNoteDeselected(action);
+                break;
+                
             // UI State
             case Actions.Types.LOADING_SHOWN:
                 this.handleLoadingShown();
@@ -210,6 +238,9 @@ class SignalsStore extends Store {
                 break;
             case Actions.Types.PORTFOLIO_FILTERED:
                 this.handlePortfolioFiltered(payload);
+                break;
+            case Actions.Types.GLOBAL_QUARTER_FILTER_SET:
+                this.handleGlobalQuarterFilterSet(payload);
                 break;
                 
             // Account Management
@@ -347,7 +378,8 @@ class SignalsStore extends Store {
             recommendedActions: normalizedData.recommendedActions || new Map(),
             interactions: normalizedData.interactions || new Map(),
             comments: normalizedData.comments || new Map(),
-            actionPlans: normalizedData.actionPlans || new Map()
+            actionPlans: normalizedData.actionPlans || new Map(),
+            notes: normalizedData.notes || new Map()
         };
         
         // Store relationship indexes
@@ -360,7 +392,9 @@ class SignalsStore extends Store {
             commentsBySignal: normalizedData.commentsBySignal || new Map(),
             commentsByAccount: normalizedData.commentsByAccount || new Map(),
             plansByAccount: normalizedData.plansByAccount || new Map(),
-            plansByAction: normalizedData.plansByAction || new Map()
+            plansByAction: normalizedData.plansByAction || new Map(),
+            notesByAccount: normalizedData.notesByAccount || new Map(),
+            pinnedNotes: normalizedData.pinnedNotes || new Set()
         };
         
         // Store user info
@@ -382,7 +416,8 @@ class SignalsStore extends Store {
             actionPlansByAccount: this.indexes.plansByAccount,
             comments: this.normalizedData.comments,
             interactions: this.normalizedData.interactions,
-            actionPlans: this.normalizedData.actionPlans
+            actionPlans: this.normalizedData.actionPlans,
+            notes: this.normalizedData.notes
         });
         
         console.log('🔔 SignalsStore: Emitting data:loaded event');
@@ -896,6 +931,23 @@ class SignalsStore extends Store {
     handlePortfolioFiltered(payload) {
         const { filterType } = payload;
         this.emitChange('portfolio-filtered', filterType);
+    }
+    
+    handleGlobalQuarterFilterSet(payload) {
+        const { quarter } = payload;
+        console.log('🗓️ SignalsStore: Setting global quarter filter to:', quarter);
+        
+        // Update the filter in view state
+        const currentState = this.getState();
+        currentState.viewState.filters.renewalQuarter = quarter;
+        this.setState({ viewState: currentState.viewState });
+        
+        // Emit change so views can refresh
+        this.emitChange('global-quarter-filter-changed', quarter);
+    }
+    
+    getGlobalQuarterFilter() {
+        return this.getState().viewState?.filters?.renewalQuarter || 'all';
     }
     
     handleAccountExpanded(payload) {
@@ -1679,6 +1731,154 @@ class SignalsStore extends Store {
                 interactions.splice(index, 1);
             }
         }
+    }
+    
+    // =========================================================================
+    // NOTES HANDLERS
+    // =========================================================================
+    
+    handleNotesRequested(action) {
+        const note = action.note;
+        console.log('📝 Store: Note requested (optimistic):', note.id);
+        
+        // Optimistic update - add note immediately
+        this.normalizedData.notes.set(note.id, note);
+        this.state.notes.set(note.id, note);
+        
+        // Index by account
+        if (note.accountId) {
+            if (!this.indexes.notesByAccount.has(note.accountId)) {
+                this.indexes.notesByAccount.set(note.accountId, new Set());
+            }
+            this.indexes.notesByAccount.get(note.accountId).add(note.id);
+        }
+        
+        // Track pinned
+        if (note.pinned && !note.deletedAt) {
+            this.indexes.pinnedNotes.add(note.id);
+        }
+        
+        this.emitChange('notes:updated');
+    }
+    
+    handleNotesSucceeded(action) {
+        const note = action.note;
+        console.log('✅ Store: Note operation succeeded:', note.id);
+        
+        // Note already added optimistically, just emit confirmation
+        this.emitChange('notes:confirmed', note.id);
+    }
+    
+    handleNotesFailed(action) {
+        const noteId = action.noteId;
+        const error = action.error;
+        console.error('❌ Store: Note operation failed:', noteId, error);
+        
+        // Rollback optimistic update
+        this.normalizedData.notes.delete(noteId);
+        this.state.notes.delete(noteId);
+        
+        // Clean up indexes
+        this.indexes.notesByAccount.forEach((notes, accountId) => {
+            notes.delete(noteId);
+        });
+        this.indexes.pinnedNotes.delete(noteId);
+        
+        this.emitChange('notes:error', { noteId, error });
+    }
+    
+    handleNotesUpdateRequested(action) {
+        const { noteId, updates } = action;
+        console.log('📝 Store: Note update requested (optimistic):', noteId);
+        
+        // Optimistic update
+        const existingNote = this.normalizedData.notes.get(noteId);
+        if (existingNote) {
+            const updatedNote = { ...existingNote, ...updates };
+            this.normalizedData.notes.set(noteId, updatedNote);
+            this.state.notes.set(noteId, updatedNote);
+            
+            // Update pinned index
+            if (updates.pinned !== undefined) {
+                if (updates.pinned && !updatedNote.deletedAt) {
+                    this.indexes.pinnedNotes.add(noteId);
+                } else {
+                    this.indexes.pinnedNotes.delete(noteId);
+                }
+            }
+            
+            // Update deletedAt status
+            if (updates.deletedAt !== undefined) {
+                if (updates.deletedAt) {
+                    this.indexes.pinnedNotes.delete(noteId);
+                }
+            }
+        }
+        
+        this.emitChange('notes:updated');
+    }
+    
+    handleNotesUpdateSucceeded(action) {
+        const { noteId } = action;
+        console.log('✅ Store: Note update succeeded:', noteId);
+        this.emitChange('notes:confirmed', noteId);
+    }
+    
+    handleNoteSelected(action) {
+        const { noteId } = action;
+        console.log('🎯 Store: Note selected:', noteId);
+        
+        this.state.selectedNoteId = noteId;
+        this.emitChange('notes:selection-changed', noteId);
+    }
+    
+    handleNoteDeselected(action) {
+        console.log('🎯 Store: Note deselected');
+        
+        this.state.selectedNoteId = null;
+        this.emitChange('notes:selection-changed', null);
+    }
+    
+    // Notes Query Methods
+    getAllNotes() {
+        return Array.from(this.normalizedData.notes.values())
+            .filter(note => !note.deletedAt)
+            .sort((a, b) => {
+                // Sort by: pinned first, then by updated date
+                if (a.pinned && !b.pinned) return -1;
+                if (!a.pinned && b.pinned) return 1;
+                return new Date(b.updatedAt) - new Date(a.updatedAt);
+            });
+    }
+    
+    getNotesByAccount(accountId) {
+        const noteIds = this.indexes.notesByAccount.get(accountId);
+        if (!noteIds) return [];
+        
+        return Array.from(noteIds)
+            .map(id => this.normalizedData.notes.get(id))
+            .filter(note => note && !note.deletedAt)
+            .sort((a, b) => {
+                if (a.pinned && !b.pinned) return -1;
+                if (!a.pinned && b.pinned) return 1;
+                return new Date(b.updatedAt) - new Date(a.updatedAt);
+            });
+    }
+    
+    getPinnedNotes() {
+        return Array.from(this.indexes.pinnedNotes)
+            .map(id => this.normalizedData.notes.get(id))
+            .filter(note => note && !note.deletedAt)
+            .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    }
+    
+    getNote(noteId) {
+        return this.normalizedData.notes.get(noteId);
+    }
+    
+    getSelectedNote() {
+        if (!this.state.selectedNoteId) return null;
+        return this.normalizedData.notes.get(this.state.selectedNoteId);
     }
 }
 

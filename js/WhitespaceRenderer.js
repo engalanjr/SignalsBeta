@@ -13,7 +13,21 @@ class WhitespaceRenderer {
                            (state.signals && typeof state.signals[Symbol.iterator] === 'function' ? 
                             Array.from(state.signals.values()) : []);
             
-            const accounts = state.accounts || new Map();
+            let accounts = state.accounts || new Map();
+            
+            // Apply global renewal quarter filter
+            const globalQuarterFilter = signalsStore.getGlobalQuarterFilter();
+            if (globalQuarterFilter !== 'all') {
+                const beforeCount = accounts.size;
+                const filteredAccounts = new Map();
+                for (const [accountId, account] of accounts.entries()) {
+                    if (this.matchesRenewalQuarter(account, globalQuarterFilter)) {
+                        filteredAccounts.set(accountId, account);
+                    }
+                }
+                accounts = filteredAccounts;
+                console.log(`🗓️ Global quarter filter '${globalQuarterFilter}': ${beforeCount} → ${accounts.size} accounts`);
+            }
             
             console.log(`🔍 Processing ${signals.length} signals`);
             
@@ -739,4 +753,56 @@ class WhitespaceRenderer {
         }
     }
     
+    /**
+     * Check if account matches renewal quarter filter
+     */
+    static matchesRenewalQuarter(account, quarterFilter) {
+        if (quarterFilter === 'all') return true;
+        
+        const renewalDate = account.renewal_date || account.renewalDate || account['Renewal Date'];
+        if (!renewalDate) {
+            return false;
+        }
+        
+        const date = new Date(renewalDate);
+        if (isNaN(date.getTime())) return false;
+        
+        const month = date.getMonth();
+        const year = date.getFullYear();
+        
+        let renewalFY;
+        if (month >= 1) renewalFY = year + 1;
+        else renewalFY = year;
+        
+        let renewalQuarter;
+        if (month === 1 || month === 2 || month === 3) renewalQuarter = 1;
+        else if (month === 4 || month === 5 || month === 6) renewalQuarter = 2;
+        else if (month === 7 || month === 8 || month === 9) renewalQuarter = 3;
+        else renewalQuarter = 4;
+        
+        if (quarterFilter === 'beyond') {
+            const today = new Date();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            const currentFY = currentMonth >= 1 ? currentYear + 1 : currentYear;
+            
+            let currentQuarter;
+            if (currentMonth === 1 || currentMonth === 2 || currentMonth === 3) currentQuarter = 1;
+            else if (currentMonth === 4 || currentMonth === 5 || currentMonth === 6) currentQuarter = 2;
+            else if (currentMonth === 7 || currentMonth === 8 || currentMonth === 9) currentQuarter = 3;
+            else currentQuarter = 4;
+            
+            const currentQuarterTotal = (currentFY - 2000) * 4 + currentQuarter;
+            const renewalQuarterTotal = (renewalFY - 2000) * 4 + renewalQuarter;
+            return renewalQuarterTotal > currentQuarterTotal + 8;
+        }
+        
+        const match = quarterFilter.match(/FY(\d{4})Q(\d)/);
+        if (!match) return false;
+        
+        const filterFY = parseInt(match[1]);
+        const filterQ = parseInt(match[2]);
+        
+        return renewalFY === filterFY && renewalQuarter === filterQ;
+    }
 }

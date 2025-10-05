@@ -27,6 +27,7 @@ class SignalsRepository {
                 interactionsResult, 
                 commentsResult,
                 actionPlansResult,
+                notesResult,
                 userInfoResult,
                 signalDimensionServiceResult
             ] = await Promise.allSettled([
@@ -34,6 +35,7 @@ class SignalsRepository {
                 this.loadInteractions(),
                 this.loadComments(),
                 this.loadActionPlans(),
+                this.loadNotes(),
                 this.loadUserInfo(),
                 this.loadSignalDimensionService()
             ]);
@@ -44,6 +46,7 @@ class SignalsRepository {
             const comments = this.processResult(commentsResult, 'comments', []);
             const actionPlans = this.processResult(actionPlansResult, 'action plans', []);
             console.log(`🔍 [DEBUG] Loaded ${actionPlans.length} action plans from loadActionPlans:`, actionPlans.map(p => p.id));
+            const notes = this.processResult(notesResult, 'notes', []);
             const userInfo = this.processResult(userInfoResult, 'user info', { userId: 'user-1', userName: 'Current User' });
             const signalDimensionService = this.processResult(signalDimensionServiceResult, 'signal dimension service', null);
             
@@ -70,9 +73,9 @@ class SignalsRepository {
             console.log(`📄 Loading first page: ${firstPageSignals.length} of ${this.totalSignals} total signals`);
             
             // NORMALIZE THE DATA INTO RELATIONAL STRUCTURE
-            console.log(`🔍 [DEBUG] About to normalize ${actionPlans.length} action plans`);
-            const normalizedData = this.normalizeData(firstPageSignals, interactions, comments, actionPlans, signalDimensionService);
-            console.log(`🔍 [DEBUG] After normalization: ${normalizedData.actionPlans.size} action plans in store`);
+            console.log(`🔍 [DEBUG] About to normalize ${actionPlans.length} action plans and ${notes.length} notes`);
+            const normalizedData = this.normalizeData(firstPageSignals, interactions, comments, actionPlans, notes, signalDimensionService);
+            console.log(`🔍 [DEBUG] After normalization: ${normalizedData.actionPlans.size} action plans and ${normalizedData.notes.size} notes in store`);
             
             // Store metadata for pagination
             normalizedData.pagination = {
@@ -93,6 +96,7 @@ class SignalsRepository {
                 interactions: normalizedData.interactions.size,
                 comments: normalizedData.comments.size,
                 actionPlans: normalizedData.actionPlans.size,
+                notes: normalizedData.notes.size,
                 userInfo: userInfo.userName
             });
             
@@ -206,7 +210,7 @@ class SignalsRepository {
     /**
      * Normalize raw data into relational structure
      */
-    static normalizeData(rawSignals, interactions, comments, actionPlans, signalDimensionService = null) {
+    static normalizeData(rawSignals, interactions, comments, actionPlans, notes = [], signalDimensionService = null) {
         console.log('🔄 Starting data normalization process...');
         
         // Note: rawSignals are already filtered for action_id in loadAllData
@@ -352,6 +356,33 @@ class SignalsRepository {
         });
         console.log(`✅ Processed ${normalizedActionPlans.size} action plans`);
         
+        // Step 7: Process Notes
+        console.log('📝 Processing notes...');
+        const normalizedNotes = new Map();
+        const notesByAccount = new Map();
+        const pinnedNotes = new Set();
+        
+        // Initialize account index for all accounts
+        accounts.forEach((account, accountId) => {
+            notesByAccount.set(accountId, new Set());
+        });
+        
+        notes.forEach(note => {
+            const noteId = note.id || `note-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            normalizedNotes.set(noteId, note);
+            
+            // Index by account
+            if (note.accountId && notesByAccount.has(note.accountId)) {
+                notesByAccount.get(note.accountId).add(noteId);
+            }
+            
+            // Track pinned notes
+            if (note.pinned && !note.deletedAt) {
+                pinnedNotes.add(noteId);
+            }
+        });
+        console.log(`✅ Processed ${normalizedNotes.size} notes (${pinnedNotes.size} pinned)`);
+        
         // Return normalized data structure
         return {
             // Entity stores
@@ -361,6 +392,7 @@ class SignalsRepository {
             interactions: normalizedInteractions,
             comments: normalizedComments,
             actionPlans: normalizedActionPlans,
+            notes: normalizedNotes,
             
             // Relationship indexes
             signalsByAccount,
@@ -370,7 +402,9 @@ class SignalsRepository {
             commentsBySignal,
             commentsByAccount,
             plansByAccount,
-            plansByAction
+            plansByAction,
+            notesByAccount,
+            pinnedNotes
         };
     }
     
@@ -980,6 +1014,56 @@ class SignalsRepository {
         } catch (error) {
             console.error('Failed to load fallback action plans:', error);
             return [];
+        }
+    }
+    
+    /**
+     * Load notes from API or fallback
+     */
+    static async loadNotes() {
+        try {
+            console.log('📝 Loading notes from Domo API...');
+            const response = await domo.get('/domo/datastores/v1/collections/SignalAI.Notes/documents');
+            
+            if (response && response.length > 0) {
+                console.log(`✅ Loaded ${response.length} notes from API`);
+                // Extract content from wrapper if needed
+                return response.map(item => item.content || item);
+            } else {
+                throw new Error('No notes from API');
+            }
+        } catch (error) {
+            console.log('Failed to load notes from API:', error);
+            return await this.loadFallbackNotes();
+        }
+    }
+    
+    /**
+     * Load fallback notes
+     */
+    static async loadFallbackNotes() {
+        try {
+            const cacheBuster = `?v=${Date.now()}`;
+            const response = await fetch(`./notes-fallback.json${cacheBuster}`);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to load fallback notes: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log(`✅ Loaded ${data.length} notes from fallback`);
+            return data;
+        } catch (error) {
+            console.error('Failed to load fallback notes:', error);
+            // Also check localStorage as a last resort
+            try {
+                const localNotes = typeof NotesService !== 'undefined' && NotesService.getLocalNotes ? NotesService.getLocalNotes() : [];
+                console.log(`✅ Loaded ${localNotes.length} notes from localStorage`);
+                return localNotes;
+            } catch (e) {
+                console.warn('Could not load notes from localStorage:', e);
+                return [];
+            }
         }
     }
     

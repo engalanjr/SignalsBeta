@@ -272,6 +272,7 @@ class SignalsController {
     filterSignals(state) {
         const allSignals = signalsStore.getSignals();
         const filters = state.viewState.filters;
+        const accounts = signalsStore.getState().accounts;
         
         return allSignals.filter(signal => {
             // Category filter
@@ -290,6 +291,15 @@ class SignalsController {
                 const searchLower = filters.searchText.toLowerCase();
                 const accountName = (signal.account_name || '').toLowerCase();
                 if (!accountName.includes(searchLower)) return false;
+            }
+            
+            // Renewal quarter filter (filter by account's renewal date)
+            if (filters.renewalQuarter && filters.renewalQuarter !== 'all') {
+                const accountId = signal.account_id || signal.accountId;
+                const account = accounts.get(accountId);
+                if (!account || !this.matchesRenewalQuarter(account, filters.renewalQuarter)) {
+                    return false;
+                }
             }
             
             return true;
@@ -320,6 +330,13 @@ class SignalsController {
                 const searchLower = filters.searchText.toLowerCase();
                 const accountName = (action.accountName || '').toLowerCase();
                 if (!accountName.includes(searchLower)) return false;
+            }
+            
+            // Renewal quarter filter (filter by action's renewal date)
+            if (filters.renewalQuarter && filters.renewalQuarter !== 'all') {
+                if (!this.matchesRenewalQuarter(action, filters.renewalQuarter)) {
+                    return false;
+                }
             }
             
             return true;
@@ -448,6 +465,59 @@ class SignalsController {
     // Helper method for external usage
     refreshSignalFeed() {
         this.render();
+    }
+    
+    /**
+     * Check if account/action matches renewal quarter filter
+     */
+    matchesRenewalQuarter(entity, quarterFilter) {
+        if (quarterFilter === 'all') return true;
+        
+        const renewalDate = entity.renewal_date || entity.renewalDate || entity['Renewal Date'];
+        if (!renewalDate) {
+            return false;
+        }
+        
+        const date = new Date(renewalDate);
+        if (isNaN(date.getTime())) return false;
+        
+        const month = date.getMonth();
+        const year = date.getFullYear();
+        
+        let renewalFY;
+        if (month >= 1) renewalFY = year + 1;
+        else renewalFY = year;
+        
+        let renewalQuarter;
+        if (month === 1 || month === 2 || month === 3) renewalQuarter = 1;
+        else if (month === 4 || month === 5 || month === 6) renewalQuarter = 2;
+        else if (month === 7 || month === 8 || month === 9) renewalQuarter = 3;
+        else renewalQuarter = 4;
+        
+        if (quarterFilter === 'beyond') {
+            const today = new Date();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            const currentFY = currentMonth >= 1 ? currentYear + 1 : currentYear;
+            
+            let currentQuarter;
+            if (currentMonth === 1 || currentMonth === 2 || currentMonth === 3) currentQuarter = 1;
+            else if (currentMonth === 4 || currentMonth === 5 || currentMonth === 6) currentQuarter = 2;
+            else if (currentMonth === 7 || currentMonth === 8 || currentMonth === 9) currentQuarter = 3;
+            else currentQuarter = 4;
+            
+            const currentQuarterTotal = (currentFY - 2000) * 4 + currentQuarter;
+            const renewalQuarterTotal = (renewalFY - 2000) * 4 + renewalQuarter;
+            return renewalQuarterTotal > currentQuarterTotal + 8;
+        }
+        
+        const match = quarterFilter.match(/FY(\d{4})Q(\d)/);
+        if (!match) return false;
+        
+        const filterFY = parseInt(match[1]);
+        const filterQ = parseInt(match[2]);
+        
+        return renewalFY === filterFY && renewalQuarter === filterQ;
     }
 }
 

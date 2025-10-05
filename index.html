@@ -69,33 +69,61 @@
 
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
-            <button class="nav-tab active" data-tab="recommendation-inbox">
-                <i class="fas fa-inbox"></i>
-                Recommendation Inbox
-            </button>
-            <button class="nav-tab" data-tab="my-portfolio">
-                <i class="fas fa-briefcase"></i>
-                My Portfolio
-            </button>
-            <button class="nav-tab" data-tab="actions">
-                <i class="fas fa-tasks"></i>
-                Action Plans
-            </button>
-            <button class="nav-tab" data-tab="whitespace">
-                <i class="fas fa-th"></i>
-                Whitespace
-            </button>
-            <button class="nav-tab" data-tab="signal-feed">
-                <i class="fas fa-stream"></i>
-                Signal Feed
-            </button>
+            <div class="nav-tabs-left">
+                <button class="nav-tab active" data-tab="portfolio-overview">
+                    <i class="fas fa-chart-pie"></i>
+                    Overview
+                </button>
+                <button class="nav-tab" data-tab="recommendation-inbox">
+                    <i class="fas fa-inbox"></i>
+                    Recommendation Inbox
+                </button>
+                <button class="nav-tab" data-tab="my-portfolio">
+                    <i class="fas fa-briefcase"></i>
+                    My Portfolio
+                </button>
+                <button class="nav-tab" data-tab="actions">
+                    <i class="fas fa-tasks"></i>
+                    Action Plans
+                </button>
+                <button class="nav-tab" data-tab="whitespace">
+                    <i class="fas fa-th"></i>
+                    Whitespace
+                </button>
+                <button class="nav-tab" data-tab="signal-notes">
+                    <i class="fas fa-sticky-note"></i>
+                    Signal Notes
+                </button>
+                <!-- Hidden for now -->
+                <!-- <button class="nav-tab" data-tab="signal-feed" style="display: none;">
+                    <i class="fas fa-stream"></i>
+                    Signal Feed
+                </button> -->
+            </div>
+            <div class="nav-tabs-right">
+                <select class="global-quarter-filter" id="globalRenewalQuarterFilter">
+                    <option value="all">All Renewal Quarters</option>
+                </select>
+            </div>
         </nav>
 
         <!-- Main Content Area -->
         <main class="main-content">
+            <!-- Portfolio Overview Tab -->
+            <div id="portfolio-overview" class="tab-content">
+                <!-- Overview content will be dynamically generated here -->
+            </div>
+            
             <!-- Whitespace Tab -->
             <div id="whitespace" class="tab-content">
                 <!-- Whitespace content will be dynamically generated here -->
+            </div>
+            
+            <!-- Signal Notes Tab -->
+            <div id="signal-notes" class="tab-content">
+                <div id="notes-content">
+                    <!-- Notes content will be dynamically generated here -->
+                </div>
             </div>
             
             <!-- Recommendation Inbox Tab -->
@@ -377,6 +405,7 @@
     <script src="js/flux/services/ActionFeedbackService.js"></script>
     <script src="js/flux/services/CommentsService.js"></script>
     <script src="js/flux/services/ActionPlansService.js"></script>
+    <script src="js/flux/services/NotesService.js"></script>
     <script src="js/flux/services/SignalDimensionService.js"></script>
     
     <!-- Flux Testing (Development Only) -->
@@ -397,15 +426,19 @@
     <script src="js/ActionFeedRenderer.js"></script>
     <script src="js/RecommendationInboxRenderer.js"></script>
     <script src="js/PortfolioRenderer.js?v=9"></script>
+    <script src="js/PortfolioOverviewRenderer.js"></script>
     <script src="js/ActionsRenderer.js"></script>
     <script src="js/WhitespaceRenderer.js?v=5"></script>
+    <script src="js/NotesRenderer.js"></script>
     
     <!-- Flux Controllers (must load after renderers and Flux infrastructure) -->
     <script src="js/controllers/FeedbackController.js"></script>
     <script src="js/controllers/CommentsController.js"></script>
     <script src="js/controllers/SignalsController.js"></script>
     <script src="js/controllers/PortfolioController.js"></script>
+    <script src="js/controllers/PortfolioOverviewController.js"></script>
     <script src="js/controllers/RecommendationInboxController.js"></script>
+    <script src="js/controllers/NotesController.js"></script>
     <script src="js/controllers/AppController.js"></script>
 
 

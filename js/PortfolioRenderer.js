@@ -84,6 +84,31 @@ class PortfolioRenderer {
             }
         }
 
+        // Apply global renewal quarter filter
+        const globalQuarterFilter = signalsStore.getGlobalQuarterFilter();
+        if (globalQuarterFilter !== 'all') {
+            const beforeCount = allAccounts.length;
+            
+            // Debug: Log first few accounts' renewal dates
+            console.log(`🔍 Sample account renewal dates:`, allAccounts.slice(0, 3).map(a => ({
+                name: a.name,
+                renewalDate: a.renewal_date || a.renewalDate || a['Renewal Date'],
+                id: a.id
+            })));
+            
+            allAccounts = allAccounts.filter(account => {
+                const matches = this.matchesRenewalQuarter(account, globalQuarterFilter);
+                if (!matches && beforeCount <= 5) {
+                    // Debug why it doesn't match for first few accounts
+                    console.log(`❌ ${account.name} doesn't match ${globalQuarterFilter}:`, {
+                        renewalDate: account.renewal_date || account.renewalDate || account['Renewal Date']
+                    });
+                }
+                return matches;
+            });
+            console.log(`🗓️ Global quarter filter '${globalQuarterFilter}': ${beforeCount} → ${allAccounts.length} accounts`);
+        }
+
         // Filter accounts with recent high priority Risk or Opportunities signals
         const accountsWithRiskOrOpportunitySignals = allAccounts
             .filter(account => account.signals.some(signal => {
@@ -2054,5 +2079,65 @@ class PortfolioRenderer {
                 opportunityFilter.classList.toggle('active', window.portfolioFilters.opportunity);
             }
         }
+    }
+
+    /**
+     * Check if account matches renewal quarter filter
+     */
+    static matchesRenewalQuarter(account, quarterFilter) {
+        if (quarterFilter === 'all') return true;
+        
+        const renewalDate = account.renewal_date || account.renewalDate || account['Renewal Date'];
+        if (!renewalDate) {
+            return false; // No renewal date, exclude from filtered results
+        }
+        
+        // Parse renewal date
+        const date = new Date(renewalDate);
+        if (isNaN(date.getTime())) return false;
+        
+        const month = date.getMonth();
+        const year = date.getFullYear();
+        
+        // Determine fiscal year (Feb-Jan cycle)
+        let renewalFY;
+        if (month >= 1) renewalFY = year + 1; // Feb-Dec = next FY
+        else renewalFY = year; // Jan = current FY
+        
+        // Determine quarter
+        let renewalQuarter;
+        if (month === 1 || month === 2 || month === 3) renewalQuarter = 1; // Feb, Mar, Apr = Q1
+        else if (month === 4 || month === 5 || month === 6) renewalQuarter = 2; // May, Jun, Jul = Q2
+        else if (month === 7 || month === 8 || month === 9) renewalQuarter = 3; // Aug, Sep, Oct = Q3
+        else renewalQuarter = 4; // Nov, Dec, Jan = Q4
+        
+        // Handle "beyond" filter (all quarters beyond current +4)
+        if (quarterFilter === 'beyond') {
+            const today = new Date();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            const currentFY = currentMonth >= 1 ? currentYear + 1 : currentYear;
+            
+            // Calculate current quarter
+            let currentQuarter;
+            if (currentMonth === 1 || currentMonth === 2 || currentMonth === 3) currentQuarter = 1;
+            else if (currentMonth === 4 || currentMonth === 5 || currentMonth === 6) currentQuarter = 2;
+            else if (currentMonth === 7 || currentMonth === 8 || currentMonth === 9) currentQuarter = 3;
+            else currentQuarter = 4;
+            
+            // Check if renewal is beyond current + 8 quarters (2 fiscal years)
+            const currentQuarterTotal = (currentFY - 2000) * 4 + currentQuarter;
+            const renewalQuarterTotal = (renewalFY - 2000) * 4 + renewalQuarter;
+            return renewalQuarterTotal > currentQuarterTotal + 8;
+        }
+        
+        // Parse the filter (e.g., "FY2026Q2")
+        const match = quarterFilter.match(/FY(\d{4})Q(\d)/);
+        if (!match) return false;
+        
+        const filterFY = parseInt(match[1]);
+        const filterQ = parseInt(match[2]);
+        
+        return renewalFY === filterFY && renewalQuarter === filterQ;
     }
 }

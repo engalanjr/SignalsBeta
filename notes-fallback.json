@@ -1,0 +1,70 @@
+[
+  {
+    "id": "note-001",
+    "accountId": "0015000000odwL5AAI",
+    "accountName": "Bass Pro, LLC",
+    "authorId": "user-kevin",
+    "authorName": "Kevin Wilck",
+    "createdAt": "2025-10-01T14:30:00Z",
+    "updatedAt": "2025-10-01T16:45:00Z",
+    "meetingDate": "2025-10-01T10:00:00Z",
+    "title": "AI Strategy & Cortex Integration Discussion",
+    "body": "<p>Had a productive discussion with <strong>Andy Weingardt</strong> and <strong>Brittany Biela</strong> about their AI strategy and how Domo fits with Cortex.</p><h3>Key Points:</h3><ul><li>They're exploring AI integration for <strong>forecasting</strong> during Fall Hunting Classic</li><li>Currently using Churchill forecasting system with manual overrides</li><li>Brittany identified as strong champion - 'gets stuff done'</li></ul><h3>Next Steps:</h3><ul><li>Schedule dedicated AI strategy session</li><li>Prepare use case examples for AI-powered forecasting</li><li>Create Domo-Snowflake optimization roadmap</li></ul>",
+    "bodyPlain": "Had a productive discussion with Andy Weingardt and Brittany Biela about their AI strategy and how Domo fits with Cortex. Key Points: They're exploring AI integration for forecasting during Fall Hunting Classic. Currently using Churchill forecasting system with manual overrides. Brittany identified as strong champion - 'gets stuff done'. Next Steps: Schedule dedicated AI strategy session. Prepare use case examples for AI-powered forecasting. Create Domo-Snowflake optimization roadmap.",
+    "pinned": true,
+    "visibility": "team",
+    "deletedAt": null,
+    "extJson": {
+      "tags": ["ai", "strategy", "forecasting"],
+      "attendees": ["Andy Weingardt", "Brittany Biela"],
+      "risks": ["Manual forecasting process is error-prone"],
+      "opportunities": ["AI can enhance existing Churchill system"],
+      "nextSteps": ["Schedule AI strategy session", "Create optimization roadmap"]
+    }
+  },
+  {
+    "id": "note-002",
+    "accountId": "0015000000YrkyqAAB",
+    "accountName": "Home Depot U.S.A., Inc.",
+    "authorId": "user-phil",
+    "authorName": "Phil Stewart",
+    "createdAt": "2025-09-28T11:15:00Z",
+    "updatedAt": "2025-09-28T11:15:00Z",
+    "meetingDate": "2025-09-28T09:00:00Z",
+    "title": "Paint Department SKU Analysis - Potential $1M/month Impact",
+    "body": "<p>Met with <strong>Todd Budzinski</strong> from Merchandising to discuss paint department analytics.</p><p><strong>Background:</strong> Todd has prior Domo experience from Target and is interested in using Domo for product placement optimization.</p><p><strong>Opportunity:</strong> Phil mentioned this could impact \"a million dollars a month\" by optimizing impulse purchases around paint desk.</p><p><strong>Technical Notes:</strong></p><ul><li>Working with 77 million records in BigQuery</li><li>Currently relying on Excel pivot tables</li><li>Todd wants to learn how to pull data directly from BigQuery tables</li></ul>",
+    "bodyPlain": "Met with Todd Budzinski from Merchandising to discuss paint department analytics. Background: Todd has prior Domo experience from Target and is interested in using Domo for product placement optimization. Opportunity: Phil mentioned this could impact \"a million dollars a month\" by optimizing impulse purchases around paint desk. Technical Notes: Working with 77 million records in BigQuery. Currently relying on Excel pivot tables. Todd wants to learn how to pull data directly from BigQuery tables.",
+    "pinned": false,
+    "visibility": "team",
+    "deletedAt": null,
+    "extJson": {
+      "tags": ["merchandising", "bigquery", "analytics"],
+      "attendees": ["Todd Budzinski", "Phil Stewart", "Matthew Newsom", "Benjamin Parker"],
+      "opportunities": ["$1M/month revenue potential", "Expand into merchandising team"],
+      "nextSteps": ["Schedule BigQuery connector demo", "Develop paint desk POC"]
+    }
+  },
+  {
+    "id": "note-003",
+    "accountId": "0015000000odwL5AAI",
+    "accountName": "Bass Pro, LLC",
+    "authorId": "user-casey",
+    "authorName": "Casey Dorman",
+    "createdAt": "2025-09-25T15:20:00Z",
+    "updatedAt": "2025-09-25T15:20:00Z",
+    "meetingDate": "2025-09-25T14:00:00Z",
+    "title": "Snowflake OAuth & Performance Issues",
+    "body": "<p>Troubleshooting session with <strong>Robert</strong> about Snowflake integration challenges.</p><h3>Issues Identified:</h3><ol><li><strong>OAuth Authentication:</strong> Having trouble with Snowflake OAuth setup</li><li><strong>Performance:</strong> Large data volumes causing timeouts</li><li>Robert mentioned: \"trouble when I run the whole job just because of its size\"</li></ol><h3>Action Items:</h3><ul><li>Schedule architecture assessment</li><li>Review Snowflake connector configuration</li><li>Implement query optimization best practices</li></ul>",
+    "bodyPlain": "Troubleshooting session with Robert about Snowflake integration challenges. Issues Identified: 1. OAuth Authentication: Having trouble with Snowflake OAuth setup. 2. Performance: Large data volumes causing timeouts. Robert mentioned: \"trouble when I run the whole job just because of its size\". Action Items: Schedule architecture assessment. Review Snowflake connector configuration. Implement query optimization best practices.",
+    "pinned": false,
+    "visibility": "team",
+    "deletedAt": null,
+    "extJson": {
+      "tags": ["snowflake", "technical", "performance"],
+      "attendees": ["Robert", "Casey Dorman"],
+      "risks": ["Performance issues blocking adoption"],
+      "nextSteps": ["Architecture assessment", "Connector optimization"]
+    }
+  }
+]
+

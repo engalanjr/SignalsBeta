@@ -1,7 +1,7 @@
 // AppController - Main application controller for Flux architecture
 class AppController {
     constructor() {
-        this.currentTab = 'recommendation-inbox';
+        this.currentTab = 'portfolio-overview';
         this.isInitialized = false;
         this.controllers = new Map();
         
@@ -26,6 +26,7 @@ class AppController {
             // Set up tab navigation and event listeners
             this.setupTabNavigation();
             this.setupEventListeners();
+            this.setupGlobalQuarterFilter();
             
             // Render initial tab
             this.renderCurrentTab();
@@ -44,9 +45,14 @@ class AppController {
         // Create focused controllers for different app areas
         this.controllers.set('signals', new SignalsController());
         this.controllers.set('portfolio', new PortfolioController());
+        this.controllers.set('portfolioOverview', new PortfolioOverviewController());
         this.controllers.set('inbox', new RecommendationInboxController());
         this.controllers.set('feedback', new FeedbackController());
         this.controllers.set('comments', new CommentsController());
+        this.controllers.set('notes', new NotesController());
+        
+        // Make notesController globally available for renderer event handlers
+        window.notesController = this.controllers.get('notes');
         
         console.log('🎯 Focused controllers initialized');
     }
@@ -90,7 +96,22 @@ class AppController {
         document.getElementById(tabName)?.classList.add('active');
         
         this.currentTab = tabName;
+        
+        // Sync global quarter filter dropdown with store value
+        this.syncGlobalQuarterFilter();
+        
         this.renderCurrentTab();
+    }
+    
+    syncGlobalQuarterFilter() {
+        const filterSelect = document.getElementById('globalRenewalQuarterFilter');
+        if (filterSelect) {
+            const currentFilter = signalsStore.getGlobalQuarterFilter();
+            if (filterSelect.value !== currentFilter) {
+                filterSelect.value = currentFilter;
+                console.log('🔄 Synced global quarter filter dropdown to:', currentFilter);
+            }
+        }
     }
     
     setupEventListeners() {
@@ -191,6 +212,65 @@ class AppController {
         }
     }
     
+    setupGlobalQuarterFilter() {
+        const filterSelect = document.getElementById('globalRenewalQuarterFilter');
+        if (!filterSelect) {
+            console.warn('Global quarter filter not found');
+            return;
+        }
+        
+        // Populate the filter with quarters
+        const quarters = this.generateRenewalQuarters();
+        filterSelect.innerHTML = `
+            <option value="all">All Renewal Quarters</option>
+            ${quarters.map(q => `
+                <option value="${q.value}">${q.label}</option>
+            `).join('')}
+        `;
+        
+        // Handle filter change
+        filterSelect.addEventListener('change', (e) => {
+            const selectedQuarter = e.target.value;
+            console.log('🗓️ Global quarter filter changed:', selectedQuarter);
+            
+            // Dispatch a Flux action for global filter change
+            dispatcher.dispatch(Actions.setGlobalQuarterFilter(selectedQuarter));
+            
+            // Re-render current tab
+            this.renderCurrentTab();
+        });
+        
+        console.log('🗓️ Global quarter filter initialized with', quarters.length, 'quarters');
+    }
+    
+    generateRenewalQuarters() {
+        const quarters = [];
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        
+        // Determine fiscal year (Feb start)
+        const currentFY = currentMonth >= 1 ? currentYear + 1 : currentYear;
+        
+        // Generate quarters for current FY and next FY
+        for (let fy = currentFY; fy <= currentFY + 1; fy++) {
+            for (let q = 1; q <= 4; q++) {
+                quarters.push({
+                    value: `FY${fy}Q${q}`,
+                    label: `FY${fy.toString().slice(-2)} Q${q}`
+                });
+            }
+        }
+        
+        // Add "Beyond" option
+        quarters.push({
+            value: 'beyond',
+            label: 'Beyond Next 8 Quarters'
+        });
+        
+        return quarters;
+    }
+    
     subscribeToStore() {
         console.log('🔌 AppController: Setting up store subscriptions');
         
@@ -244,6 +324,11 @@ class AppController {
         });
         
         switch (this.currentTab) {
+            case 'portfolio-overview':
+                const overviewTab = document.getElementById('portfolio-overview');
+                if (overviewTab) overviewTab.classList.add('active');
+                this.controllers.get('portfolioOverview')?.render(state);
+                break;
             case 'whitespace':
                 // Handle whitespace tab if WhitespaceRenderer exists
                 if (typeof WhitespaceRenderer !== 'undefined') {
@@ -260,6 +345,13 @@ class AppController {
                 } else {
                     console.error('🚨 CRITICAL: WhitespaceRenderer not available');
                 }
+                break;
+            case 'signal-notes':
+                // Handle signal notes tab
+                console.log('📝 Rendering Signal Notes tab');
+                const notesTab = document.getElementById('signal-notes');
+                if (notesTab) notesTab.classList.add('active');
+                this.controllers.get('notes')?.render();
                 break;
             case 'recommendation-inbox':
                 // Handle recommendation inbox tab

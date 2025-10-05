@@ -42,6 +42,16 @@ class Actions {
         ACTION_PLAN_UPDATED: 'ACTION_PLAN_UPDATED',
         ACTION_PLAN_DELETED: 'ACTION_PLAN_DELETED',
         
+        // Notes
+        NOTES_REQUESTED: 'NOTES_REQUESTED',
+        NOTES_SUCCEEDED: 'NOTES_SUCCEEDED',
+        NOTES_FAILED: 'NOTES_FAILED',
+        NOTES_UPDATE_REQUESTED: 'NOTES_UPDATE_REQUESTED',
+        NOTES_UPDATE_SUCCEEDED: 'NOTES_UPDATE_SUCCEEDED',
+        NOTES_UPDATE_FAILED: 'NOTES_UPDATE_FAILED',
+        NOTE_SELECTED: 'NOTE_SELECTED',
+        NOTE_DESELECTED: 'NOTE_DESELECTED',
+        
         // UI State
         LOADING_SHOWN: 'LOADING_SHOWN',
         LOADING_HIDDEN: 'LOADING_HIDDEN',
@@ -58,6 +68,9 @@ class Actions {
         
         // Portfolio Filters
         PORTFOLIO_FILTERED: 'PORTFOLIO_FILTERED',
+        
+        // Global Filters
+        GLOBAL_QUARTER_FILTER_SET: 'GLOBAL_QUARTER_FILTER_SET',
         
         // Account Management
         ACCOUNT_EXPANDED: 'ACCOUNT_EXPANDED',
@@ -436,6 +449,15 @@ class Actions {
         };
     }
     
+    // Global Filter Actions
+    static setGlobalQuarterFilter(quarter) {
+        return {
+            type: this.Types.GLOBAL_QUARTER_FILTER_SET,
+            payload: { quarter },
+            timestamp: Date.now()
+        };
+    }
+    
     // Account Management Actions
     static expandAccount(accountId) {
         return {
@@ -500,6 +522,47 @@ class Actions {
             payload: { actionId, selectedPlays },
             timestamp: Date.now()
         };
+    }
+    
+    // Notes Actions
+    static notesRequested(note) {
+        dispatcher.dispatch({
+            type: this.Types.NOTES_REQUESTED,
+            note: note,
+            timestamp: Date.now()
+        });
+    }
+    
+    static notesSucceeded(note) {
+        dispatcher.dispatch({
+            type: this.Types.NOTES_SUCCEEDED,
+            note: note,
+            timestamp: Date.now()
+        });
+    }
+    
+    static notesFailed(noteId, error) {
+        dispatcher.dispatch({
+            type: this.Types.NOTES_FAILED,
+            noteId: noteId,
+            error: error,
+            timestamp: Date.now()
+        });
+    }
+    
+    static selectNote(noteId) {
+        dispatcher.dispatch({
+            type: this.Types.NOTE_SELECTED,
+            noteId: noteId,
+            timestamp: Date.now()
+        });
+    }
+    
+    static deselectNote() {
+        dispatcher.dispatch({
+            type: this.Types.NOTE_DESELECTED,
+            timestamp: Date.now()
+        });
     }
 }
 

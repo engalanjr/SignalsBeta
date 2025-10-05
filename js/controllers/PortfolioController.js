@@ -3,6 +3,7 @@ class PortfolioController {
     constructor() {
         this.subscribeToStore();
         this.setupEventListeners();
+        this.setupHashNavigation();
         console.log('🎯 PortfolioController initialized');
     }
     
@@ -306,6 +307,93 @@ class PortfolioController {
     
     refreshPortfolio() {
         this.render();
+    }
+    
+    /**
+     * Setup hash navigation for deep-linking to accounts
+     */
+    setupHashNavigation() {
+        // Listen for hash changes
+        window.addEventListener('hashchange', () => {
+            this.handleHashChange();
+        });
+        
+        // Handle initial hash on page load
+        if (window.location.hash) {
+            this.handleHashChange();
+        }
+    }
+    
+    /**
+     * Handle hash change events
+     */
+    handleHashChange() {
+        const hash = window.location.hash.substring(1); // Remove #
+        
+        // Parse hash format: account/ACCOUNT_ID or account/ACCOUNT_ID/action/ACTION_ID
+        const parts = hash.split('/');
+        
+        if (parts[0] === 'account' && parts[1]) {
+            const accountId = parts[1];
+            const actionId = parts[3]; // Optional
+            
+            console.log(`🔗 Hash navigation to account: ${accountId}`, actionId ? `action: ${actionId}` : '');
+            
+            // Wait for portfolio to be rendered, then expand the account
+            setTimeout(() => {
+                this.expandAccountFromHash(accountId, actionId);
+            }, 500);
+        }
+    }
+    
+    /**
+     * Expand specific account from hash navigation
+     */
+    expandAccountFromHash(accountId, actionId = null) {
+        // First, collapse all accounts
+        document.querySelectorAll('.account-details').forEach(details => {
+            details.classList.remove('expanded');
+        });
+        document.querySelectorAll('.account-chevron').forEach(chevron => {
+            chevron.classList.remove('rotated');
+        });
+        
+        // Now expand the target account
+        const signalsContainer = document.getElementById(`signals-${accountId}`);
+        const chevron = document.getElementById(`chevron-${accountId}`);
+        
+        if (signalsContainer && chevron) {
+            signalsContainer.classList.add('expanded');
+            chevron.classList.add('rotated');
+            
+            // Scroll to the account
+            const accountCard = signalsContainer.closest('.portfolio-account-card');
+            if (accountCard) {
+                accountCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                // Highlight the account temporarily
+                accountCard.style.transition = 'background-color 0.3s';
+                accountCard.style.backgroundColor = '#e6f4fb';
+                setTimeout(() => {
+                    accountCard.style.backgroundColor = '';
+                }, 2000);
+            }
+            
+            // If actionId is provided, highlight the specific recommendation
+            if (actionId) {
+                setTimeout(() => {
+                    const actionElement = document.querySelector(`[data-action-id="${actionId}"]`);
+                    if (actionElement) {
+                        actionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        actionElement.style.transition = 'background-color 0.3s';
+                        actionElement.style.backgroundColor = '#fff3cd';
+                        setTimeout(() => {
+                            actionElement.style.backgroundColor = '';
+                        }, 2000);
+                    }
+                }, 600);
+            }
+        }
     }
 }
 
