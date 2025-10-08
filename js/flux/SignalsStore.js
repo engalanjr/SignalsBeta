@@ -12,7 +12,8 @@ class SignalsStore extends Store {
             interactions: new Map(),
             comments: new Map(),
             actionPlans: new Map(),
-            notes: new Map()
+            notes: new Map(),
+            portfolioData: []
         };
         
         // Initialize relationship indexes
@@ -39,6 +40,7 @@ class SignalsStore extends Store {
             interactions: new Map(),
             actionPlans: new Map(),
             notes: new Map(),
+            portfolioData: [],
             userInfo: {},
             
             // Pagination state
@@ -239,9 +241,6 @@ class SignalsStore extends Store {
             case Actions.Types.PORTFOLIO_FILTERED:
                 this.handlePortfolioFiltered(payload);
                 break;
-            case Actions.Types.GLOBAL_QUARTER_FILTER_SET:
-                this.handleGlobalQuarterFilterSet(payload);
-                break;
                 
             // Account Management
             case Actions.Types.ACCOUNT_EXPANDED:
@@ -379,7 +378,8 @@ class SignalsStore extends Store {
             interactions: normalizedData.interactions || new Map(),
             comments: normalizedData.comments || new Map(),
             actionPlans: normalizedData.actionPlans || new Map(),
-            notes: normalizedData.notes || new Map()
+            notes: normalizedData.notes || new Map(),
+            portfolioData: normalizedData.portfolioData || []
         };
         
         // Store relationship indexes
@@ -417,7 +417,8 @@ class SignalsStore extends Store {
             comments: this.normalizedData.comments,
             interactions: this.normalizedData.interactions,
             actionPlans: this.normalizedData.actionPlans,
-            notes: this.normalizedData.notes
+            notes: this.normalizedData.notes,
+            portfolioData: this.normalizedData.portfolioData
         });
         
         console.log('🔔 SignalsStore: Emitting data:loaded event');
@@ -534,6 +535,10 @@ class SignalsStore extends Store {
     
     getAccounts() {
         return this.getDenormalizedAccounts();
+    }
+    
+    getPortfolioData() {
+        return this.normalizedData.portfolioData || [];
     }
     
     /**
@@ -933,22 +938,6 @@ class SignalsStore extends Store {
         this.emitChange('portfolio-filtered', filterType);
     }
     
-    handleGlobalQuarterFilterSet(payload) {
-        const { quarter } = payload;
-        console.log('🗓️ SignalsStore: Setting global quarter filter to:', quarter);
-        
-        // Update the filter in view state
-        const currentState = this.getState();
-        currentState.viewState.filters.renewalQuarter = quarter;
-        this.setState({ viewState: currentState.viewState });
-        
-        // Emit change so views can refresh
-        this.emitChange('global-quarter-filter-changed', quarter);
-    }
-    
-    getGlobalQuarterFilter() {
-        return this.getState().viewState?.filters?.renewalQuarter || 'all';
-    }
     
     handleAccountExpanded(payload) {
         const { accountId } = payload;

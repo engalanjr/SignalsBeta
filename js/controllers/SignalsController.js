@@ -270,11 +270,12 @@ class SignalsController {
     }
     
     filterSignals(state) {
-        const allSignals = signalsStore.getSignals();
+        // Start with globally filtered signals if available, otherwise all signals
+        const baseSignals = state.filteredSignals || signalsStore.getSignals();
         const filters = state.viewState.filters;
         const accounts = signalsStore.getState().accounts;
         
-        return allSignals.filter(signal => {
+        return baseSignals.filter(signal => {
             // Category filter
             if (filters.category && filters.category !== 'all') {
                 const polarity = FormatUtils.normalizePolarityKey(signal.signal_polarity || signal['Signal Polarity'] || '');

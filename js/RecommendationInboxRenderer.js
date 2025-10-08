@@ -823,12 +823,25 @@ class RecommendationInboxRenderer {
             // 'all' - no filter
         }
 
-        // Filter by renewal quarter (use global filter from store)
-        const globalQuarterFilter = signalsStore.getGlobalQuarterFilter();
-        if (globalQuarterFilter !== 'all') {
+        // Filter by global filters (Contract Stage and Rank in MyBook)
+        if (window.globalFilters) {
             const beforeCount = filtered.length;
-            filtered = filtered.filter(a => this.matchesRenewalQuarter(a, globalQuarterFilter));
-            console.log(`🗓️ Global renewal filter '${globalQuarterFilter}': ${beforeCount} → ${filtered.length} actions`);
+            const state = signalsStore.getState();
+            const filteredRecommendedActions = state.filteredRecommendedActions || 
+                                              signalsStore.normalizedData?.recommendedActions;
+            
+            // Only show actions that pass the global filters
+            if (filteredRecommendedActions) {
+                filtered = filtered.filter(action => {
+                    // If no action_id, include it by default
+                    if (!action.action_id) return true;
+                    
+                    // Check if action is in filtered list
+                    return filteredRecommendedActions.has(action.action_id);
+                });
+            }
+            
+            console.log(`🔍 Global filters applied: ${beforeCount} → ${filtered.length} actions`);
         }
 
         // Filter by search

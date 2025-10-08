@@ -29,7 +29,8 @@ class SignalsRepository {
                 actionPlansResult,
                 notesResult,
                 userInfoResult,
-                signalDimensionServiceResult
+                signalDimensionServiceResult,
+                portfolioResult
             ] = await Promise.allSettled([
                 this.loadRawSignals(),
                 this.loadInteractions(),
@@ -37,7 +38,8 @@ class SignalsRepository {
                 this.loadActionPlans(),
                 this.loadNotes(),
                 this.loadUserInfo(),
-                this.loadSignalDimensionService()
+                this.loadSignalDimensionService(),
+                this.loadPortfolioData()
             ]);
 
             // Process raw results
@@ -48,6 +50,7 @@ class SignalsRepository {
             console.log(`🔍 [DEBUG] Loaded ${actionPlans.length} action plans from loadActionPlans:`, actionPlans.map(p => p.id));
             const notes = this.processResult(notesResult, 'notes', []);
             const userInfo = this.processResult(userInfoResult, 'user info', { userId: 'user-1', userName: 'Current User' });
+            const portfolioData = this.processResult(portfolioResult, 'portfolio data', []);
             const signalDimensionService = this.processResult(signalDimensionServiceResult, 'signal dimension service', null);
             
             // Store signal dimension service for pagination
@@ -74,7 +77,7 @@ class SignalsRepository {
             
             // NORMALIZE THE DATA INTO RELATIONAL STRUCTURE
             console.log(`🔍 [DEBUG] About to normalize ${actionPlans.length} action plans and ${notes.length} notes`);
-            const normalizedData = this.normalizeData(firstPageSignals, interactions, comments, actionPlans, notes, signalDimensionService);
+            const normalizedData = this.normalizeData(firstPageSignals, interactions, comments, actionPlans, notes, signalDimensionService, portfolioData);
             console.log(`🔍 [DEBUG] After normalization: ${normalizedData.actionPlans.size} action plans and ${normalizedData.notes.size} notes in store`);
             
             // Store metadata for pagination
@@ -210,7 +213,7 @@ class SignalsRepository {
     /**
      * Normalize raw data into relational structure
      */
-    static normalizeData(rawSignals, interactions, comments, actionPlans, notes = [], signalDimensionService = null) {
+    static normalizeData(rawSignals, interactions, comments, actionPlans, notes = [], signalDimensionService = null, portfolioData = []) {
         console.log('🔄 Starting data normalization process...');
         
         // Note: rawSignals are already filtered for action_id in loadAllData
@@ -383,6 +386,71 @@ class SignalsRepository {
         });
         console.log(`✅ Processed ${normalizedNotes.size} notes (${pinnedNotes.size} pinned)`);
         
+        // Step 7: Enrich accounts and recommendedActions with portfolio data
+        console.log('📦 Enriching with portfolio data...');
+        if (portfolioData && portfolioData.length > 0) {
+            // Create a map of portfolio data by account_id for quick lookup
+            const portfolioMap = new Map();
+            portfolioData.forEach(row => {
+                const accountId = row.bks_account_id || row.account_id;
+                if (accountId) {
+                    portfolioMap.set(accountId, row);
+                }
+            });
+            
+            // Enrich accounts with portfolio data
+            accounts.forEach((account, accountId) => {
+                const portfolioRow = portfolioMap.get(accountId);
+                if (portfolioRow) {
+                    account.bks_renewal_date = portfolioRow.bks_renewal_date;
+                    account.bks_renewal_baseline_usd = portfolioRow.bks_renewal_baseline_usd;
+                    account.bks_fq = portfolioRow.bks_fq;
+                }
+            });
+            
+            // Enrich recommendedActions with portfolio data
+            recommendedActions.forEach((action, actionId) => {
+                const portfolioRow = portfolioMap.get(action.account_id);
+                if (portfolioRow) {
+                    action.bks_renewal_date = portfolioRow.bks_renewal_date;
+                    action.bks_renewal_baseline_usd = portfolioRow.bks_renewal_baseline_usd;
+                    action.bks_fq = portfolioRow.bks_fq;
+                }
+            });
+            
+            // Enrich signals with portfolio data
+            signals.forEach((signal, signalId) => {
+                const portfolioRow = portfolioMap.get(signal.account_id);
+                if (portfolioRow) {
+                    signal.bks_renewal_date = portfolioRow.bks_renewal_date;
+                    signal.bks_renewal_baseline_usd = portfolioRow.bks_renewal_baseline_usd;
+                    signal.bks_fq = portfolioRow.bks_fq;
+                }
+            });
+            
+            // Enrich actionPlans with portfolio data
+            normalizedActionPlans.forEach((plan, planId) => {
+                const portfolioRow = portfolioMap.get(plan.accountId);
+                if (portfolioRow) {
+                    plan.bks_renewal_date = portfolioRow.bks_renewal_date;
+                    plan.bks_renewal_baseline_usd = portfolioRow.bks_renewal_baseline_usd;
+                    plan.bks_fq = portfolioRow.bks_fq;
+                }
+            });
+            
+            // Enrich notes with portfolio data
+            normalizedNotes.forEach((note, noteId) => {
+                const portfolioRow = portfolioMap.get(note.accountId);
+                if (portfolioRow) {
+                    note.bks_renewal_date = portfolioRow.bks_renewal_date;
+                    note.bks_renewal_baseline_usd = portfolioRow.bks_renewal_baseline_usd;
+                    note.bks_fq = portfolioRow.bks_fq;
+                }
+            });
+            
+            console.log(`✅ Enriched ${accounts.size} accounts, ${signals.size} signals, ${recommendedActions.size} actions, ${normalizedActionPlans.size} plans, and ${normalizedNotes.size} notes with portfolio data`);
+        }
+        
         // Return normalized data structure
         return {
             // Entity stores
@@ -393,6 +461,7 @@ class SignalsRepository {
             comments: normalizedComments,
             actionPlans: normalizedActionPlans,
             notes: normalizedNotes,
+            portfolioData,
             
             // Relationship indexes
             signalsByAccount,
@@ -770,6 +839,63 @@ class SignalsRepository {
     }
     
     /**
+     * Load portfolio data from API or CSV fallback
+     */
+    static async loadPortfolioData() {
+        try {
+            console.log('📡 Loading portfolio data...');
+            const response = await domo.get('/data/v1/portfolio');
+            
+            if (response && response.length > 0) {
+                console.log(`✅ Loaded ${response.length} portfolio records from Domo API`);
+                return response;
+            } else {
+                console.warn('⚠️ No portfolio data from API, using CSV fallback');
+                return await this.loadPortfolioCSV();
+            }
+        } catch (error) {
+            console.error('❌ Failed to load portfolio data from API:', error);
+            console.warn('Falling back to portfolio CSV data');
+            return await this.loadPortfolioCSV();
+        }
+    }
+    
+    /**
+     * Load portfolio CSV fallback data
+     */
+    static async loadPortfolioCSV() {
+        try {
+            console.log('Loading portfolio CSV data...');
+            
+            const cacheBuster = `?v=${Date.now()}`;
+            const response = await fetch(`./js/portfolio.csv${cacheBuster}`);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to load portfolio CSV: ${response.status}`);
+            }
+            
+            const csvText = await response.text();
+            console.log('Portfolio CSV loaded successfully, length:', csvText.length);
+            
+            const parsedData = this.parseCSV(csvText);
+            console.log(`Parsed ${parsedData.length} portfolio records from CSV`);
+            
+            // Transform CSV fields to match expected HomeRenderer format
+            const transformedData = parsedData.map(row => this.transformPortfolioRow(row));
+            console.log(`Transformed ${transformedData.length} portfolio records to expected format`);
+            
+            // Deduplicate by account - keep one row per account (using account_id or account_name)
+            const deduplicatedData = this.deduplicatePortfolioData(transformedData);
+            console.log(`Deduplicated to ${deduplicatedData.length} unique accounts`);
+            
+            return deduplicatedData;
+        } catch (error) {
+            console.error('Error loading portfolio CSV:', error);
+            return [];
+        }
+    }
+    
+    /**
      * Parse CSV text into raw data
      */
     static parseCSV(csvText) {
@@ -864,6 +990,121 @@ class SignalsRepository {
         
         console.log(`✅ Tokenized ${rows.length} rows`);
         return rows;
+    }
+    
+    /**
+     * Transform portfolio row from CSV format to expected format
+     */
+    static transformPortfolioRow(row) {
+        // Map CSV fields to expected HomeRenderer fields
+        return {
+            // Keep original fields for filtering
+            ...row,
+            
+            // Map to expected display fields
+            Account: row.bks_account_name || row['account name'] || '',
+            Team: row.team_csm || row.bks_csm || '',
+            QTR: row.bks_fq || '',
+            Baseline: row.bks_renewal_baseline_usd || '',
+            'FCST Delta': row.bks_forecast_delta || '',
+            Category: this.mapCategory(row.bks_stage) || '',
+            'Credit Pacing %': row['% Pacing'] || '',
+            'Current HG': row.hgtrends_health_grade || '',
+            'HG 90-Day Change': row.hgtrends_90day || '',
+            'HG 180-Day Change': row.hgtrends_180day || '',
+            'HG 360-Day Change': row.hgtrends_360day || '',
+            'Last Renewal': this.formatLastRenewal(row.last_renewal_date, row.last_renewal_downsell_flag) || '',
+            'Support Package': row.hg_support_packages || '',
+            'Ace Overview': row.hg_aceTeamMember || row.hg_acePackage || '',
+            'Adoption Consultants': row['Adoption Consultants'] || '',
+            'Active Services?': this.determineActiveServices(row) || 'No',
+            'Svcs Summary AI': row['Account Insight AI'] || '',
+            'Service Team': row['Service Team'] || ''
+        };
+    }
+    
+    /**
+     * Map bks_stage to Category
+     */
+    static mapCategory(stage) {
+        if (!stage) return '';
+        
+        // Extract just the status part (e.g., "3: Demonstrate Value" -> "Demonstrate Value")
+        const match = stage.match(/\d+:\s*(.+)/);
+        if (match) {
+            return match[1];
+        }
+        
+        // Return as-is if no match
+        return stage;
+    }
+    
+    /**
+     * Format last renewal information
+     */
+    static formatLastRenewal(date, downsellFlag) {
+        if (!date) return '';
+        
+        const renewalDate = new Date(date);
+        const formattedDate = renewalDate.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        
+        if (downsellFlag && downsellFlag.toUpperCase() === 'DOWNSELL') {
+            return `${formattedDate} (Downsell)`;
+        }
+        
+        return formattedDate;
+    }
+    
+    /**
+     * Determine if services are active
+     */
+    static determineActiveServices(row) {
+        // Check if there are active projects or service team assigned
+        const hasActiveProjects = row['# Active Projects'] && parseInt(row['# Active Projects']) > 0;
+        const hasServiceTeam = row['Service Team'] && row['Service Team'].trim() !== '' && row['Service Team'] !== "'-NA-";
+        const hasBillableHours = row.hg_billable_hours_remaining && parseFloat(row.hg_billable_hours_remaining) > 0;
+        
+        return (hasActiveProjects || hasServiceTeam || hasBillableHours) ? 'Yes' : 'No';
+    }
+    
+    /**
+     * Deduplicate portfolio data by account
+     * Keeps one row per account, preferring rows with more complete data
+     */
+    static deduplicatePortfolioData(data) {
+        const accountMap = new Map();
+        
+        data.forEach(row => {
+            const accountKey = row.bks_account_id || row.Account || row.bks_account_name;
+            
+            if (!accountKey) {
+                console.warn('⚠️ Row without account identifier:', row);
+                return;
+            }
+            
+            // If we haven't seen this account, add it
+            if (!accountMap.has(accountKey)) {
+                accountMap.set(accountKey, row);
+            } else {
+                // If we have seen this account, keep the row with more complete data
+                const existingRow = accountMap.get(accountKey);
+                const newRow = row;
+                
+                // Prefer row with more non-empty fields
+                const existingFieldCount = Object.values(existingRow).filter(v => v && v !== '' && v !== "'-NA-").length;
+                const newFieldCount = Object.values(newRow).filter(v => v && v !== '' && v !== "'-NA-").length;
+                
+                if (newFieldCount > existingFieldCount) {
+                    accountMap.set(accountKey, newRow);
+                }
+            }
+        });
+        
+        return Array.from(accountMap.values());
     }
     
     /**

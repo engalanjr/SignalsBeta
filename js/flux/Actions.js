@@ -69,9 +69,6 @@ class Actions {
         // Portfolio Filters
         PORTFOLIO_FILTERED: 'PORTFOLIO_FILTERED',
         
-        // Global Filters
-        GLOBAL_QUARTER_FILTER_SET: 'GLOBAL_QUARTER_FILTER_SET',
-        
         // Account Management
         ACCOUNT_EXPANDED: 'ACCOUNT_EXPANDED',
         ACCOUNT_COLLAPSED: 'ACCOUNT_COLLAPSED',
@@ -449,14 +446,6 @@ class Actions {
         };
     }
     
-    // Global Filter Actions
-    static setGlobalQuarterFilter(quarter) {
-        return {
-            type: this.Types.GLOBAL_QUARTER_FILTER_SET,
-            payload: { quarter },
-            timestamp: Date.now()
-        };
-    }
     
     // Account Management Actions
     static expandAccount(accountId) {

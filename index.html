@@ -32,47 +32,13 @@
 
 <body>
     <div id="app">
-        <!-- Header -->
-        <header class="app-header">
-            <div class="header-content">
-                <div class="logo-section">
-                    <div class="circular-logo">
-                        <div class="logo-ring">
-                            <div class="ring-segment segment-1"></div>
-                            <div class="ring-segment segment-2"></div>
-                            <div class="ring-segment segment-3"></div>
-                            <div class="ring-segment segment-4"></div>
-                            <div class="ring-segment segment-5"></div>
-                            <div class="ring-segment segment-6"></div>
-                            <div class="ring-segment segment-7"></div>
-                            <div class="ring-segment segment-8"></div>
-                            <div class="ring-segment segment-9"></div>
-                            <div class="ring-segment segment-10"></div>
-                            <div class="ring-segment segment-11"></div>
-                            <div class="ring-segment segment-12"></div>
-                        </div>
-                        <div class="logo-text">
-                            <span class="logo-word-1">ACCOUNT</span>
-                            <span class="logo-word-2">SIGNAL</span>
-                        </div>
-                    </div>
-                    <div class="banner-section">
-                        <h1 class="banner-title">WELCOME TO ACCOUNT SIGNAL!</h1>
-                        <p class="banner-description">Account Signal is a simple, comprehensive overview of customer health—empowering account teams to better identify growth opportunities, mitigate risk, and take action.</p>
-                    </div>
-                </div>
-                <div class="header-actions">
-                    <!-- Add New Signal feature removed -->
-                </div>
-            </div>
-        </header>
 
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
             <div class="nav-tabs-left">
-                <button class="nav-tab active" data-tab="portfolio-overview">
-                    <i class="fas fa-chart-pie"></i>
-                    Overview
+                <button class="nav-tab active" data-tab="home">
+                    <i class="fas fa-home"></i>
+                    Home
                 </button>
                 <button class="nav-tab" data-tab="recommendation-inbox">
                     <i class="fas fa-inbox"></i>
@@ -94,21 +60,93 @@
                     <i class="fas fa-sticky-note"></i>
                     Signal Notes
                 </button>
+                <button class="nav-tab" data-tab="about">
+                    <i class="fas fa-info-circle"></i>
+                    About
+                </button>
                 <!-- Hidden for now -->
                 <!-- <button class="nav-tab" data-tab="signal-feed" style="display: none;">
                     <i class="fas fa-stream"></i>
                     Signal Feed
                 </button> -->
             </div>
-            <div class="nav-tabs-right">
-                <select class="global-quarter-filter" id="globalRenewalQuarterFilter">
-                    <option value="all">All Renewal Quarters</option>
-                </select>
-            </div>
         </nav>
+
+        <!-- Global Filters -->
+        <div class="global-filters">
+            <div class="filters-container">
+                <div class="filters-grid">
+                    <div class="filter-row">
+                        <div class="filter-label">Contract Stage:</div>
+                        <div class="filter-options">
+                           <label class="filter-option">
+                               <input type="radio" name="contractStage" value="all" checked>
+                               <span class="checkbox-custom"></span>
+                               <span class="option-text">All</span>
+                           </label>
+                           <label class="filter-option">
+                               <input type="radio" name="contractStage" value="atBat">
+                               <span class="checkbox-custom"></span>
+                               <span class="option-text">AT BAT</span>
+                           </label>
+                            <label class="filter-option">
+                                <input type="radio" name="contractStage" value="atBatPlus1">
+                                <span class="checkbox-custom"></span>
+                                <span class="option-text">AT BAT + 1</span>
+                            </label>
+                            <label class="filter-option">
+                                <input type="radio" name="contractStage" value="adopt">
+                                <span class="checkbox-custom"></span>
+                                <span class="option-text">ADOPT</span>
+                            </label>
+                           <label class="filter-option">
+                               <input type="radio" name="contractStage" value="onboard">
+                               <span class="checkbox-custom"></span>
+                               <span class="option-text">ONBOARD</span>
+                           </label>
+                        </div>
+                    </div>
+                    <div class="filter-row">
+                        <div class="filter-label">Rank in MyBook:</div>
+                        <div class="filter-options">
+                            <label class="filter-option">
+                                <input type="radio" name="rankInBook" value="all" checked>
+                                <span class="checkbox-custom"></span>
+                                <span class="option-text">All</span>
+                            </label>
+                            <label class="filter-option">
+                                <input type="radio" name="rankInBook" value="tier1">
+                                <span class="checkbox-custom"></span>
+                                <span class="option-text">TIER 1</span>
+                            </label>
+                            <label class="filter-option">
+                                <input type="radio" name="rankInBook" value="tier2">
+                                <span class="checkbox-custom"></span>
+                                <span class="option-text">TIER 2</span>
+                            </label>
+                            <label class="filter-option">
+                                <input type="radio" name="rankInBook" value="tier3">
+                                <span class="checkbox-custom"></span>
+                                <span class="option-text">TIER 3</span>
+                            </label>
+                            <label class="filter-option">
+                                <input type="radio" name="rankInBook" value="tier4">
+                                <span class="checkbox-custom"></span>
+                                <span class="option-text">TIER 4</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Main Content Area -->
         <main class="main-content">
+            <!-- Home Tab -->
+            <div id="home" class="tab-content active">
+                <!-- Home content will be dynamically generated here -->
+            </div>
+            
             <!-- Portfolio Overview Tab -->
             <div id="portfolio-overview" class="tab-content">
                 <!-- Overview content will be dynamically generated here -->
@@ -126,8 +164,186 @@
                 </div>
             </div>
             
+            <!-- About Tab -->
+            <div id="about" class="tab-content">
+                <div class="about-container">
+                    <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg" class="adoption-diagram">
+                        <!-- Define gradients and styles -->
+                        <defs>
+                            <linearGradient id="pyramidGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#F5A623;stop-opacity:0.2" />
+                                <stop offset="100%" style="stop-color:#D68910;stop-opacity:0.3" />
+                            </linearGradient>
+                            
+                            <linearGradient id="coreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#F5A623;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#D68910;stop-opacity:1" />
+                            </linearGradient>
+                            
+                            <filter id="shadow">
+                                <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.15"/>
+                            </filter>
+                        </defs>
+                        
+                        <!-- Background -->
+                        <rect width="1200" height="800" fill="#fafafa"/>
+                        
+                        <!-- Title -->
+                        <text x="600" y="50" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#2d3748" text-anchor="middle">
+                            Account Signals: The Adoption Accelerator
+                        </text>
+                        
+                        <!-- Adoption Pyramid (Top) -->
+                        <g id="pyramid">
+                            <!-- PEOPLE -->
+                            <rect x="150" y="120" width="200" height="70" rx="8" fill="url(#pyramidGrad)" stroke="#D68910" stroke-width="2" filter="url(#shadow)"/>
+                            <text x="250" y="160" font-family="Arial, sans-serif" font-size="18" font-weight="600" fill="#4a5568" text-anchor="middle">PEOPLE</text>
+                            
+                            <!-- PROBLEMS -->
+                            <rect x="425" y="120" width="200" height="70" rx="8" fill="url(#pyramidGrad)" stroke="#D68910" stroke-width="2" filter="url(#shadow)"/>
+                            <text x="525" y="160" font-family="Arial, sans-serif" font-size="18" font-weight="600" fill="#4a5568" text-anchor="middle">PROBLEMS</text>
+                            
+                            <!-- PRODUCT -->
+                            <rect x="700" y="120" width="200" height="70" rx="8" fill="url(#pyramidGrad)" stroke="#D68910" stroke-width="2" filter="url(#shadow)"/>
+                            <text x="800" y="160" font-family="Arial, sans-serif" font-size="18" font-weight="600" fill="#4a5568" text-anchor="middle">PRODUCT</text>
+                            
+                            <!-- Converging arrows to center - solid and clean -->
+                            <path d="M 250 190 Q 350 250 450 310" stroke="#D68910" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                            <path d="M 525 190 L 525 310" stroke="#D68910" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                            <path d="M 800 190 Q 700 250 575 310" stroke="#D68910" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                        </g>
+                        
+                        <!-- Account Signals Core (Center) -->
+                        <g id="core">
+                            <!-- Data Inputs (left side) -->
+                            <g id="inputs">
+                                <!-- Gong -->
+                                <rect x="40" y="300" width="110" height="50" rx="6" fill="white" stroke="#D68910" stroke-width="2" filter="url(#shadow)"/>
+                                <text x="95" y="330" font-family="Arial, sans-serif" font-size="13" font-weight="600" fill="#4a5568" text-anchor="middle">Gong</text>
+                                <path d="M 150 325 L 195 350" stroke="#D68910" stroke-width="2" marker-end="url(#arrowhead)"/>
+                                
+                                <!-- Health Grade -->
+                                <rect x="40" y="365" width="110" height="50" rx="6" fill="white" stroke="#D68910" stroke-width="2" filter="url(#shadow)"/>
+                                <text x="95" y="395" font-family="Arial, sans-serif" font-size="13" font-weight="600" fill="#4a5568" text-anchor="middle">Health Grade</text>
+                                <path d="M 150 390 L 195 380" stroke="#D68910" stroke-width="2" marker-end="url(#arrowhead)"/>
+                                
+                                <!-- Customer Notes -->
+                                <rect x="40" y="430" width="110" height="50" rx="6" fill="white" stroke="#D68910" stroke-width="2" filter="url(#shadow)"/>
+                                <text x="95" y="460" font-family="Arial, sans-serif" font-size="13" font-weight="600" fill="#4a5568" text-anchor="middle">Customer Notes</text>
+                                <path d="M 150 455 L 195 410" stroke="#D68910" stroke-width="2" marker-end="url(#arrowhead)"/>
+                            </g>
+                            
+                            <rect x="200" y="310" width="525" height="140" rx="12" fill="url(#coreGrad)" filter="url(#shadow)"/>
+                            
+                            <!-- Account Signals Logo (left side) -->
+                            <g id="logo" transform="translate(250, 380)">
+                                <!-- Outer ring segments -->
+                                <circle cx="0" cy="0" r="45" fill="none" stroke="#FFF4E6" stroke-width="8" opacity="0.4" stroke-dasharray="28 254" stroke-dashoffset="0"/>
+                                <circle cx="0" cy="0" r="45" fill="none" stroke="#FFDBA8" stroke-width="8" opacity="0.5" stroke-dasharray="42 240" stroke-dashoffset="28"/>
+                                <circle cx="0" cy="0" r="45" fill="none" stroke="#FFE5B8" stroke-width="8" opacity="0.6" stroke-dasharray="56 226" stroke-dashoffset="70"/>
+                                <circle cx="0" cy="0" r="45" fill="none" stroke="#F5A623" stroke-width="8" stroke-dasharray="70 212" stroke-dashoffset="126"/>
+                                <circle cx="0" cy="0" r="45" fill="none" stroke="#D68910" stroke-width="8" stroke-dasharray="56 226" stroke-dashoffset="196"/>
+                                <circle cx="0" cy="0" r="45" fill="none" stroke="#8B5A0A" stroke-width="8" stroke-dasharray="32 250" stroke-dashoffset="252"/>
+                                <!-- Inner white circle -->
+                                <circle cx="0" cy="0" r="32" fill="white" opacity="0.95"/>
+                                <!-- ACCOUNT SIGNAL text in logo -->
+                                <text x="0" y="-6" font-family="Arial, sans-serif" font-size="9" font-weight="700" fill="#F5A623" text-anchor="middle">ACCOUNT</text>
+                                <text x="0" y="8" font-family="Arial, sans-serif" font-size="9" font-weight="700" fill="#2d3748" text-anchor="middle">SIGNAL</text>
+                            </g>
+                            
+                            <text x="480" y="345" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="white" text-anchor="middle">
+                                ACCOUNT SIGNALS
+                            </text>
+                            
+                            <!-- Process flow -->
+                            <g id="process">
+                                <circle cx="360" cy="395" r="32" fill="white" opacity="0.25"/>
+                                <text x="360" y="380" font-family="Arial, sans-serif" font-size="11" font-weight="600" fill="white" text-anchor="middle">DETECT</text>
+                                <text x="360" y="410" font-family="Arial, sans-serif" font-size="9" fill="white" text-anchor="middle" opacity="0.9">Signals</text>
+                                
+                                <path d="M 395 395 L 430 395" stroke="white" stroke-width="2" marker-end="url(#arrowheadWhite)"/>
+                                
+                                <circle cx="465" cy="395" r="32" fill="white" opacity="0.25"/>
+                                <text x="465" y="380" font-family="Arial, sans-serif" font-size="11" font-weight="600" fill="white" text-anchor="middle">RECOMMEND</text>
+                                <text x="465" y="410" font-family="Arial, sans-serif" font-size="9" fill="white" text-anchor="middle" opacity="0.9">AI Plays</text>
+                                
+                                <path d="M 500 395 L 535 395" stroke="white" stroke-width="2" marker-end="url(#arrowheadWhite)"/>
+                                
+                                <circle cx="570" cy="395" r="32" fill="white" opacity="0.25"/>
+                                <text x="570" y="380" font-family="Arial, sans-serif" font-size="11" font-weight="600" fill="white" text-anchor="middle">EXECUTE</text>
+                                <text x="570" y="410" font-family="Arial, sans-serif" font-size="9" fill="white" text-anchor="middle" opacity="0.9">Action</text>
+                            </g>
+                        </g>
+                        
+                        <!-- Adoption Lifecycle (Bottom) -->
+                        <g id="lifecycle">
+                            <path d="M 480 450 L 480 510" stroke="#D68910" stroke-width="2.5" fill="none" marker-end="url(#arrowhead)"/>
+                            
+                            <!-- ONBOARD -->
+                            <rect x="150" y="520" width="220" height="140" rx="8" fill="white" stroke="#D68910" stroke-width="2" filter="url(#shadow)"/>
+                            <text x="260" y="555" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#D68910" text-anchor="middle">ONBOARD</text>
+                            <text x="260" y="585" font-family="Arial, sans-serif" font-size="13" fill="#4a5568" text-anchor="middle">Detect blockers early</text>
+                            <text x="260" y="610" font-family="Arial, sans-serif" font-size="12" fill="#718096" text-anchor="middle">Missing first value,</text>
+                            <text x="260" y="630" font-family="Arial, sans-serif" font-size="12" fill="#718096" text-anchor="middle">unconfigured connectors</text>
+                            
+                            <!-- Arrow -->
+                            <path d="M 370 590 L 405 590" stroke="#D68910" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                            
+                            <!-- ADOPT -->
+                            <rect x="405" y="520" width="220" height="140" rx="8" fill="white" stroke="#D68910" stroke-width="2" filter="url(#shadow)"/>
+                            <text x="515" y="555" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#D68910" text-anchor="middle">ADOPT</text>
+                            <text x="515" y="585" font-family="Arial, sans-serif" font-size="13" fill="#4a5568" text-anchor="middle">Recommend plays</text>
+                            <text x="515" y="610" font-family="Arial, sans-serif" font-size="12" fill="#718096" text-anchor="middle">Improve feature use,</text>
+                            <text x="515" y="630" font-family="Arial, sans-serif" font-size="12" fill="#718096" text-anchor="middle">education, credit pacing</text>
+                            
+                            <!-- Arrow -->
+                            <path d="M 625 590 L 660 590" stroke="#D68910" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                            
+                            <!-- EXPAND -->
+                            <rect x="660" y="520" width="220" height="140" rx="8" fill="white" stroke="#D68910" stroke-width="2" filter="url(#shadow)"/>
+                            <text x="770" y="555" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#D68910" text-anchor="middle">EXPAND</text>
+                            <text x="770" y="585" font-family="Arial, sans-serif" font-size="13" fill="#4a5568" text-anchor="middle">Plan new use cases</text>
+                            <text x="770" y="610" font-family="Arial, sans-serif" font-size="12" fill="#718096" text-anchor="middle">Cross-department</text>
+                            <text x="770" y="630" font-family="Arial, sans-serif" font-size="12" fill="#718096" text-anchor="middle">engagement</text>
+                        </g>
+                        
+                        <!-- Measure feedback loop -->
+                        <path d="M 880 550 Q 980 420 720 350" stroke="#8B5A0A" stroke-width="3" fill="none" marker-end="url(#arrowheadBrown)"/>
+                        <text x="970" y="470" font-family="Arial, sans-serif" font-size="13" font-weight="600" fill="#8B5A0A">MEASURE</text>
+                        
+                        <!-- KPI Callout -->
+                        <g id="kpi-box">
+                            <rect x="920" y="580" width="240" height="140" rx="8" fill="white" stroke="#D68910" stroke-width="2" filter="url(#shadow)"/>
+                            <text x="1040" y="610" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#D68910" text-anchor="middle">KEY OUTCOMES</text>
+                            <text x="1040" y="640" font-family="Arial, sans-serif" font-size="12" fill="#4a5568" text-anchor="middle">+10% consumption lift</text>
+                            <text x="1040" y="665" font-family="Arial, sans-serif" font-size="12" fill="#4a5568" text-anchor="middle">+4.5% GRR improvement</text>
+                            <text x="1040" y="690" font-family="Arial, sans-serif" font-size="12" fill="#4a5568" text-anchor="middle">+12% influenced upsells</text>
+                            <text x="1040" y="715" font-family="Arial, sans-serif" font-size="12" fill="#4a5568" text-anchor="middle">+20% play efficiency</text>
+                        </g>
+                        
+                        <!-- Tagline -->
+                        <text x="600" y="770" font-family="Arial, sans-serif" font-size="14" font-style="italic" fill="#718096" text-anchor="middle">
+                            The connective tissue of Domo's Adoption Engine — guiding from signal to strategy to success
+                        </text>
+                        
+                        <!-- Arrow markers -->
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#D68910" />
+                            </marker>
+                            <marker id="arrowheadWhite" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="white" />
+                            </marker>
+                            <marker id="arrowheadBrown" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                                <polygon points="0 0, 10 3, 0 6" fill="#8B5A0A" />
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+            </div>
+            
             <!-- Recommendation Inbox Tab -->
-            <div id="recommendation-inbox" class="tab-content active">
+            <div id="recommendation-inbox" class="tab-content">
                 <!-- Inbox content will be dynamically generated here -->
             </div>
             
@@ -398,6 +614,7 @@
     <script src="js/flux/Store.js"></script>
     <script src="js/flux/Actions.js"></script>
     <script src="js/flux/SignalsStore.js"></script>
+    <script src="js/GlobalFilters.js"></script>
     
     <!-- Flux Repositories and Services -->
     <script src="js/flux/repositories/SignalsRepository.js"></script>
@@ -427,6 +644,7 @@
     <script src="js/RecommendationInboxRenderer.js"></script>
     <script src="js/PortfolioRenderer.js?v=9"></script>
     <script src="js/PortfolioOverviewRenderer.js"></script>
+    <script src="js/HomeRenderer.js"></script>
     <script src="js/ActionsRenderer.js"></script>
     <script src="js/WhitespaceRenderer.js?v=5"></script>
     <script src="js/NotesRenderer.js"></script>
@@ -437,6 +655,7 @@
     <script src="js/controllers/SignalsController.js"></script>
     <script src="js/controllers/PortfolioController.js"></script>
     <script src="js/controllers/PortfolioOverviewController.js"></script>
+    <script src="js/controllers/HomeController.js"></script>
     <script src="js/controllers/RecommendationInboxController.js"></script>
     <script src="js/controllers/NotesController.js"></script>
     <script src="js/controllers/AppController.js"></script>

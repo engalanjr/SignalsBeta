@@ -24,7 +24,7 @@ class PortfolioRenderer {
         // Update dashboard card values
         this.updateDashboardCards(accounts, actionPlans);
 
-        // Get all accounts
+        // Get all accounts (use filtered accounts if available)
         let allAccounts = Array.from(accounts.values());
 
         // Apply filters if any are active
@@ -84,29 +84,19 @@ class PortfolioRenderer {
             }
         }
 
-        // Apply global renewal quarter filter
-        const globalQuarterFilter = signalsStore.getGlobalQuarterFilter();
-        if (globalQuarterFilter !== 'all') {
+        // Apply global filters (Contract Stage and Rank in MyBook)
+        if (window.globalFilters) {
             const beforeCount = allAccounts.length;
+            const state = signalsStore.getState();
+            const filteredAccounts = state.filteredAccounts || state.accounts;
             
-            // Debug: Log first few accounts' renewal dates
-            console.log(`🔍 Sample account renewal dates:`, allAccounts.slice(0, 3).map(a => ({
-                name: a.name,
-                renewalDate: a.renewal_date || a.renewalDate || a['Renewal Date'],
-                id: a.id
-            })));
-            
+            // Filter accounts based on global filters
             allAccounts = allAccounts.filter(account => {
-                const matches = this.matchesRenewalQuarter(account, globalQuarterFilter);
-                if (!matches && beforeCount <= 5) {
-                    // Debug why it doesn't match for first few accounts
-                    console.log(`❌ ${account.name} doesn't match ${globalQuarterFilter}:`, {
-                        renewalDate: account.renewal_date || account.renewalDate || account['Renewal Date']
-                    });
-                }
-                return matches;
+                // Check if account is in the filtered accounts list
+                return filteredAccounts && filteredAccounts.has(account.id);
             });
-            console.log(`🗓️ Global quarter filter '${globalQuarterFilter}': ${beforeCount} → ${allAccounts.length} accounts`);
+            
+            console.log(`🔍 Global filters applied: ${beforeCount} → ${allAccounts.length} accounts`);
         }
 
         // Filter accounts with recent high priority Risk or Opportunities signals

@@ -1,7 +1,7 @@
 // AppController - Main application controller for Flux architecture
 class AppController {
     constructor() {
-        this.currentTab = 'portfolio-overview';
+        this.currentTab = 'home';
         this.isInitialized = false;
         this.controllers = new Map();
         
@@ -26,7 +26,7 @@ class AppController {
             // Set up tab navigation and event listeners
             this.setupTabNavigation();
             this.setupEventListeners();
-            this.setupGlobalQuarterFilter();
+            this.setupGlobalFilters();
             
             // Render initial tab
             this.renderCurrentTab();
@@ -46,6 +46,7 @@ class AppController {
         this.controllers.set('signals', new SignalsController());
         this.controllers.set('portfolio', new PortfolioController());
         this.controllers.set('portfolioOverview', new PortfolioOverviewController());
+        this.controllers.set('home', new HomeController());
         this.controllers.set('inbox', new RecommendationInboxController());
         this.controllers.set('feedback', new FeedbackController());
         this.controllers.set('comments', new CommentsController());
@@ -97,22 +98,9 @@ class AppController {
         
         this.currentTab = tabName;
         
-        // Sync global quarter filter dropdown with store value
-        this.syncGlobalQuarterFilter();
-        
         this.renderCurrentTab();
     }
     
-    syncGlobalQuarterFilter() {
-        const filterSelect = document.getElementById('globalRenewalQuarterFilter');
-        if (filterSelect) {
-            const currentFilter = signalsStore.getGlobalQuarterFilter();
-            if (filterSelect.value !== currentFilter) {
-                filterSelect.value = currentFilter;
-                console.log('🔄 Synced global quarter filter dropdown to:', currentFilter);
-            }
-        }
-    }
     
     setupEventListeners() {
         // Drawer close events
@@ -212,63 +200,20 @@ class AppController {
         }
     }
     
-    setupGlobalQuarterFilter() {
-        const filterSelect = document.getElementById('globalRenewalQuarterFilter');
-        if (!filterSelect) {
-            console.warn('Global quarter filter not found');
-            return;
-        }
+    setupGlobalFilters() {
+        // Initialize global filters
+        this.globalFilters = new GlobalFilters();
+        window.globalFilters = this.globalFilters;
         
-        // Populate the filter with quarters
-        const quarters = this.generateRenewalQuarters();
-        filterSelect.innerHTML = `
-            <option value="all">All Renewal Quarters</option>
-            ${quarters.map(q => `
-                <option value="${q.value}">${q.label}</option>
-            `).join('')}
-        `;
-        
-        // Handle filter change
-        filterSelect.addEventListener('change', (e) => {
-            const selectedQuarter = e.target.value;
-            console.log('🗓️ Global quarter filter changed:', selectedQuarter);
-            
-            // Dispatch a Flux action for global filter change
-            dispatcher.dispatch(Actions.setGlobalQuarterFilter(selectedQuarter));
-            
-            // Re-render current tab
-            this.renderCurrentTab();
-        });
-        
-        console.log('🗓️ Global quarter filter initialized with', quarters.length, 'quarters');
-    }
-    
-    generateRenewalQuarters() {
-        const quarters = [];
-        const today = new Date();
-        const currentMonth = today.getMonth();
-        const currentYear = today.getFullYear();
-        
-        // Determine fiscal year (Feb start)
-        const currentFY = currentMonth >= 1 ? currentYear + 1 : currentYear;
-        
-        // Generate quarters for current FY and next FY
-        for (let fy = currentFY; fy <= currentFY + 1; fy++) {
-            for (let q = 1; q <= 4; q++) {
-                quarters.push({
-                    value: `FY${fy}Q${q}`,
-                    label: `FY${fy.toString().slice(-2)} Q${q}`
-                });
+        // Subscribe to data loaded event to initialize filters
+        signalsStore.subscribe('data:loaded', () => {
+            const state = signalsStore.getState();
+            if (state.portfolioData && state.portfolioData.length > 0) {
+                this.globalFilters.initialize(state.portfolioData);
             }
-        }
-        
-        // Add "Beyond" option
-        quarters.push({
-            value: 'beyond',
-            label: 'Beyond Next 8 Quarters'
         });
         
-        return quarters;
+        console.log('🔍 Global filters initialized');
     }
     
     subscribeToStore() {
@@ -324,6 +269,11 @@ class AppController {
         });
         
         switch (this.currentTab) {
+            case 'home':
+                const homeTab = document.getElementById('home');
+                if (homeTab) homeTab.classList.add('active');
+                this.controllers.get('home')?.render(state);
+                break;
             case 'portfolio-overview':
                 const overviewTab = document.getElementById('portfolio-overview');
                 if (overviewTab) overviewTab.classList.add('active');
@@ -352,6 +302,12 @@ class AppController {
                 const notesTab = document.getElementById('signal-notes');
                 if (notesTab) notesTab.classList.add('active');
                 this.controllers.get('notes')?.render();
+                break;
+            case 'about':
+                // Handle about tab
+                console.log('ℹ️ Rendering About tab');
+                const aboutTab = document.getElementById('about');
+                if (aboutTab) aboutTab.classList.add('active');
                 break;
             case 'recommendation-inbox':
                 // Handle recommendation inbox tab

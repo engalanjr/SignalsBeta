@@ -15,18 +15,13 @@ class WhitespaceRenderer {
             
             let accounts = state.accounts || new Map();
             
-            // Apply global renewal quarter filter
-            const globalQuarterFilter = signalsStore.getGlobalQuarterFilter();
-            if (globalQuarterFilter !== 'all') {
+            // Apply global filters (Contract Stage and Rank in MyBook)
+            if (window.globalFilters) {
                 const beforeCount = accounts.size;
-                const filteredAccounts = new Map();
-                for (const [accountId, account] of accounts.entries()) {
-                    if (this.matchesRenewalQuarter(account, globalQuarterFilter)) {
-                        filteredAccounts.set(accountId, account);
-                    }
-                }
+                // Use the already filtered accounts from the store
+                const filteredAccounts = state.filteredAccounts || accounts;
                 accounts = filteredAccounts;
-                console.log(`🗓️ Global quarter filter '${globalQuarterFilter}': ${beforeCount} → ${accounts.size} accounts`);
+                console.log(`🔍 Global filters applied: ${beforeCount} → ${accounts.size} accounts`);
             }
             
             console.log(`🔍 Processing ${signals.length} signals`);

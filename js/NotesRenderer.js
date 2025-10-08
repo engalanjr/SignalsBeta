@@ -100,7 +100,11 @@ class NotesRenderer {
      */
     static renderNotesListGroupedByAccount(searchTerm = '', selectedNoteId = null) {
         const store = window.signalsStore;
-        const accounts = Array.from(store.normalizedData.accounts.values());
+        const state = store.getState();
+        
+        // Use globally filtered accounts if available
+        const accountsMap = state.filteredAccounts || store.normalizedData.accounts;
+        const accounts = Array.from(accountsMap.values());
         
         // Sort accounts alphabetically
         accounts.sort((a, b) => a.account_name.localeCompare(b.account_name));
@@ -110,6 +114,11 @@ class NotesRenderer {
         
         for (const account of accounts) {
             let notes = store.getNotesByAccount(account.account_id);
+            
+            // Apply global filters if available (filter by filteredNotes)
+            if (state.filteredNotes) {
+                notes = notes.filter(note => state.filteredNotes.has(note.id));
+            }
             
             // Apply search filter if present
             if (searchTerm) {

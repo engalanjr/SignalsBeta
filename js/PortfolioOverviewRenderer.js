@@ -11,9 +11,9 @@ class PortfolioOverviewRenderer {
             return;
         }
 
-        // Get data from state
-        const accounts = state.accounts || new Map();
-        const signals = state.signals || [];
+        // Get data from state (use filtered data if available)
+        const accounts = state.filteredAccounts || state.accounts || new Map();
+        const signals = state.filteredSignals || state.signals || [];
         const interactions = state.interactions || new Map();
         const plansByAction = state.plansByAction || new Map();
 
@@ -36,8 +36,8 @@ class PortfolioOverviewRenderer {
                     ${this.renderMetricsCard('Actionable Recommendations', 'Renewing Quarter After', metrics.quarterAfter, 'fa-calendar-plus', 'afterQ')}
                 </div>
                 
-                <!-- Two Column Layout: Quarter Breakdown (left) and Risk/Growth Compass (right) -->
-                <div class="overview-two-column-layout">
+                <!-- Three Column Layout: Quarter Breakdown (left), Risk/Growth Compass (center), Signal Feed (right) -->
+                <div class="overview-three-column-layout">
                     <!-- Quarter Breakdown Tables (Column 1) -->
                     <div class="quarter-breakdown-section">
                         <h3>Recommendations by Renewal Quarter</h3>
@@ -48,14 +48,49 @@ class PortfolioOverviewRenderer {
                     <div class="compass-radar-section">
                         <div class="compass-header">
                             <h3>Risk/Growth Compass Radar</h3>
-                            <div class="compass-legend">
-                                <span class="legend-item"><span class="legend-dot risk-dot"></span> Risk Signal</span>
-                                <span class="legend-item"><span class="legend-dot growth-dot"></span> Growth Signal</span>
-                                <span class="legend-item"><span class="legend-dot stable-dot"></span> Stable</span>
+                            <div class="quadrant-legend">
+                                <div class="quadrant-legend-item">
+                                    <div class="quadrant-label-row">
+                                        <span class="quadrant-color growth-healthy"></span>
+                                        <span class="quadrant-label">Growth & Healthy</span>
+                                    </div>
+                                    <span class="quadrant-definition">Low risk, high growth potential</span>
+                                </div>
+                                <div class="quadrant-legend-item">
+                                    <div class="quadrant-label-row">
+                                        <span class="quadrant-color risk-growing"></span>
+                                        <span class="quadrant-label">Risk but Growing</span>
+                                    </div>
+                                    <span class="quadrant-definition">Some risk signals but showing growth</span>
+                                </div>
+                                <div class="quadrant-legend-item">
+                                    <div class="quadrant-label-row">
+                                        <span class="quadrant-color stable-flat"></span>
+                                        <span class="quadrant-label">Stable but Flat</span>
+                                    </div>
+                                    <span class="quadrant-definition">Stable account with limited growth</span>
+                                </div>
+                                <div class="quadrant-legend-item">
+                                    <div class="quadrant-label-row">
+                                        <span class="quadrant-color risk-declining"></span>
+                                        <span class="quadrant-label">Risk and Declining</span>
+                                    </div>
+                                    <span class="quadrant-definition">High risk with declining signals</span>
+                                </div>
                             </div>
                         </div>
                         <div class="compass-radar-container">
                             ${this.renderCompassRadar(metrics.accountsData)}
+                        </div>
+                    </div>
+                    
+                    <!-- Signal Feed (Column 3) -->
+                    <div class="signal-feed-section">
+                        <div class="signal-feed-header">
+                            <h3>Latest Signals</h3>
+                        </div>
+                        <div class="signal-feed-container" id="portfolio-signal-feed">
+                            ${this.renderSignalFeedPreview(signals)}
                         </div>
                     </div>
                 </div>
@@ -274,6 +309,60 @@ Renewal Quarter: ${account.renewalQuarter}</title>
         `;
 
         return svg;
+    }
+
+    /**
+     * Render signal feed preview for portfolio overview
+     */
+    static renderSignalFeedPreview(signals) {
+        if (!signals || signals.length === 0) {
+            return `
+                <div class="no-signals-message">
+                    <i class="fas fa-bell-slash"></i>
+                    <p>No signals available</p>
+                </div>
+            `;
+        }
+
+        // Get the latest 5 signals for preview
+        const latestSignals = signals
+            .sort((a, b) => new Date(b.created_at || b.createdAt || 0) - new Date(a.created_at || a.createdAt || 0))
+            .slice(0, 5);
+
+        return latestSignals.map(signal => {
+            const polarity = signal.signal_polarity || signal['Signal Polarity'] || 'unknown';
+            const accountName = signal.account_name || signal.accountName || 'Unknown Account';
+            const signalName = signal.name || signal.signal_name || 'Unnamed Signal';
+            const createdDate = signal.created_at || signal.createdAt;
+            const priority = signal.priority || 'medium';
+            
+            const formatDate = (dateString) => {
+                if (!dateString) return 'Unknown date';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            };
+
+            return `
+                <div class="signal-feed-item">
+                    <div class="signal-feed-item-header">
+                        <span class="signal-priority-badge priority-${priority.toLowerCase()}">${priority}</span>
+                        <span class="signal-polarity-badge polarity-${polarity.toLowerCase()}">${polarity}</span>
+                    </div>
+                    <div class="signal-feed-item-content">
+                        <div class="signal-name">${SecurityUtils.sanitizeHTML(signalName)}</div>
+                        <div class="signal-meta">
+                            <span class="signal-account">${SecurityUtils.sanitizeHTML(accountName)}</span>
+                            <span class="signal-date">${formatDate(createdDate)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     /**

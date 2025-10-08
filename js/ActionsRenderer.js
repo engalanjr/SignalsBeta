@@ -39,7 +39,11 @@ class ActionsRenderer {
             console.warn('⚠️ app.actionPlans not initialized as Map, using empty array');
             app.actionPlans = new Map();
         }
-        const actionPlans = Array.from(app.actionPlans.values());
+        
+        // Use globally filtered action plans if available
+        const state = signalsStore.getState();
+        const actionPlansMap = state.filteredActionPlans || app.actionPlans;
+        const actionPlans = Array.from(actionPlansMap.values());
 
         // Update total actions count
         const totalElement = document.getElementById('totalActions');
@@ -128,14 +132,18 @@ class ActionsRenderer {
         }
 
         // First, process any action plans loaded from Domo API during initialization
-        console.log(`Processing ${app.actionPlans.size} action plans from app state...`);
+        // Use globally filtered action plans if available
+        const state = signalsStore.getState();
+        const actionPlansToProcess = state.filteredActionPlans || app.actionPlans;
+        
+        console.log(`Processing ${actionPlansToProcess.size} action plans from app state (globally filtered: ${state.filteredActionPlans ? 'yes' : 'no'})...`);
         
         // 🔧 FIX: Ensure DataService.actionPlans is synchronized (if available)
         if (window.DataService && Array.isArray(window.DataService.actionPlans)) {
             DataService.actionPlans.length = 0; // Clear existing
         }
         
-        for (let [planId, planData] of app.actionPlans) {
+        for (let [planId, planData] of actionPlansToProcess) {
             //  DEBUG: Log the plan data being processed
             console.log(`🔍 [DEBUG] Processing plan with key: ${planId}`);
             console.log(`🔍 [DEBUG] Plan data:`, planData);
@@ -367,19 +375,23 @@ class ActionsRenderer {
                 filtered = actionPlans;
         }
         
-        // Then apply global renewal quarter filter
-        const globalQuarterFilter = signalsStore.getGlobalQuarterFilter();
-        if (globalQuarterFilter !== 'all') {
+        // Then apply global filters (Contract Stage and Rank in MyBook)
+        if (window.globalFilters) {
             const beforeCount = filtered.length;
-            const accounts = signalsStore.getState().accounts;
+            const state = signalsStore.getState();
+            const filteredActionPlans = state.filteredActionPlans || signalsStore.normalizedData?.actionPlans;
             
-            filtered = filtered.filter(plan => {
-                const account = accounts.get(plan.accountId);
-                if (!account) return false;
-                return this.matchesRenewalQuarter(account, globalQuarterFilter);
-            });
+            if (filteredActionPlans) {
+                filtered = filtered.filter(plan => {
+                    // If no id, include by default
+                    if (!plan.id) return true;
+                    
+                    // Check if the plan is in the globally filtered list
+                    return filteredActionPlans.has(plan.id);
+                });
+            }
             
-            console.log(`🗓️ Global quarter filter '${globalQuarterFilter}' on Action Plans: ${beforeCount} → ${filtered.length} plans`);
+            console.log(`🔍 Global filters applied to Action Plans: ${beforeCount} → ${filtered.length} plans`);
         }
         
         return filtered;
