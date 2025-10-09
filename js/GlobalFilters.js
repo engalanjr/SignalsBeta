@@ -4,10 +4,12 @@ class GlobalFilters {
     constructor() {
         this.currentFilters = {
             contractStage: 'all', // Show all data initially
-            rankInBook: 'all' // Show all data initially
+            rankInBook: 'all', // Show all data initially
+            renewalQuarter: 'all' // Show all data initially
         };
         this.tierThresholds = null; // Will be calculated from data
         this.setupEventListeners();
+        this.populateRenewalQuarterFilters();
     }
 
     /**
@@ -29,6 +31,96 @@ class GlobalFilters {
                 this.applyFilters();
             });
         });
+
+        // Renewal Quarter filters
+        document.querySelectorAll('input[name="renewalQuarter"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.currentFilters.renewalQuarter = e.target.value;
+                this.applyFilters();
+            });
+        });
+    }
+
+    /**
+     * Populate renewal quarter filters dynamically
+     */
+    populateRenewalQuarterFilters() {
+        const container = document.getElementById('renewalQuarterFilters');
+        if (!container) return;
+
+        // Generate current quarter and next 4 quarters
+        const quarters = this.generateRenewalQuarters();
+        
+        const html = quarters.map(quarter => `
+            <label class="filter-option">
+                <input type="radio" name="renewalQuarter" value="${quarter.value}" ${quarter.value === 'all' ? 'checked' : ''}>
+                <span class="checkbox-custom"></span>
+                <span class="option-text">${quarter.label}</span>
+            </label>
+        `).join('');
+
+        container.innerHTML = html;
+
+        // Re-attach event listeners for the new elements
+        document.querySelectorAll('input[name="renewalQuarter"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.currentFilters.renewalQuarter = e.target.value;
+                this.applyFilters();
+            });
+        });
+    }
+
+    /**
+     * Generate renewal quarters (current + next 4)
+     */
+    generateRenewalQuarters() {
+        const quarters = [
+            { value: 'all', label: 'All' }
+        ];
+
+        // Get current quarter
+        const currentQuarter = this.getCurrentQuarter();
+        quarters.push({ value: currentQuarter, label: this.formatQuarterLabel(currentQuarter) });
+
+        // Get next 4 quarters
+        let nextQuarter = this.getNextQuarter();
+        for (let i = 0; i < 4; i++) {
+            quarters.push({ value: nextQuarter, label: this.formatQuarterLabel(nextQuarter) });
+            nextQuarter = this.getNextQuarterFromQuarter(nextQuarter);
+        }
+
+        return quarters;
+    }
+
+    /**
+     * Format quarter label for display (e.g., "FY26 Q3")
+     */
+    formatQuarterLabel(quarter) {
+        const match = quarter.match(/FY(\d+)Q(\d+)/);
+        if (!match) return quarter;
+        
+        const fy = match[1];
+        const q = match[2];
+        return `FY${fy} Q${q}`;
+    }
+
+    /**
+     * Get next quarter from a given quarter
+     */
+    getNextQuarterFromQuarter(quarter) {
+        const match = quarter.match(/FY(\d+)Q(\d+)/);
+        if (!match) return quarter;
+
+        let fy = parseInt(match[1]);
+        let q = parseInt(match[2]);
+
+        q++;
+        if (q > 4) {
+            q = 1;
+            fy++;
+        }
+
+        return `FY${fy}Q${q}`;
     }
 
     /**
@@ -211,6 +303,24 @@ class GlobalFilters {
     }
 
     /**
+     * Check if account matches renewal quarter filter
+     */
+    matchesRenewalQuarter(account) {
+        // If "all" is selected, skip this filter
+        if (this.currentFilters.renewalQuarter === 'all') {
+            return true;
+        }
+
+        // Get the account's renewal quarter from the bks_fq field
+        const accountQuarter = account.bks_fq;
+        if (!accountQuarter) {
+            return false; // No quarter data, exclude from results
+        }
+
+        return accountQuarter === this.currentFilters.renewalQuarter;
+    }
+
+    /**
      * Apply filters to data
      */
     applyFilters() {
@@ -233,7 +343,8 @@ class GlobalFilters {
         const filteredPortfolioData = portfolioData.filter(account => {
             const matchesContract = this.matchesContractStage(account);
             const matchesRank = this.matchesRankInBook(account);
-            return matchesContract && matchesRank;
+            const matchesRenewalQuarter = this.matchesRenewalQuarter(account);
+            return matchesContract && matchesRank && matchesRenewalQuarter;
         });
         
         console.log('📊 After filtering:', filteredPortfolioData.length, 'portfolio records match filters');
@@ -249,8 +360,9 @@ class GlobalFilters {
             if (portfolioAccount) {
                 const matchesContract = this.matchesContractStage(portfolioAccount);
                 const matchesRank = this.matchesRankInBook(portfolioAccount);
+                const matchesRenewalQuarter = this.matchesRenewalQuarter(portfolioAccount);
                 
-                if (matchesContract && matchesRank) {
+                if (matchesContract && matchesRank && matchesRenewalQuarter) {
                     filteredAccounts.set(accountId, account);
                 }
             }
@@ -270,8 +382,9 @@ class GlobalFilters {
             if (action.bks_renewal_date && action.bks_renewal_baseline_usd) {
                 const matchesContract = this.matchesContractStage(action);
                 const matchesRank = this.matchesRankInBook(action);
+                const matchesRenewalQuarter = this.matchesRenewalQuarter(action);
                 
-                if (matchesContract && matchesRank) {
+                if (matchesContract && matchesRank && matchesRenewalQuarter) {
                     filteredRecommendedActions.set(actionId, action);
                 }
             } else {
@@ -288,8 +401,9 @@ class GlobalFilters {
             if (signal.bks_renewal_date && signal.bks_renewal_baseline_usd) {
                 const matchesContract = this.matchesContractStage(signal);
                 const matchesRank = this.matchesRankInBook(signal);
+                const matchesRenewalQuarter = this.matchesRenewalQuarter(signal);
                 
-                if (matchesContract && matchesRank) {
+                if (matchesContract && matchesRank && matchesRenewalQuarter) {
                     filteredSignalsMap.set(signalId, signal);
                 }
             } else {
@@ -306,8 +420,9 @@ class GlobalFilters {
             if (plan.bks_renewal_date && plan.bks_renewal_baseline_usd) {
                 const matchesContract = this.matchesContractStage(plan);
                 const matchesRank = this.matchesRankInBook(plan);
+                const matchesRenewalQuarter = this.matchesRenewalQuarter(plan);
                 
-                if (matchesContract && matchesRank) {
+                if (matchesContract && matchesRank && matchesRenewalQuarter) {
                     filteredActionPlans.set(planId, plan);
                 }
             } else {
@@ -324,8 +439,9 @@ class GlobalFilters {
             if (note.bks_renewal_date && note.bks_renewal_baseline_usd) {
                 const matchesContract = this.matchesContractStage(note);
                 const matchesRank = this.matchesRankInBook(note);
+                const matchesRenewalQuarter = this.matchesRenewalQuarter(note);
                 
-                if (matchesContract && matchesRank) {
+                if (matchesContract && matchesRank && matchesRenewalQuarter) {
                     filteredNotes.set(noteId, note);
                 }
             } else {

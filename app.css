@@ -1,26 +1,26 @@
-/* Account Signal Brand Colors - Based on Logo */
+/* Account Signal Brand Colors - Domo Palette */
 :root {
-    /* Primary Brand Colors */
-    --brand-bronze: #6B4E1F;
-    --brand-bronze-dark: #503913;
-    --brand-bronze-light: #8B6E3F;
-
-    /* Secondary Brand Colors */
-    --brand-gold: #C17F2E;
-    --brand-gold-light: #D89B4A;
-    --brand-gold-lighter: #E5B570;
-
-    /* Accent Colors */
-    --brand-orange: #F5A623;
+    /* Primary Brand Colors - Orange */
+    --brand-orange: #ECA144;
     --brand-orange-light: #FFE5D6;
+    --brand-orange-dark: #D88B2C;
+
+    /* Key Supporting Color - Domo Blue */
+    --domo-blue: #99CCEE;
+    --domo-blue-light: #CCE5F5;
+    --domo-blue-dark: #66B3DD;
+    --domo-blue-darker: #4A9AC7;
+
+    /* Additional Palette Colors */
     --brand-peach: #F5E6D3;
     --brand-cream: #FCEFD9;
+    --brand-bronze: #6B4E1F;
+    --brand-bronze-dark: #503913;
 
     /* Status Colors */
     --critical-red: #dc3545;
     --warning-orange: #fd7e14;
     --healthy-green: #28a745;
-    --growth-bronze: var(--brand-bronze);
 
     /* Brand Neutrals */
     --neutral-white: #FFFFFF;
@@ -36,9 +36,6 @@
     --neutral-gray-900: #1A1A1A;
 
     /* Legacy aliases for compatibility */
-    --domo-blue: var(--brand-bronze);
-    --domo-blue-dark: var(--brand-bronze-dark);
-    --domo-blue-light: var(--brand-cream);
     --domo-orange: var(--brand-orange);
     --domo-orange-light: var(--brand-orange-light);
 
@@ -47,9 +44,11 @@
     --background-secondary: #FAF8F5;
     --background-hover: #F0EBE3;
     --border-color: #D9D1C7;
-    --primary-color: var(--brand-bronze);
+    --primary-color: var(--brand-orange);
     --text-primary: #2C2C2C;
     --text-secondary: #6c757d;
+    --link-color: var(--domo-blue-dark);
+    --link-hover-color: var(--domo-blue-darker);
 }
 
 /* Global Styles */
@@ -90,12 +89,12 @@ textarea {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(107, 78, 31, 0.3);
+    background: rgba(153, 204, 238, 0.4);
     border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(107, 78, 31, 0.5);
+    background: rgba(153, 204, 238, 0.6);
 }
 
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
@@ -105,6 +104,17 @@ body {
     background-color: var(--neutral-gray-50);
     color: var(--neutral-gray-800);
     line-height: 1.5;
+}
+
+a {
+    color: var(--link-color);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: var(--link-hover-color);
+    text-decoration: underline;
 }
 
 #app {
@@ -266,13 +276,13 @@ body {
 }
 
 .nav-tab:hover {
-    color: var(--domo-blue);
+    color: var(--domo-blue-dark);
     background-color: var(--domo-blue-light);
 }
 
 .nav-tab.active {
-    color: var(--domo-blue);
-    border-bottom-color: var(--domo-orange);
+    color: var(--text-primary);
+    border-bottom-color: var(--domo-blue);
     background-color: var(--domo-blue-light);
     font-weight: 600;
 }
@@ -349,7 +359,7 @@ body {
 .filter-select:focus {
     outline: none;
     border-color: var(--domo-blue);
-    box-shadow: 0 0 0 3px rgba(0, 125, 186, 0.1);
+    box-shadow: 0 0 0 3px rgba(153, 204, 238, 0.3);
 }
 
 /* Button Styles */
@@ -367,12 +377,12 @@ body {
 }
 
 .btn-primary {
-    background: var(--domo-blue);
+    background: var(--brand-orange);
     color: white;
 }
 
 .btn-primary:hover {
-    background: var(--domo-blue-dark);
+    background: var(--brand-orange-dark);
 }
 
 .btn-secondary {
@@ -3548,7 +3558,7 @@ body {
 .plan-notes:focus {
     outline: none;
     border-color: var(--domo-blue);
-    box-shadow: 0 0 0 3px rgba(0, 125, 186, 0.1);
+    box-shadow: 0 0 0 3px rgba(153, 204, 238, 0.3);
 }
 
 /* Loading Overlay */
@@ -4444,7 +4454,7 @@ body {
 .comment-input:focus {
     outline: none;
     border-color: var(--domo-blue);
-    box-shadow: 0 0 0 3px rgba(0, 125, 186, 0.1);
+    box-shadow: 0 0 0 3px rgba(153, 204, 238, 0.3);
 }
 
 .comment-input::placeholder {
@@ -4842,7 +4852,7 @@ body {
 .plan-title-input:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(0, 125, 186, 0.1);
+    box-shadow: 0 0 0 3px rgba(153, 204, 238, 0.3);
 }
 
 /* Signals Pagination Styling */
@@ -5596,7 +5606,7 @@ body {
 .plan-details-section textarea:focus {
     outline: none;
     border-color: var(--domo-blue);
-    box-shadow: 0 0 0 3px rgba(0, 125, 186, 0.1);
+    box-shadow: 0 0 0 3px rgba(153, 204, 238, 0.3);
 }
 
 .plan-details-section textarea::placeholder {
@@ -6151,7 +6161,7 @@ body {
 .form-select:focus {
     outline: none;
     border-color: var(--domo-blue);
-    box-shadow: 0 0 0 3px rgba(0, 125, 186, 0.1);
+    box-shadow: 0 0 0 3px rgba(153, 204, 238, 0.3);
 }
 
 .plays-management {
@@ -6830,7 +6840,7 @@ body {
 
 .filter-select:hover {
     border-color: var(--domo-blue);
-    box-shadow: 0 0 0 3px rgba(0, 125, 186, 0.1);
+    box-shadow: 0 0 0 3px rgba(153, 204, 238, 0.3);
 }
 
 .filter-select:focus {
@@ -6867,7 +6877,7 @@ body {
 .search-input:focus {
     outline: none;
     border-color: var(--domo-blue);
-    box-shadow: 0 0 0 3px rgba(0, 125, 186, 0.1);
+    box-shadow: 0 0 0 3px rgba(153, 204, 238, 0.3);
 }
 
 .sort-select {
@@ -7734,7 +7744,7 @@ body {
 .inbox-search-input:focus {
     outline: none;
     border-color: var(--domo-blue);
-    box-shadow: 0 0 0 3px rgba(0, 125, 186, 0.1);
+    box-shadow: 0 0 0 3px rgba(153, 204, 238, 0.3);
 }
 
 .inbox-filter-select {
@@ -7758,7 +7768,7 @@ body {
 .inbox-filter-select:focus {
     outline: none;
     border-color: var(--domo-blue);
-    box-shadow: 0 0 0 3px rgba(0, 125, 186, 0.1);
+    box-shadow: 0 0 0 3px rgba(153, 204, 238, 0.3);
 }
 
 /* Main Two-Pane Layout */
@@ -8814,7 +8824,7 @@ body {
 .comment-input:focus {
     outline: none;
     border-color: var(--domo-blue);
-    box-shadow: 0 0 0 3px rgba(0, 125, 186, 0.1);
+    box-shadow: 0 0 0 3px rgba(153, 204, 238, 0.3);
 }
 
 .comment-submit-btn {
@@ -10044,12 +10054,12 @@ body {
 }
 
 .btn-primary {
-    background: var(--domo-blue);
+    background: var(--brand-orange);
     color: white;
 }
 
 .btn-primary:hover {
-    background: var(--domo-blue-dark);
+    background: var(--brand-orange-dark);
 }
 
 /* Responsive Design */
@@ -10121,7 +10131,7 @@ body {
 
 .portfolio-table thead {
     background: var(--domo-blue);
-    color: white;
+    color: var(--text-primary);
 }
 
 .portfolio-table th {
@@ -10136,6 +10146,7 @@ body {
     position: sticky;
     top: 0;
     z-index: 10;
+    background: var(--domo-blue);
 }
 
 .portfolio-table th:first-child {
@@ -10153,6 +10164,7 @@ body {
 
 .portfolio-table th.sortable:hover {
     background: var(--domo-blue-dark);
+    color: var(--text-primary);
 }
 
 .portfolio-table th.sortable::after {
@@ -10185,7 +10197,7 @@ body {
 .portfolio-table tbody tr.grand-total-row {
     background: var(--domo-blue-light);
     font-weight: 700;
-    border-bottom: 3px solid var(--domo-blue);
+    border-bottom: 3px solid var(--domo-blue-dark);
 }
 
 .portfolio-table tbody tr.grand-total-row:hover {
@@ -10197,7 +10209,7 @@ body {
     left: 0;
     background: var(--domo-blue-light);
     z-index: 5;
-    border-right: 2px solid var(--domo-blue);
+    border-right: 2px solid var(--domo-blue-dark);
 }
 
 .portfolio-table td {
