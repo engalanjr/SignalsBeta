@@ -12,7 +12,7 @@ class HomeRenderer {
         }
 
         // Get portfolio data from state (use filtered data if available)
-        const portfolioData = state.filteredPortfolioData || state.portfolioData || [];
+        let portfolioData = state.filteredPortfolioData || state.portfolioData || [];
         
         if (!portfolioData || portfolioData.length === 0) {
             container.innerHTML = `
@@ -29,6 +29,9 @@ class HomeRenderer {
             `;
             return;
         }
+
+        // Apply default sort: Quarter ASC, then Baseline DESC, then Date ASC
+        portfolioData = this.applyDefaultSort(portfolioData);
 
         // Calculate grand total
         const grandTotal = this.calculateGrandTotal(portfolioData);
@@ -265,6 +268,34 @@ class HomeRenderer {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+    
+    /**
+     * Apply default sort: Quarter ASC, then Baseline DESC, then Date ASC
+     */
+    static applyDefaultSort(data) {
+        return [...data].sort((a, b) => {
+            // Primary sort: Quarter (bks_fq) ASC
+            const quarterA = a.bks_fq || '';
+            const quarterB = b.bks_fq || '';
+            
+            if (quarterA !== quarterB) {
+                return quarterA.localeCompare(quarterB); // Ascending (FY26-Q3 before FY26-Q4)
+            }
+            
+            // Secondary sort: Baseline DESC (within same quarter)
+            const baselineA = parseFloat(a.bks_renewal_baseline_usd || 0);
+            const baselineB = parseFloat(b.bks_renewal_baseline_usd || 0);
+            
+            if (baselineA !== baselineB) {
+                return baselineB - baselineA; // Descending (highest first)
+            }
+            
+            // Tertiary sort: Renewal Date ASC (tiebreaker)
+            const dateA = new Date(a.bks_renewal_date || 0);
+            const dateB = new Date(b.bks_renewal_date || 0);
+            return dateA - dateB; // Ascending
+        });
     }
     
     /**
