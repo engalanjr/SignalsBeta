@@ -78,32 +78,8 @@
                 <div class="filters-grid">
                     <div class="filter-row">
                         <div class="filter-label">Contract Stage:</div>
-                        <div class="filter-options">
-                           <label class="filter-option">
-                               <input type="radio" name="contractStage" value="all" checked>
-                               <span class="checkbox-custom"></span>
-                               <span class="option-text">All</span>
-                           </label>
-                           <label class="filter-option">
-                               <input type="radio" name="contractStage" value="atBat">
-                               <span class="checkbox-custom"></span>
-                               <span class="option-text">AT BAT</span>
-                           </label>
-                            <label class="filter-option">
-                                <input type="radio" name="contractStage" value="atBatPlus1">
-                                <span class="checkbox-custom"></span>
-                                <span class="option-text">AT BAT + 1</span>
-                            </label>
-                            <label class="filter-option">
-                                <input type="radio" name="contractStage" value="adopt">
-                                <span class="checkbox-custom"></span>
-                                <span class="option-text">ADOPT</span>
-                            </label>
-                           <label class="filter-option">
-                               <input type="radio" name="contractStage" value="onboard">
-                               <span class="checkbox-custom"></span>
-                               <span class="option-text">ONBOARD</span>
-                           </label>
+                        <div class="filter-options" id="contractStageFilters">
+                            <!-- Dynamic contract stage options will be populated here -->
                         </div>
                     </div>
                     <div class="filter-row">
@@ -134,12 +110,6 @@
                                 <span class="checkbox-custom"></span>
                                 <span class="option-text">TIER 4</span>
                             </label>
-                        </div>
-                    </div>
-                    <div class="filter-row">
-                        <div class="filter-label">Renewal Quarter:</div>
-                        <div class="filter-options" id="renewalQuarterFilters">
-                            <!-- Dynamic quarters will be populated here -->
                         </div>
                     </div>
                 </div>

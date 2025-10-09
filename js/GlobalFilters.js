@@ -4,26 +4,17 @@ class GlobalFilters {
     constructor() {
         this.currentFilters = {
             contractStage: 'all', // Show all data initially
-            rankInBook: 'all', // Show all data initially
-            renewalQuarter: 'all' // Show all data initially
+            rankInBook: 'all' // Show all data initially
         };
         this.tierThresholds = null; // Will be calculated from data
+        this.populateContractStageFilters();
         this.setupEventListeners();
-        this.populateRenewalQuarterFilters();
     }
 
     /**
      * Setup event listeners for filter changes
      */
     setupEventListeners() {
-        // Contract Stage filters
-        document.querySelectorAll('input[name="contractStage"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.currentFilters.contractStage = e.target.value;
-                this.applyFilters();
-            });
-        });
-
         // Rank in MyBook filters
         document.querySelectorAll('input[name="rankInBook"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
@@ -31,84 +22,54 @@ class GlobalFilters {
                 this.applyFilters();
             });
         });
-
-        // Renewal Quarter filters
-        document.querySelectorAll('input[name="renewalQuarter"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.currentFilters.renewalQuarter = e.target.value;
-                this.applyFilters();
-            });
-        });
     }
 
     /**
-     * Populate renewal quarter filters dynamically
+     * Populate contract stage filters dynamically with quarters
      */
-    populateRenewalQuarterFilters() {
-        const container = document.getElementById('renewalQuarterFilters');
+    populateContractStageFilters() {
+        const container = document.getElementById('contractStageFilters');
         if (!container) return;
 
-        // Generate current quarter and next 4 quarters
-        const quarters = this.generateRenewalQuarters();
-        
-        const html = quarters.map(quarter => `
+        const currentQ = this.getCurrentQuarter();
+        const nextQ = this.getNextQuarter();
+        const next2Q = this.getNextQuarterFromQuarter(nextQ);
+        const next3Q = this.getNextQuarterFromQuarter(next2Q);
+
+        const stages = [
+            { value: 'all', label: 'All' },
+            { value: 'atBat', label: `AT BAT (${currentQ})` },
+            { value: 'atBatPlus1', label: `AT BAT + 1 (${nextQ})` },
+            { value: 'atBatPlus2', label: `AT BAT + 2 (${next2Q})` },
+            { value: 'atBatPlus3', label: `AT BAT + 3 (${next3Q})` },
+            { value: 'onboard', label: 'ONBOARD' },
+            { value: 'adopt', label: 'ADOPT' }
+        ];
+
+        const html = stages.map(stage => `
             <label class="filter-option">
-                <input type="radio" name="renewalQuarter" value="${quarter.value}" ${quarter.value === 'all' ? 'checked' : ''}>
+                <input type="radio" name="contractStage" value="${stage.value}" ${stage.value === 'all' ? 'checked' : ''}>
                 <span class="checkbox-custom"></span>
-                <span class="option-text">${quarter.label}</span>
+                <span class="option-text">${stage.label}</span>
             </label>
         `).join('');
 
         container.innerHTML = html;
 
-        // Re-attach event listeners for the new elements
-        document.querySelectorAll('input[name="renewalQuarter"]').forEach(radio => {
+        // Attach event listeners for the new elements
+        document.querySelectorAll('input[name="contractStage"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
-                this.currentFilters.renewalQuarter = e.target.value;
+                this.currentFilters.contractStage = e.target.value;
                 this.applyFilters();
             });
         });
-    }
-
-    /**
-     * Generate renewal quarters (current + next 4)
-     */
-    generateRenewalQuarters() {
-        const quarters = [
-            { value: 'all', label: 'All' }
-        ];
-
-        // Get current quarter
-        const currentQuarter = this.getCurrentQuarter();
-        quarters.push({ value: currentQuarter, label: this.formatQuarterLabel(currentQuarter) });
-
-        // Get next 4 quarters
-        let nextQuarter = this.getNextQuarter();
-        for (let i = 0; i < 4; i++) {
-            quarters.push({ value: nextQuarter, label: this.formatQuarterLabel(nextQuarter) });
-            nextQuarter = this.getNextQuarterFromQuarter(nextQuarter);
-        }
-
-        return quarters;
-    }
-
-    /**
-     * Format quarter label for display (e.g., "FY26 Q3")
-     */
-    formatQuarterLabel(quarter) {
-        const match = quarter.match(/FY(\d+)Q(\d+)/);
-        if (!match) return quarter;
-        
-        const fy = match[1];
-        const q = match[2];
-        return `FY${fy} Q${q}`;
     }
 
     /**
      * Get next quarter from a given quarter
      */
     getNextQuarterFromQuarter(quarter) {
-        const match = quarter.match(/FY(\d+)Q(\d+)/);
+        const match = quarter.match(/FY(\d+)-?Q(\d+)/);
         if (!match) return quarter;
 
         let fy = parseInt(match[1]);
@@ -120,7 +81,9 @@ class GlobalFilters {
             fy++;
         }
 
-        return `FY${fy}Q${q}`;
+        // Ensure 2-digit year format
+        const fyShort = fy.toString().slice(-2);
+        return `FY${fyShort}-Q${q}`;
     }
 
     /**
@@ -165,8 +128,6 @@ class GlobalFilters {
                 maxAmount: sortedData[Math.floor(totalAccounts * 0.90)]?.bks_renewal_baseline_usd || 0
             }
         };
-
-        console.log('📊 Tier thresholds calculated:', this.tierThresholds);
     }
 
     /**
@@ -200,16 +161,18 @@ class GlobalFilters {
         let currentFY, currentQ;
         if (currentMonth >= 1) { // Feb (1) onwards
             currentFY = currentYear + 1;
-            if (currentMonth >= 1 && currentMonth <= 4) currentQ = 1;       // Feb-May
-            else if (currentMonth >= 5 && currentMonth <= 7) currentQ = 2;  // Jun-Aug
-            else if (currentMonth >= 8 && currentMonth <= 10) currentQ = 3; // Sep-Nov
-            else currentQ = 4;                                 // Dec-Jan
+            if (currentMonth >= 1 && currentMonth <= 3) currentQ = 1;       // Feb-Apr (1-3)
+            else if (currentMonth >= 4 && currentMonth <= 6) currentQ = 2;  // May-Jul (4-6)
+            else if (currentMonth >= 7 && currentMonth <= 9) currentQ = 3;  // Aug-Oct (7-9)
+            else currentQ = 4;                                               // Nov-Dec (10-11)
         } else {
             currentFY = currentYear;
-            currentQ = 4;
+            currentQ = 4;  // Jan (0) is Q4 of previous FY
         }
 
-        return `FY${currentFY}Q${currentQ}`;
+        // Use 2-digit year format (e.g., FY26-Q3)
+        const fyShort = currentFY.toString().slice(-2);
+        return `FY${fyShort}-Q${currentQ}`;
     }
 
     /**
@@ -217,7 +180,7 @@ class GlobalFilters {
      */
     getNextQuarter() {
         const currentQuarter = this.getCurrentQuarter();
-        const match = currentQuarter.match(/FY(\d+)Q(\d+)/);
+        const match = currentQuarter.match(/FY(\d+)-?Q(\d+)/);
         if (!match) return currentQuarter;
 
         let fy = parseInt(match[1]);
@@ -229,7 +192,9 @@ class GlobalFilters {
             fy++;
         }
 
-        return `FY${fy}Q${q}`;
+        // Ensure 2-digit year format
+        const fyShort = fy.toString().slice(-2);
+        return `FY${fyShort}-Q${q}`;
     }
 
     /**
@@ -246,16 +211,18 @@ class GlobalFilters {
         let fy, quarter;
         if (month >= 1) { // Feb (1) onwards
             fy = year + 1;
-            if (month >= 1 && month <= 4) quarter = 1;       // Feb-May
-            else if (month >= 5 && month <= 7) quarter = 2;  // Jun-Aug
-            else if (month >= 8 && month <= 10) quarter = 3; // Sep-Nov
-            else quarter = 4;                                 // Dec-Jan
+            if (month >= 1 && month <= 3) quarter = 1;       // Feb-Apr (1-3)
+            else if (month >= 4 && month <= 6) quarter = 2;  // May-Jul (4-6)
+            else if (month >= 7 && month <= 9) quarter = 3;  // Aug-Oct (7-9)
+            else quarter = 4;                                 // Nov-Dec (10-11)
         } else {
             fy = year;
-            quarter = 4;
+            quarter = 4;  // Jan (0) is Q4 of previous FY
         }
 
-        return `FY${fy}Q${quarter}`;
+        // Use 2-digit year format (e.g., FY27-Q1)
+        const fyShort = fy.toString().slice(-2);
+        return `FY${fyShort}-Q${quarter}`;
     }
 
     /**
@@ -267,23 +234,33 @@ class GlobalFilters {
             return true;
         }
 
-        // Use bks_renewal_date from portfolio data (actual renewal date)
-        const renewalDate = account.bks_renewal_date || account.renewal_date;
-        const renewalQuarter = this.getAccountRenewalQuarter(renewalDate);
-        const currentQuarter = this.getCurrentQuarter();
-        const nextQuarter = this.getNextQuarter();
+        // Use bks_fq field directly from CSV (more reliable than calculating from date)
+        const renewalQuarter = account.bks_fq;
+        if (!renewalQuarter) return false;
+
+        const currentQ = this.getCurrentQuarter();
+        const nextQ = this.getNextQuarter();
+        const next2Q = this.getNextQuarterFromQuarter(nextQ);
+        const next3Q = this.getNextQuarterFromQuarter(next2Q);
 
         switch (this.currentFilters.contractStage) {
             case 'atBat':
-                return renewalQuarter === currentQuarter;
+                return renewalQuarter === currentQ;
             case 'atBatPlus1':
-                return renewalQuarter === nextQuarter;
-            case 'adopt':
-                // Any quarter after AT BAT + 1
-                return renewalQuarter !== currentQuarter && renewalQuarter !== nextQuarter && renewalQuarter !== 'Unknown';
+                return renewalQuarter === nextQ;
+            case 'atBatPlus2':
+                return renewalQuarter === next2Q;
+            case 'atBatPlus3':
+                return renewalQuarter === next3Q;
             case 'onboard':
-                // Show but do nothing for now
-                return true;
+                return true; // Show all for now
+            case 'adopt':
+                // Show quarters beyond AT BAT+3
+                return renewalQuarter !== currentQ && 
+                       renewalQuarter !== nextQ && 
+                       renewalQuarter !== next2Q && 
+                       renewalQuarter !== next3Q && 
+                       renewalQuarter !== 'Unknown';
             default:
                 return true;
         }
@@ -302,37 +279,15 @@ class GlobalFilters {
         return accountTier === this.currentFilters.rankInBook;
     }
 
-    /**
-     * Check if account matches renewal quarter filter
-     */
-    matchesRenewalQuarter(account) {
-        // If "all" is selected, skip this filter
-        if (this.currentFilters.renewalQuarter === 'all') {
-            return true;
-        }
-
-        // Get the account's renewal quarter from the bks_fq field
-        const accountQuarter = account.bks_fq;
-        if (!accountQuarter) {
-            return false; // No quarter data, exclude from results
-        }
-
-        return accountQuarter === this.currentFilters.renewalQuarter;
-    }
 
     /**
      * Apply filters to data
      */
     applyFilters() {
-        console.log('🔍 Applying global filters:', this.currentFilters);
-
         // Get current data from store
         const state = signalsStore.getState();
         const portfolioData = state.portfolioData || [];
         const accounts = state.accounts || new Map();
-        
-        console.log('📊 Portfolio data available:', portfolioData.length, 'records');
-        console.log('📊 Accounts available:', accounts.size, 'accounts');
 
         // Calculate tier thresholds if not already done
         if (!this.tierThresholds && portfolioData.length > 0) {
@@ -343,11 +298,8 @@ class GlobalFilters {
         const filteredPortfolioData = portfolioData.filter(account => {
             const matchesContract = this.matchesContractStage(account);
             const matchesRank = this.matchesRankInBook(account);
-            const matchesRenewalQuarter = this.matchesRenewalQuarter(account);
-            return matchesContract && matchesRank && matchesRenewalQuarter;
+            return matchesContract && matchesRank;
         });
-        
-        console.log('📊 After filtering:', filteredPortfolioData.length, 'portfolio records match filters');
 
         // Filter accounts
         const filteredAccounts = new Map();
@@ -360,9 +312,8 @@ class GlobalFilters {
             if (portfolioAccount) {
                 const matchesContract = this.matchesContractStage(portfolioAccount);
                 const matchesRank = this.matchesRankInBook(portfolioAccount);
-                const matchesRenewalQuarter = this.matchesRenewalQuarter(portfolioAccount);
                 
-                if (matchesContract && matchesRank && matchesRenewalQuarter) {
+                if (matchesContract && matchesRank) {
                     filteredAccounts.set(accountId, account);
                 }
             }
@@ -382,9 +333,8 @@ class GlobalFilters {
             if (action.bks_renewal_date && action.bks_renewal_baseline_usd) {
                 const matchesContract = this.matchesContractStage(action);
                 const matchesRank = this.matchesRankInBook(action);
-                const matchesRenewalQuarter = this.matchesRenewalQuarter(action);
                 
-                if (matchesContract && matchesRank && matchesRenewalQuarter) {
+                if (matchesContract && matchesRank) {
                     filteredRecommendedActions.set(actionId, action);
                 }
             } else {
@@ -401,9 +351,8 @@ class GlobalFilters {
             if (signal.bks_renewal_date && signal.bks_renewal_baseline_usd) {
                 const matchesContract = this.matchesContractStage(signal);
                 const matchesRank = this.matchesRankInBook(signal);
-                const matchesRenewalQuarter = this.matchesRenewalQuarter(signal);
                 
-                if (matchesContract && matchesRank && matchesRenewalQuarter) {
+                if (matchesContract && matchesRank) {
                     filteredSignalsMap.set(signalId, signal);
                 }
             } else {
@@ -420,9 +369,8 @@ class GlobalFilters {
             if (plan.bks_renewal_date && plan.bks_renewal_baseline_usd) {
                 const matchesContract = this.matchesContractStage(plan);
                 const matchesRank = this.matchesRankInBook(plan);
-                const matchesRenewalQuarter = this.matchesRenewalQuarter(plan);
                 
-                if (matchesContract && matchesRank && matchesRenewalQuarter) {
+                if (matchesContract && matchesRank) {
                     filteredActionPlans.set(planId, plan);
                 }
             } else {
@@ -439,9 +387,8 @@ class GlobalFilters {
             if (note.bks_renewal_date && note.bks_renewal_baseline_usd) {
                 const matchesContract = this.matchesContractStage(note);
                 const matchesRank = this.matchesRankInBook(note);
-                const matchesRenewalQuarter = this.matchesRenewalQuarter(note);
                 
-                if (matchesContract && matchesRank && matchesRenewalQuarter) {
+                if (matchesContract && matchesRank) {
                     filteredNotes.set(noteId, note);
                 }
             } else {
@@ -466,8 +413,6 @@ class GlobalFilters {
         if (window.appController) {
             window.appController.renderCurrentTab();
         }
-
-        console.log(`📊 Filters applied: ${filteredPortfolioData.length}/${portfolioData.length} portfolio items, ${filteredAccounts.size}/${accounts.size} accounts, ${filteredSignals.length}/${state.signals.length} signals (array), ${filteredSignalsMap.size}/${signals.size} signals (map), ${filteredRecommendedActions.size}/${recommendedActions.size} actions, ${filteredActionPlans.size}/${actionPlans.size} plans, ${filteredNotes.size}/${notes.size} notes`);
     }
 
     /**
