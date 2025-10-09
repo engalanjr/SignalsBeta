@@ -226,6 +226,41 @@ class GlobalFilters {
     }
 
     /**
+     * Get contract start date for onboarding calculation
+     */
+    getContractStartDate(account) {
+        // Use last_renewal_date if available
+        if (account.last_renewal_date && account.last_renewal_date.trim() !== '') {
+            return new Date(account.last_renewal_date);
+        }
+        
+        // Calculate: bks_renewal_date - 12 months
+        if (account.bks_renewal_date && account.bks_renewal_date.trim() !== '') {
+            const renewalDate = new Date(account.bks_renewal_date);
+            const startDate = new Date(renewalDate);
+            startDate.setFullYear(startDate.getFullYear() - 1);
+            return startDate;
+        }
+        
+        return null; // No valid date
+    }
+
+    /**
+     * Check if account is in onboarding window (first 90 days)
+     */
+    isInOnboardingWindow(account) {
+        const contractStartDate = this.getContractStartDate(account);
+        if (!contractStartDate) return false;
+        
+        const today = new Date();
+        const daysSinceStart = Math.floor((today - contractStartDate) / (1000 * 60 * 60 * 24));
+        
+        // Only show accounts in first 90 days (0-90 days inclusive)
+        // Exclude accounts with future start dates
+        return daysSinceStart >= 0 && daysSinceStart <= 90;
+    }
+
+    /**
      * Check if account matches contract stage filter
      */
     matchesContractStage(account) {
@@ -234,7 +269,12 @@ class GlobalFilters {
             return true;
         }
 
-        // Use bks_fq field directly from CSV (more reliable than calculating from date)
+        // ONBOARD filter works independently (doesn't need bks_fq)
+        if (this.currentFilters.contractStage === 'onboard') {
+            return this.isInOnboardingWindow(account);
+        }
+
+        // For quarter-based filters, we need bks_fq
         const renewalQuarter = account.bks_fq;
         if (!renewalQuarter) return false;
 
@@ -252,8 +292,6 @@ class GlobalFilters {
                 return renewalQuarter === next2Q;
             case 'atBatPlus3':
                 return renewalQuarter === next3Q;
-            case 'onboard':
-                return true; // Show all for now
             case 'adopt':
                 // Show quarters beyond AT BAT+3
                 return renewalQuarter !== currentQ && 
