@@ -1426,7 +1426,7 @@ class SignalsRepository {
             console.log(`✅ Loaded ${data.length} notes from fallback`);
             return data;
         } catch (error) {
-            console.error('Failed to load fallback notes:', error);
+            console.warn('⚠️ Fallback notes file not available (expected in production), using localStorage:', error);
             // Also check localStorage as a last resort
             try {
                 const localNotes = typeof NotesService !== 'undefined' && NotesService.getLocalNotes ? NotesService.getLocalNotes() : [];

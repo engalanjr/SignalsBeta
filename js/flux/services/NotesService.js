@@ -48,10 +48,10 @@ class NotesService {
         });
         
         try {
-            // Try Domo API
+            // Try Domo API - wrap in content property per DataStore API spec
             const response = await domo.post(
                 '/domo/datastores/v1/collections/SignalAI.Notes/documents',
-                note
+                { content: note }
             );
             
             dispatcher.dispatch({
@@ -107,10 +107,10 @@ class NotesService {
         });
         
         try {
-            // Try Domo API
+            // Try Domo API - wrap in content property per DataStore API spec
             await domo.patch(
                 `/domo/datastores/v1/collections/SignalAI.Notes/documents/${noteId}`,
-                updateData
+                { content: updateData }
             );
             
             dispatcher.dispatch({
