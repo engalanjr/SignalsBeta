@@ -482,9 +482,11 @@ class SignalsRepository {
      * Extract Account entity from raw signal data
      */
     static extractAccountFromSignal(rawSignal) {
+        const accountName = rawSignal.account_name || rawSignal.Account || rawSignal['Account Name'] || '';
         return {
             account_id: rawSignal.account_id || rawSignal['account id'],
-            account_name: rawSignal.account_name,
+            account_name: accountName,
+            name: accountName, // Add 'name' for PortfolioRenderer compatibility
             account_action_context: rawSignal.account_action_context || rawSignal['Account Action Context'] || '',
             account_action_context_rationale: rawSignal.account_action_context_rationale || rawSignal['Account Action Context Rationale'] || '',
             
@@ -849,7 +851,12 @@ class SignalsRepository {
             
             if (response && response.length > 0) {
                 console.log(`✅ Loaded ${response.length} portfolio records from Domo API`);
-                return response;
+                
+                // Transform API data to match expected HomeRenderer format (same as CSV)
+                const transformedData = response.map(row => this.transformPortfolioRow(row));
+                console.log(`✅ Transformed ${transformedData.length} portfolio records to expected format`);
+                
+                return transformedData;
             } else {
                 console.warn('⚠️ No portfolio data from API, using CSV fallback');
                 return await this.loadPortfolioCSV();
@@ -1002,17 +1009,54 @@ class SignalsRepository {
     static transformPortfolioRow(row, allSignals = []) {
         const accountId = row.bks_account_id || row['Account Id'];
         
+        // Debug: Check if this transform is being called at all
+        if (!window._transformDebugCount) {
+            window._transformDebugCount = 0;
+            console.log('🔧 transformPortfolioRow IS being called - checking data...');
+        }
+        if (window._transformDebugCount < 2) {
+            console.log(`🔧 Transform Input #${window._transformDebugCount + 1}:`, {
+                bks_account_name: row.bks_account_name,
+                'account name': row['account name'],
+                Account: row.Account,
+                bks_stage: row.bks_stage,
+                hgtrends_health_grade: row.hgtrends_health_grade,
+                hgtrends_90day: row.hgtrends_90day,
+                hgtrends_180day: row.hgtrends_180day,
+                hgtrends_360day: row.hgtrends_360day,
+                allFieldNames: Object.keys(row).slice(0, 30) // First 30 field names from API
+            });
+            window._transformDebugCount++;
+        }
+        
         // Count signals by polarity and smart actions
         const signalCounts = this.countSignalsByPolarity(accountId, allSignals);
         const smartActionCount = this.countSmartActions(accountId, allSignals);
         
         // Map CSV fields to expected HomeRenderer fields
+        const accountName = row.bks_account_name || row['account name'] || row.Account || '';
+        const category = this.mapCategory(row.bks_stage) || '';
+        const currentHG = row.hgtrends_health_grade || row['Current HG'] || '';
+        
+        // Debug: Log health grade data for first few accounts to help diagnose production issues
+        if (window._hgDebugCount === undefined) window._hgDebugCount = 0;
+        if (window._hgDebugCount < 3 && (row.hgtrends_90day || row.hgtrends_180day || row.hgtrends_360day)) {
+            console.log(`📊 HG Debug for ${accountName}:`, {
+                hgtrends_90day: row.hgtrends_90day,
+                hgtrends_180day: row.hgtrends_180day,
+                hgtrends_360day: row.hgtrends_360day,
+                hgtrends_health_grade: row.hgtrends_health_grade
+            });
+            window._hgDebugCount++;
+        }
+        
         return {
             // Keep original fields for filtering
             ...row,
             
             // Map to expected display fields
-            Account: row.bks_account_name || row['account name'] || '',
+            Account: accountName,
+            name: accountName, // Add 'name' for PortfolioRenderer compatibility
             'Renewal QTR': row.bks_fq || '',
             Baseline: row.bks_renewal_baseline_usd || '',
             'FCST': row.bks_forecast_new || row.bks_renewal_amount || '',
@@ -1023,14 +1067,20 @@ class SignalsRepository {
             'Growth Lever Count': signalCounts.growthCount,
             'Smart Action Count': smartActionCount,
             
-            Category: this.mapCategory(row.bks_stage) || '',
+            Category: category,
+            category: category, // Add lowercase for compatibility
             'Pacing %': row['% Pacing'] || '',
             
-            // Health Grade fields
-            'Current HG': row.hgtrends_health_grade || '',
-            'HG 90 Change': row.hgtrends_90day || '',
-            'HG 180 Change': row.hgtrends_180day || '',
-            'HG 360 Change': row.hgtrends_360day || '',
+            // Health Grade fields - preserve all field name variations
+            'Current HG': currentHG,
+            currentHG: currentHG, // Add camelCase for compatibility
+            hgtrends_health_grade: currentHG, // Preserve original field
+            'HG 90 Change': row.hgtrends_90day || row['HG 90 Change'] || '',
+            'HG 180 Change': row.hgtrends_180day || row['HG 180 Change'] || '',
+            'HG 360 Change': row.hgtrends_360day || row['HG 360 Change'] || '',
+            hgtrends_90day: row.hgtrends_90day || row['HG 90 Change'] || '', // Preserve original
+            hgtrends_180day: row.hgtrends_180day || row['HG 180 Change'] || '', // Preserve original
+            hgtrends_360day: row.hgtrends_360day || row['HG 360 Change'] || '', // Preserve original
             
             // Upsell fields
             'Active Upsells ACV': row.upsell_total_acv || 0,

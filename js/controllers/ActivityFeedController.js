@@ -32,6 +32,15 @@ class ActivityFeedController {
             
             console.log(`📊 Loaded ${gongCalls.length} Gong calls and ${notes.length} notes`);
             
+            // Warn if no Gong calls loaded
+            if (gongCalls.length === 0) {
+                console.warn('⚠️ No Gong calls loaded. Possible reasons:');
+                console.warn('   1. No Domo dataset mapped to /data/v1/calls');
+                console.warn('   2. Dataset exists but is empty');
+                console.warn('   3. CSV fallback file not deployed (expected in production)');
+                console.warn('💡 To fix: Map your Gong calls dataset to /data/v1/calls in Domo App settings');
+            }
+            
             // Merge activities
             this.activities = this.mergeActivities(gongCalls, notes);
             this.filteredActivities = [...this.activities];

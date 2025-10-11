@@ -43,16 +43,31 @@ class GongCallsRepository {
             console.log('📡 Loading Gong Calls from API...');
             const response = await domo.get('/data/v1/calls');
             
+            // Enhanced logging for debugging
+            console.log('📊 API Response:', {
+                hasData: !!response,
+                isArray: Array.isArray(response),
+                length: response?.length,
+                type: typeof response
+            });
+            
             if (response && response.length > 0) {
                 console.log(`✅ Loaded ${response.length} Gong calls from Domo API`);
-                return response;
+                console.log(`📝 First call sample:`, response[0]);
+                
+                // Transform API data to entity model (same as CSV transformation)
+                const transformedCalls = response.map(row => this.transformCSVRowToEntity(row));
+                console.log(`✅ Transformed ${transformedCalls.length} API calls to entity model`);
+                
+                return transformedCalls;
             } else {
-                console.warn('⚠️ No calls from API, using CSV fallback');
+                const emptyReason = !response ? 'null/undefined response' : 'empty array';
+                console.warn(`⚠️ No calls from API (${emptyReason}), trying CSV fallback...`);
                 return await this.loadGongCallsCSV();
             }
         } catch (error) {
             console.error('❌ Failed to load Gong Calls from API:', error);
-            console.warn('Falling back to CSV data');
+            console.warn('💾 Falling back to CSV data...');
             return await this.loadGongCallsCSV();
         }
     }
@@ -62,7 +77,7 @@ class GongCallsRepository {
      */
     static async loadGongCallsCSV() {
         try {
-            console.log('Loading Gong Calls CSV data...');
+            console.log('💾 Loading Gong Calls CSV data...');
             
             const cacheBuster = `?v=${Date.now()}`;
             const response = await fetch(`./AccountSignalGongCalls.csv${cacheBuster}`);
@@ -72,17 +87,22 @@ class GongCallsRepository {
             }
             
             const csvText = await response.text();
-            console.log('Gong Calls CSV loaded successfully, length:', csvText.length);
+            console.log('✅ Gong Calls CSV loaded successfully, length:', csvText.length);
             
             const parsedData = this.parseCSV(csvText);
-            console.log(`Parsed ${parsedData.length} Gong call records from CSV`);
+            console.log(`✅ Parsed ${parsedData.length} Gong call records from CSV`);
             
             // Transform CSV data to entity model
             const transformedCalls = parsedData.map(row => this.transformCSVRowToEntity(row));
             
             return transformedCalls;
         } catch (error) {
-            console.error('Error loading Gong Calls CSV:', error);
+            if (error.message.includes('404')) {
+                console.warn('⚠️ CSV fallback not available in production - this is expected if using Domo API');
+                console.warn('💡 To load Gong calls, map your dataset to /data/v1/calls in Domo');
+            } else {
+                console.error('❌ Error loading Gong Calls CSV:', error);
+            }
             return [];
         }
     }

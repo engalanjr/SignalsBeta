@@ -99,6 +99,31 @@ class HomeRenderer {
     static renderPortfolioRow(row) {
         const accountId = row.bks_account_id || row.account_id;
         
+        // Debug: Log first 3 rows to see what fields exist
+        if (!window._portfolioDebugCount) window._portfolioDebugCount = 0;
+        if (window._portfolioDebugCount < 3) {
+            console.log(`🔍 Portfolio Row Debug #${window._portfolioDebugCount + 1}:`, {
+                Account: row.Account,
+                name: row.name,
+                bks_account_name: row.bks_account_name,
+                'account name': row['account name'],
+                Category: row.Category,
+                category: row.category,
+                bks_stage: row.bks_stage,
+                'Current HG': row['Current HG'],
+                currentHG: row.currentHG,
+                hgtrends_health_grade: row.hgtrends_health_grade,
+                'HG 90 Change': row['HG 90 Change'],
+                hgtrends_90day: row.hgtrends_90day,
+                'HG 180 Change': row['HG 180 Change'],
+                hgtrends_180day: row.hgtrends_180day,
+                'HG 360 Change': row['HG 360 Change'],
+                hgtrends_360day: row.hgtrends_360day,
+                allKeys: Object.keys(row).slice(0, 30) // First 30 keys
+            });
+            window._portfolioDebugCount++;
+        }
+        
         // Get signal and action counts
         const signalCounts = this.getSignalCounts(accountId);
         const smartActionCount = this.getSmartActionCount(accountId);

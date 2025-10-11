@@ -112,7 +112,7 @@ class ActivityFeedRenderer {
         if (!activities || activities.length === 0) {
             return `
                 <div class="activity-feed-pane">
-                    ${this.renderEmptyState()}
+                    ${this.renderEmptyState(controller)}
                 </div>
             `;
         }
@@ -324,14 +324,29 @@ class ActivityFeedRenderer {
     /**
      * Render empty state
      */
-    static renderEmptyState() {
+    static renderEmptyState(controller) {
+        // Check if we have notes but no Gong calls
+        const hasNotes = controller?.activities.filter(a => a.type === 'note').length > 0;
+        const hasGongCalls = controller?.activities.filter(a => a.type === 'gong').length > 0;
+        
+        let message = 'Try adjusting your filters to see more activities';
+        let icon = 'fa-inbox';
+        
+        if (!hasNotes && !hasGongCalls) {
+            message = 'No activities loaded yet. Check console for data loading details.';
+            icon = 'fa-spinner fa-spin';
+        } else if (hasNotes && !hasGongCalls) {
+            message = `Showing ${controller.activities.length} notes. Gong calls data not available - check Domo dataset mapping for /data/v1/calls`;
+            icon = 'fa-info-circle';
+        }
+        
         return `
             <div class="activity-empty-state">
                 <div class="empty-state-icon">
-                    <i class="fas fa-inbox"></i>
+                    <i class="fas ${icon}"></i>
                 </div>
                 <h3>No Activities Found</h3>
-                <p>Try adjusting your filters to see more activities</p>
+                <p>${message}</p>
             </div>
         `;
     }
