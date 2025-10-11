@@ -13,6 +13,7 @@ class SignalsStore extends Store {
             comments: new Map(),
             actionPlans: new Map(),
             notes: new Map(),
+            gongCalls: new Map(),
             portfolioData: []
         };
         
@@ -28,7 +29,9 @@ class SignalsStore extends Store {
             plansByAccount: new Map(),
             plansByAction: new Map(),
             notesByAccount: new Map(),
-            pinnedNotes: new Set()
+            pinnedNotes: new Set(),
+            gongCallsByAccount: new Map(),
+            gongCallsByOpportunity: new Map()
         };
         
         // Initialize state structure (for backward compatibility)
@@ -217,6 +220,11 @@ class SignalsStore extends Store {
                 break;
             case Actions.Types.NOTE_DESELECTED:
                 this.handleNoteDeselected(action);
+                break;
+                
+            // Gong Calls
+            case Actions.Types.GONG_CALLS_LOADED:
+                this.handleGongCallsLoaded(payload);
                 break;
                 
             // UI State
@@ -1868,6 +1876,53 @@ class SignalsStore extends Store {
     getSelectedNote() {
         if (!this.state.selectedNoteId) return null;
         return this.normalizedData.notes.get(this.state.selectedNoteId);
+    }
+    
+    // =========================================================================
+    // GONG CALLS HANDLERS
+    // =========================================================================
+    
+    handleGongCallsLoaded(payload) {
+        const { calls, callsByAccount, callsByOpportunity } = payload;
+        
+        console.log(`📞 Store: Loading ${calls.size} Gong calls`);
+        
+        // Store calls in normalized data
+        this.normalizedData.gongCalls = calls;
+        
+        // Store indexes
+        this.indexes.gongCallsByAccount = callsByAccount;
+        this.indexes.gongCallsByOpportunity = callsByOpportunity;
+        
+        console.log(`✅ Store: ${calls.size} Gong calls loaded successfully`);
+        this.emitChange('gong_calls:loaded');
+    }
+    
+    // Gong Calls Query Methods
+    getGongCall(callId) {
+        return this.normalizedData.gongCalls.get(callId);
+    }
+    
+    getGongCallsByAccount(accountId) {
+        const callIds = this.indexes.gongCallsByAccount.get(accountId);
+        if (!callIds) return [];
+        
+        return Array.from(callIds)
+            .map(id => this.normalizedData.gongCalls.get(id))
+            .filter(call => call !== undefined);
+    }
+    
+    getGongCallsByOpportunity(opportunityId) {
+        const callIds = this.indexes.gongCallsByOpportunity.get(opportunityId);
+        if (!callIds) return [];
+        
+        return Array.from(callIds)
+            .map(id => this.normalizedData.gongCalls.get(id))
+            .filter(call => call !== undefined);
+    }
+    
+    getAllGongCalls() {
+        return Array.from(this.normalizedData.gongCalls.values());
     }
 }
 

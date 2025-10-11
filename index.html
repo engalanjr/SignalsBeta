@@ -52,6 +52,10 @@
                     <i class="fas fa-tasks"></i>
                     Action Plans
                 </button>
+                <button class="nav-tab" data-tab="activity-feed">
+                    <i class="fas fa-stream"></i>
+                    Activity Feed
+                </button>
                 <button class="nav-tab" data-tab="whitespace">
                     <i class="fas fa-th"></i>
                     Whitespace
@@ -485,6 +489,11 @@
                     <!-- Action items will be populated here -->
                 </div>
             </div>
+
+            <!-- Activity Feed Tab -->
+            <div id="activity-feed" class="tab-content">
+                <!-- Activity feed content will be dynamically generated here -->
+            </div>
         </main>
 
         <!-- Create Action Plan Drawer -->
@@ -594,6 +603,7 @@
     
     <!-- Flux Repositories and Services -->
     <script src="js/flux/repositories/SignalsRepository.js"></script>
+    <script src="js/flux/repositories/GongCallsRepository.js"></script>
     <script src="js/flux/services/FeedbackService.js"></script>
     <script src="js/flux/services/ActionFeedbackService.js"></script>
     <script src="js/flux/services/CommentsService.js"></script>
@@ -624,6 +634,7 @@
     <script src="js/ActionsRenderer.js"></script>
     <script src="js/WhitespaceRenderer.js?v=5"></script>
     <script src="js/NotesRenderer.js"></script>
+    <script src="js/ActivityFeedRenderer.js"></script>
     
     <!-- Flux Controllers (must load after renderers and Flux infrastructure) -->
     <script src="js/controllers/FeedbackController.js"></script>
@@ -634,6 +645,7 @@
     <script src="js/controllers/HomeController.js"></script>
     <script src="js/controllers/RecommendationInboxController.js"></script>
     <script src="js/controllers/NotesController.js"></script>
+    <script src="js/controllers/ActivityFeedController.js"></script>
     <script src="js/controllers/AppController.js"></script>
 
 

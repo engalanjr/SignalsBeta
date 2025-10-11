@@ -52,6 +52,11 @@ class Actions {
         NOTE_SELECTED: 'NOTE_SELECTED',
         NOTE_DESELECTED: 'NOTE_DESELECTED',
         
+        // Gong Calls
+        GONG_CALLS_LOAD_REQUESTED: 'GONG_CALLS_LOAD_REQUESTED',
+        GONG_CALLS_LOADED: 'GONG_CALLS_LOADED',
+        GONG_CALLS_LOAD_FAILED: 'GONG_CALLS_LOAD_FAILED',
+        
         // UI State
         LOADING_SHOWN: 'LOADING_SHOWN',
         LOADING_HIDDEN: 'LOADING_HIDDEN',
@@ -552,6 +557,34 @@ class Actions {
             type: this.Types.NOTE_DESELECTED,
             timestamp: Date.now()
         });
+    }
+    
+    // Gong Calls Actions
+    static loadGongCallsRequested() {
+        return {
+            type: this.Types.GONG_CALLS_LOAD_REQUESTED,
+            timestamp: Date.now()
+        };
+    }
+    
+    static gongCallsLoaded(calls, callsByAccount, callsByOpportunity) {
+        return {
+            type: this.Types.GONG_CALLS_LOADED,
+            payload: {
+                calls,
+                callsByAccount,
+                callsByOpportunity
+            },
+            timestamp: Date.now()
+        };
+    }
+    
+    static gongCallsLoadFailed(error) {
+        return {
+            type: this.Types.GONG_CALLS_LOAD_FAILED,
+            payload: { error },
+            timestamp: Date.now()
+        };
     }
 }
 

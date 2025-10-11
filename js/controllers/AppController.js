@@ -51,9 +51,11 @@ class AppController {
         this.controllers.set('feedback', new FeedbackController());
         this.controllers.set('comments', new CommentsController());
         this.controllers.set('notes', new NotesController());
+        this.controllers.set('activityFeed', new ActivityFeedController());
         
-        // Make notesController globally available for renderer event handlers
+        // Make notesController and activityFeedController globally available for renderer event handlers
         window.notesController = this.controllers.get('notes');
+        window.activityFeedController = this.controllers.get('activityFeed');
         
         console.log('🎯 Focused controllers initialized');
     }
@@ -359,6 +361,15 @@ class AppController {
                 } else {
                     console.error('🚨 CRITICAL: ActionsRenderer not available');
                 }
+                break;
+            case 'activity-feed':
+                // Handle activity feed tab
+                console.log('📊 Rendering Activity Feed tab');
+                const activityFeedTab = document.getElementById('activity-feed');
+                if (activityFeedTab) activityFeedTab.classList.add('active');
+                this.controllers.get('activityFeed')?.render().catch(error => {
+                    console.error('🚨 ERROR rendering activity feed:', error);
+                });
                 break;
             default:
                 console.warn(`Unknown tab: ${this.currentTab}`);

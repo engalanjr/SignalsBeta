@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gong Calls Repository Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .call-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background: #fafafa;
+        }
+        .call-card h3 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+        }
+        .call-meta {
+            font-size: 0.9em;
+            color: #666;
+            margin: 5px 0;
+        }
+        .call-recap {
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border-left: 3px solid #007bff;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .query-section {
+            margin-top: 20px;
+        }
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 300px;
+            margin-right: 10px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎙️ Gong Calls Repository Test</h1>
+    
+    <div class="container">
+        <h2>Load Data</h2>
+        <button id="loadBtn" onclick="loadGongCalls()">Load Gong Calls</button>
+        <div id="status"></div>
+        
+        <div id="stats" style="display:none;">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="number" id="totalCalls">0</div>
+                    <div class="label">Total Calls</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="accountsWithCalls">0</div>
+                    <div class="label">Accounts with Calls</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="opportunitiesWithCalls">0</div>
+                    <div class="label">Opportunities with Calls</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container query-section" id="querySection" style="display:none;">
+        <h2>Query Calls</h2>
+        
+        <div style="margin-bottom: 20px;">
+            <button onclick="testGetAllCalls()">Get All Calls</button>
+            <button onclick="testGetRecentCalls()">Get Recent Calls (30 days)</button>
+            <button onclick="testGetByMeetingType('External')">External Meetings Only</button>
+            <button onclick="testGetByMeetingType('Internal')">Internal Meetings Only</button>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <input type="text" id="accountIdInput" placeholder="Enter Account ID" value="0015w00002a1T9QAAU">
+            <button onclick="testGetByAccount()">Get Calls by Account</button>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <input type="text" id="searchInput" placeholder="Search calls...">
+            <button onclick="testSearchCalls()">Search</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <!-- Load Dependencies -->
+    <script>
+        // Mock domo object for testing with CSV fallback
+        window.domo = {
+            get: function(path) {
+                console.log('📡 Mock domo.get called:', path);
+                return Promise.reject(new Error('Using CSV fallback for testing'));
+            }
+        };
+        
+        // Mock dispatcher
+        window.dispatcher = {
+            dispatch: function(action) {
+                console.log('📨 Action dispatched:', action.type);
+                if (action.type === 'GONG_CALLS_LOADED') {
+                    console.log('✅ Gong Calls loaded with payload:', {
+                        calls: action.payload.calls.size,
+                        accounts: action.payload.callsByAccount.size,
+                        opportunities: action.payload.callsByOpportunity.size
+                    });
+                }
+            }
+        };
+    </script>
+    
+    <script src="js/flux/Dispatcher.js"></script>
+    <script src="js/flux/Store.js"></script>
+    <script src="js/flux/Actions.js"></script>
+    <script src="js/flux/SignalsStore.js"></script>
+    <script src="js/flux/repositories/GongCallsRepository.js"></script>
+    
+    <script>
+        let isLoaded = false;
+        
+        async function loadGongCalls() {
+            const statusEl = document.getElementById('status');
+            const loadBtn = document.getElementById('loadBtn');
+            
+            statusEl.innerHTML = '<div class="status loading">Loading Gong Calls from CSV...</div>';
+            loadBtn.disabled = true;
+            
+            try {
+                await GongCallsRepository.loadGongCalls();
+                
+                // Get stats
+                const allCalls = signalsStore.getAllGongCalls();
+                const accountsCount = signalsStore.indexes.gongCallsByAccount.size;
+                const opportunitiesCount = signalsStore.indexes.gongCallsByOpportunity.size;
+                
+                statusEl.innerHTML = `<div class="status success">
+                    ✅ Successfully loaded ${allCalls.length} Gong calls!
+                </div>`;
+                
+                // Update stats
+                document.getElementById('totalCalls').textContent = allCalls.length;
+                document.getElementById('accountsWithCalls').textContent = accountsCount;
+                document.getElementById('opportunitiesWithCalls').textContent = opportunitiesCount;
+                
+                // Show stats and query section
+                document.getElementById('stats').style.display = 'block';
+                document.getElementById('querySection').style.display = 'block';
+                
+                isLoaded = true;
+                
+            } catch (error) {
+                statusEl.innerHTML = `<div class="status error">
+                    ❌ Error: ${error.message}
+                </div>`;
+                console.error('Failed to load:', error);
+                loadBtn.disabled = false;
+            }
+        }
+        
+        function displayCalls(calls, title) {
+            const resultsEl = document.getElementById('results');
+            
+            if (!calls || calls.length === 0) {
+                resultsEl.innerHTML = `<p><strong>${title}</strong>: No calls found</p>`;
+                return;
+            }
+            
+            let html = `<h3>${title} (${calls.length} calls)</h3>`;
+            
+            // Show first 10 calls
+            const displayCalls = calls.slice(0, 10);
+            
+            displayCalls.forEach(call => {
+                html += `
+                    <div class="call-card">
+                        <h3>${call.callTitle || 'Untitled Call'}</h3>
+                        <div class="call-meta">
+                            <strong>Account:</strong> ${call.accountName || 'N/A'}<br>
+                            <strong>Date:</strong> ${call.callScheduledDate || 'N/A'}<br>
+                            <strong>Duration:</strong> ${call.callDurationFormatted || 'N/A'}<br>
+                            <strong>Meeting Type:</strong> ${call.meetingType || 'N/A'}<br>
+                            <strong>Owner:</strong> ${call.callOwnerFullName || 'N/A'}<br>
+                            <strong>Attendees:</strong> ${call.callAttendeesSimple || 'N/A'}
+                        </div>
+                        ${call.callRecap ? `
+                            <div class="call-recap">
+                                <strong>Recap:</strong><br>
+                                ${call.callRecap.substring(0, 200)}${call.callRecap.length > 200 ? '...' : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            if (calls.length > 10) {
+                html += `<p><em>Showing first 10 of ${calls.length} calls</em></p>`;
+            }
+            
+            resultsEl.innerHTML = html;
+        }
+        
+        function testGetAllCalls() {
+            const calls = GongCallsRepository.getAllCalls();
+            displayCalls(calls, 'All Calls');
+        }
+        
+        function testGetRecentCalls() {
+            const calls = GongCallsRepository.getRecentCalls(30);
+            displayCalls(calls, 'Recent Calls (Last 30 Days)');
+        }
+        
+        function testGetByAccount() {
+            const accountId = document.getElementById('accountIdInput').value;
+            if (!accountId) {
+                alert('Please enter an Account ID');
+                return;
+            }
+            const calls = GongCallsRepository.getCallsByAccount(accountId);
+            displayCalls(calls, `Calls for Account: ${accountId}`);
+        }
+        
+        function testSearchCalls() {
+            const query = document.getElementById('searchInput').value;
+            if (!query) {
+                alert('Please enter a search term');
+                return;
+            }
+            const calls = GongCallsRepository.searchCalls(query);
+            displayCalls(calls, `Search Results for: "${query}"`);
+        }
+        
+        function testGetByMeetingType(type) {
+            const calls = GongCallsRepository.getCallsByMeetingType(type);
+            displayCalls(calls, `${type} Meetings`);
+        }
+    </script>
+</body>
+</html>
+
