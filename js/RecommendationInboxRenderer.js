@@ -160,10 +160,21 @@ class RecommendationInboxRenderer {
         const timeAgo = FormatUtils.formatCommentTime(action.lastUpdated || action.createdAt);
         const confidence = Math.round((action.confidence || 0.85) * 100);
         
-        const hasPlan = this.hasActionPlan(action);
+        // Get action status with new logic
+        const status = this.getActionStatus(action);
+        
+        // Determine icon based on status
+        let statusIcon = 'fa-bolt'; // Default for ACTION REQUIRED
+        if (status.cssClass === 'status-plan-created') {
+            statusIcon = 'fa-check-circle';
+        } else if (status.cssClass === 'status-already-doing') {
+            statusIcon = 'fa-check-circle';
+        } else if (status.cssClass === 'status-not-accurate') {
+            statusIcon = 'fa-exclamation-triangle';
+        }
         
         return `
-            <div class="inbox-list-item ${isSelected ? 'selected' : ''} ${isNew ? 'is-new' : ''} priority-${priorityClass}" 
+            <div class="inbox-list-item ${isSelected ? 'selected' : ''} ${isNew ? 'is-new' : ''} ${status.requiresAction ? 'requires-action' : 'action-taken'} priority-${priorityClass}" 
                  data-action-id="${actionId}"
                  data-account-id="${action.accountId || ''}">
                 <div class="list-item-priority-bar priority-bar-${priorityClass}"></div>
@@ -185,7 +196,7 @@ class RecommendationInboxRenderer {
                     </div>
                     <div class="list-item-preview">${whySummary.substring(0, 70)}${whySummary.length > 70 ? '...' : ''}</div>
                     <div class="list-item-status">
-                        ${hasPlan ? '<span class="status-badge status-acted"><i class="fas fa-check-circle"></i> Plan Created</span>' : '<span class="status-badge status-action-required"><i class="fas fa-bolt"></i> Action Required</span>'}
+                        <span class="status-badge ${status.cssClass}"><i class="fas ${statusIcon}"></i> ${status.label}</span>
                     </div>
                 </div>
             </div>
@@ -240,10 +251,13 @@ class RecommendationInboxRenderer {
         const confidence = Math.round((action.confidence || 0.85) * 100);
         const status = action.status || 'PENDING';
         
-        const existingPlan = this.getActionPlanForActionId(action.id);
+        console.log(`🎯 Rendering action: id="${action.id}", action_id="${action.action_id}"`);
+        // Use action_id as fallback since some actions only have action_id, not id
+        const actionId = action.id || action.action_id;
+        const existingPlan = this.getActionPlanForActionId(actionId);
+        console.log(`📝 existingPlan result for actionId="${actionId}":`, existingPlan ? `FOUND (${existingPlan.id})` : 'NOT FOUND');
         
         // Get feedback counts and user's feedback
-        const actionId = action.id || action.action_id;
         const counts = typeof ActionFeedbackService !== 'undefined' 
             ? ActionFeedbackService.getActionCounts(actionId) 
             : { useful: 0, notRelevant: 0 };
@@ -276,31 +290,18 @@ class RecommendationInboxRenderer {
                                 <i class="fas fa-bolt"></i> Create Plan
                             </button>
                         `}
-                        <button class="detail-action-btn btn-secondary ${isUseful ? 'active-useful' : ''}" 
+                        <button class="detail-action-btn btn-already-doing ${isUseful ? 'active-useful' : ''}" 
                                 data-action="useful" 
-                                title="${isUseful ? 'Remove Useful Mark' : 'Mark as Useful'}">
-                            <i class="${isUseful ? 'fas' : 'far'} fa-thumbs-up"></i>
-                            ${isUseful ? '<i class="fas fa-check-circle feedback-check"></i>' : ''}
+                                title="${isUseful ? 'Remove Already Doing Mark' : 'Mark as Already Doing'}">
+                            <i class="fas fa-check-circle"></i> Already Doing
                             ${counts.useful > 0 ? `<span class="count-badge">${counts.useful}</span>` : ''}
                         </button>
-                        <button class="detail-action-btn btn-secondary ${isNotRelevant ? 'active-not-relevant' : ''}" 
+                        <button class="detail-action-btn btn-not-accurate ${isNotRelevant ? 'active-not-relevant' : ''}" 
                                 data-action="not-relevant" 
-                                title="${isNotRelevant ? 'Remove Not Relevant Mark' : 'Mark as Not Relevant'}">
-                            <i class="${isNotRelevant ? 'fas' : 'far'} fa-thumbs-down"></i>
-                            ${isNotRelevant ? '<i class="fas fa-check-circle feedback-check"></i>' : ''}
+                                title="${isNotRelevant ? 'Remove Not Accurate Mark' : 'Mark as Not Accurate'}">
+                            <i class="fas fa-exclamation-triangle"></i> Not Accurate
                             ${counts.notRelevant > 0 ? `<span class="count-badge">${counts.notRelevant}</span>` : ''}
                         </button>
-                        <div class="detail-more-dropdown">
-                            <button class="detail-action-btn btn-secondary" data-action="more" title="More Actions">
-                                <i class="fas fa-ellipsis-v"></i>
-                            </button>
-                            <div class="detail-more-menu" style="display: none;">
-                                <button data-action="snooze"><i class="fas fa-clock"></i> Snooze</button>
-                                <button data-action="share"><i class="fas fa-share"></i> Share</button>
-                                <button data-action="assign"><i class="fas fa-user-plus"></i> Assign to...</button>
-                                <button data-action="copy-link"><i class="fas fa-link"></i> Copy Link</button>
-                            </div>
-                        </div>
                     </div>
                 </div>
                 <div class="detail-header-bottom">
@@ -778,28 +779,6 @@ class RecommendationInboxRenderer {
             case 'not-relevant':
                 dispatcher.dispatch(Actions.markActionNotRelevant(actionId));
                 break;
-            case 'more':
-                const menu = event.target.closest('.detail-more-dropdown').querySelector('.detail-more-menu');
-                if (menu) {
-                    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-                }
-                break;
-            case 'snooze':
-                console.log('Snooze action:', actionId);
-                // TODO: Implement snooze functionality
-                break;
-            case 'share':
-                console.log('Share action:', actionId);
-                // TODO: Implement share functionality
-                break;
-            case 'assign':
-                console.log('Assign action:', actionId);
-                // TODO: Implement assign functionality
-                break;
-            case 'copy-link':
-                console.log('Copy link:', actionId);
-                // TODO: Implement copy link functionality
-                break;
         }
     }
 
@@ -918,10 +897,23 @@ class RecommendationInboxRenderer {
     }
 
     /**
-     * Sort actions - default to created_at desc
+     * Sort actions - prioritize ACTION REQUIRED, then by date
      */
     static sortActions(actions, viewState) {
         return actions.sort((a, b) => {
+            // Get status for both actions
+            const statusA = this.getActionStatus(a);
+            const statusB = this.getActionStatus(b);
+            
+            // First priority: Action Required items come first
+            if (statusA.requiresAction && !statusB.requiresAction) {
+                return -1; // a comes before b
+            }
+            if (!statusA.requiresAction && statusB.requiresAction) {
+                return 1; // b comes before a
+            }
+            
+            // Second priority: Sort by date (newest first)
             const dateA = new Date(a.created_at || a.createdAt || 0);
             const dateB = new Date(b.created_at || b.createdAt || 0);
             return dateB - dateA; // Descending (newest first)
@@ -1032,6 +1024,55 @@ class RecommendationInboxRenderer {
         if (!interactions || !action.id) return false;
         const actionInteractions = interactions.get(action.id) || [];
         return actionInteractions.some(i => i.interactionType === 'not_relevant');
+    }
+    
+    /**
+     * Get action status label and metadata
+     * Returns: { label, cssClass, requiresAction }
+     */
+    static getActionStatus(action) {
+        const actionId = action.id || action.action_id;
+        
+        // Check if plan exists
+        const hasPlan = this.hasActionPlan(action);
+        
+        // Check for user interactions
+        const userFeedback = typeof ActionFeedbackService !== 'undefined'
+            ? ActionFeedbackService.getUserActionFeedback(actionId)
+            : null;
+        
+        // Priority 1: If interaction exists, show interaction type
+        if (userFeedback === 'useful') {
+            return {
+                label: 'ALREADY DOING',
+                cssClass: 'status-already-doing',
+                requiresAction: false
+            };
+        }
+        
+        if (userFeedback === 'not_relevant') {
+            return {
+                label: 'NOT ACCURATE',
+                cssClass: 'status-not-accurate',
+                requiresAction: false
+            };
+        }
+        
+        // Priority 2: If plan exists, show plan created
+        if (hasPlan) {
+            return {
+                label: 'PLAN CREATED',
+                cssClass: 'status-plan-created',
+                requiresAction: false
+            };
+        }
+        
+        // Default: Action required
+        return {
+            label: 'ACTION REQUIRED',
+            cssClass: 'status-action-required',
+            requiresAction: true
+        };
     }
 
     /**

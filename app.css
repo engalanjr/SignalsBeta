@@ -7978,6 +7978,11 @@ a:hover {
     -webkit-box-orient: vertical;
 }
 
+/* Unbold title for items that don't require action */
+.inbox-list-item.action-taken .list-item-title {
+    font-weight: 400;
+}
+
 .list-item-meta {
     display: flex;
     align-items: center;
@@ -8051,11 +8056,32 @@ a:hover {
 .status-badge.status-action-required {
     background: #fff3e0;
     color: var(--warning-orange);
+    font-weight: 600;
 }
 
+.status-badge.status-plan-created {
+    background: #e8f5e9;
+    color: var(--healthy-green);
+    font-weight: 400;
+}
+
+.status-badge.status-already-doing {
+    background: #e8f5e9;
+    color: var(--success-color);
+    font-weight: 400;
+}
+
+.status-badge.status-not-accurate {
+    background: #fff3e0;
+    color: var(--warning-color);
+    font-weight: 400;
+}
+
+/* Legacy status-acted for backwards compatibility */
 .status-badge.status-acted {
     background: #e8f5e9;
     color: var(--healthy-green);
+    font-weight: 400;
 }
 
 /* Detail Pane (Right) */
@@ -8189,55 +8215,68 @@ a:hover {
     color: var(--domo-blue);
 }
 
-/* Action Feedback Button Active States */
-.detail-action-btn.active-useful {
-    background: var(--domo-blue) !important;
+/* Already Doing Button - Green/Success branding */
+.detail-action-btn.btn-already-doing {
+    background: var(--neutral-white);
+    border-color: var(--border-color);
+    color: var(--success-color);
+}
+
+.detail-action-btn.btn-already-doing:hover {
+    background: var(--success-light);
+    border-color: var(--success-color);
+    color: var(--success-dark);
+}
+
+.detail-action-btn.btn-already-doing.active-useful {
+    background: var(--success-color) !important;
     color: white !important;
-    border-color: var(--domo-blue) !important;
-    box-shadow: 0 2px 8px rgba(0, 125, 186, 0.3);
+    border-color: var(--success-color) !important;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
     animation: feedbackPulse 0.4s ease-out;
 }
 
-.detail-action-btn.active-useful i {
+.detail-action-btn.btn-already-doing.active-useful i {
     transform: scale(1.1);
 }
 
-.detail-action-btn.active-useful .feedback-check {
-    color: white;
-    margin-left: -4px;
-    animation: iconPop 0.4s ease-out;
-}
-
-.detail-action-btn.active-useful:hover {
-    background: var(--domo-blue-dark) !important;
-    border-color: var(--domo-blue-dark) !important;
+.detail-action-btn.btn-already-doing.active-useful:hover {
+    background: var(--success-dark) !important;
+    border-color: var(--success-dark) !important;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 125, 186, 0.4);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
 }
 
-.detail-action-btn.active-not-relevant {
-    background: #ff9800 !important;
+/* Not Accurate Button - Warning/Red branding */
+.detail-action-btn.btn-not-accurate {
+    background: var(--neutral-white);
+    border-color: var(--border-color);
+    color: var(--warning-color);
+}
+
+.detail-action-btn.btn-not-accurate:hover {
+    background: var(--warning-light);
+    border-color: var(--warning-color);
+    color: var(--warning-dark);
+}
+
+.detail-action-btn.btn-not-accurate.active-not-relevant {
+    background: var(--warning-color) !important;
     color: white !important;
-    border-color: #ff9800 !important;
-    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+    border-color: var(--warning-color) !important;
+    box-shadow: 0 2px 8px rgba(213, 111, 76, 0.3);
     animation: feedbackPulse 0.4s ease-out;
 }
 
-.detail-action-btn.active-not-relevant i {
+.detail-action-btn.btn-not-accurate.active-not-relevant i {
     transform: scale(1.1);
 }
 
-.detail-action-btn.active-not-relevant .feedback-check {
-    color: white;
-    margin-left: -4px;
-    animation: iconPop 0.4s ease-out;
-}
-
-.detail-action-btn.active-not-relevant:hover {
-    background: #f57c00 !important;
-    border-color: #f57c00 !important;
+.detail-action-btn.btn-not-accurate.active-not-relevant:hover {
+    background: var(--warning-dark) !important;
+    border-color: var(--warning-dark) !important;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+    box-shadow: 0 4px 12px rgba(213, 111, 76, 0.4);
 }
 
 .detail-action-btn .count-badge {
@@ -8252,7 +8291,9 @@ a:hover {
 }
 
 .detail-action-btn.active-useful .count-badge,
-.detail-action-btn.active-not-relevant .count-badge {
+.detail-action-btn.active-not-relevant .count-badge,
+.detail-action-btn.btn-already-doing.active-useful .count-badge,
+.detail-action-btn.btn-not-accurate.active-not-relevant .count-badge {
     background: rgba(255, 255, 255, 0.4);
     color: white;
 }
@@ -8291,50 +8332,6 @@ a:hover {
         opacity: 1;
         transform: scale(1);
     }
-}
-
-.detail-more-dropdown {
-    position: relative;
-}
-
-.detail-more-menu {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 8px;
-    background: var(--neutral-white);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    min-width: 200px;
-}
-
-.detail-more-menu button {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 12px 16px;
-    border: none;
-    background: none;
-    text-align: left;
-    font-size: 14px;
-    color: var(--neutral-gray-700);
-    cursor: pointer;
-    transition: background 0.2s ease;
-}
-
-.detail-more-menu button:hover {
-    background: var(--domo-blue-light);
-}
-
-.detail-more-menu button:first-child {
-    border-radius: 8px 8px 0 0;
-}
-
-.detail-more-menu button:last-child {
-    border-radius: 0 0 8px 8px;
 }
 
 .detail-header-bottom {
@@ -10248,6 +10245,194 @@ a:hover {
     cursor: pointer;
 }
 
+/* Signal/Action Pill Styles */
+.signal-pill-cell {
+    padding: 4px !important;
+}
+
+.signal-action-pill {
+    display: inline-flex;
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--neutral-gray-100);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    font-size: 11px;
+    line-height: 1;
+}
+
+.pill-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    min-width: 50px;
+    border-right: 1px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.2s ease;
+    cursor: default;
+}
+
+.pill-section:last-child {
+    border-right: none;
+}
+
+.pill-section:hover {
+    transform: scale(1.05);
+    z-index: 1;
+}
+
+.risk-section {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+    color: white;
+}
+
+.growth-section {
+    background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+    color: white;
+}
+
+.action-section {
+    background: linear-gradient(135deg, #748ffc 0%, #5c7cfa 100%);
+    color: white;
+}
+
+.pill-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 2px;
+    opacity: 0.9;
+}
+
+.pill-count {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* Health Grade Sections Styles */
+.health-grade-cell {
+    padding: 4px !important;
+}
+
+.health-grade-sections {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+}
+
+.hg-current {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 14px;
+    background: var(--neutral-gray-200);
+    color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.hg-current.grade-a {
+    background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+    color: white;
+}
+
+.hg-current.grade-b {
+    background: linear-gradient(135deg, #74c0fc 0%, #339af0 100%);
+    color: white;
+}
+
+.hg-current.grade-c {
+    background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%);
+    color: white;
+}
+
+.hg-current.grade-d {
+    background: linear-gradient(135deg, #ffa94d 0%, #fd7e14 100%);
+    color: white;
+}
+
+.hg-current.grade-f {
+    background: linear-gradient(135deg, #ff6b6b 0%, #fa5252 100%);
+    color: white;
+}
+
+.hg-changes-pill {
+    display: inline-flex;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--neutral-gray-100);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.hg-change {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    min-width: 45px;
+    font-weight: 600;
+    font-size: 11px;
+    background: white;
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+    cursor: default;
+}
+
+.hg-change:last-child {
+    border-right: none;
+}
+
+.hg-change:hover {
+    transform: scale(1.05);
+    z-index: 1;
+}
+
+.hg-change.hg-negative {
+    background: linear-gradient(135deg, #ff6b6b 0%, #fa5252 100%);
+    color: white;
+}
+
+.hg-change.hg-positive {
+    background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+    color: white;
+}
+
+/* FCST Cell Styling */
+.fcst-cell {
+    font-weight: 600;
+}
+
+.fcst-cell.negative {
+    color: #fa5252;
+}
+
+/* Upsell Cell Styling */
+.upsell-cell {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Last Renewal Cell Styling */
+.renewal {
+    font-weight: 500;
+}
+
+.renewal-downsell {
+    background: #FFF4E6 !important; /* Light branded yellow/cream for downsells */
+    font-weight: 600;
+    color: #D97706; /* Darker orange/brown text for contrast */
+}
+
+.renewal-other {
+    color: var(--neutral-gray-500);
+    font-style: italic;
+}
+
 .recommendation-count {
     text-align: center;
     font-weight: 600;
@@ -10291,6 +10476,13 @@ a:hover {
     color: var(--critical-red);
 }
 
+/* HG Change warning - for drops greater than 10% */
+.percentage.hg-warning {
+    color: var(--warning-orange);
+    font-weight: 700;
+    background: rgba(253, 126, 20, 0.1);
+}
+
 .category {
     text-align: center;
     padding: 4px 8px;
@@ -10300,13 +10492,27 @@ a:hover {
     min-width: 90px;
 }
 
-.category-wcp {
+/* Category color rules */
+.category-closed-won {
     background: var(--healthy-green);
     color: white;
+    font-weight: 600;
+}
+
+.category-closed-lost {
+    background: var(--critical-red);
+    color: white;
+    font-weight: 600;
 }
 
 .category-risk {
     background: var(--warning-orange);
+    color: white;
+    font-weight: 600;
+}
+
+.category-wcp {
+    background: var(--healthy-green);
     color: white;
 }
 
@@ -10381,6 +10587,17 @@ a:hover {
 
 .active-services.inactive {
     color: var(--text-secondary);
+}
+
+/* Active Services color rules */
+.active-services-yes {
+    color: var(--healthy-green);
+    font-weight: 700;
+}
+
+.active-services-no {
+    color: var(--neutral-gray-900);
+    font-weight: 500;
 }
 
 .services-summary {

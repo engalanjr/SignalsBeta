@@ -462,6 +462,7 @@ class SignalsRepository {
             actionPlans: normalizedActionPlans,
             notes: normalizedNotes,
             portfolioData,
+            rawSignals, // Include raw signals for counting in HomeRenderer
             
             // Relationship indexes
             signalsByAccount,
@@ -994,8 +995,17 @@ class SignalsRepository {
     
     /**
      * Transform portfolio row from CSV format to expected format
+     * @param {Object} row - Raw portfolio row data
+     * @param {Array} allSignals - All signals for counting (optional)
+     * @returns {Object} - Transformed row with all required fields
      */
-    static transformPortfolioRow(row) {
+    static transformPortfolioRow(row, allSignals = []) {
+        const accountId = row.bks_account_id || row['Account Id'];
+        
+        // Count signals by polarity and smart actions
+        const signalCounts = this.countSignalsByPolarity(accountId, allSignals);
+        const smartActionCount = this.countSmartActions(accountId, allSignals);
+        
         // Map CSV fields to expected HomeRenderer fields
         return {
             // Keep original fields for filtering
@@ -1003,17 +1013,39 @@ class SignalsRepository {
             
             // Map to expected display fields
             Account: row.bks_account_name || row['account name'] || '',
+            'Renewal QTR': row.bks_fq || '',
+            Baseline: row.bks_renewal_baseline_usd || '',
+            'FCST': row.bks_forecast_new || row.bks_renewal_amount || '',
+            'FCST Delta': row.bks_forecast_delta || '',
+            
+            // Signal and action counts
+            'Risk Signal Count': signalCounts.riskCount,
+            'Growth Lever Count': signalCounts.growthCount,
+            'Smart Action Count': smartActionCount,
+            
+            Category: this.mapCategory(row.bks_stage) || '',
+            'Pacing %': row['% Pacing'] || '',
+            
+            // Health Grade fields
+            'Current HG': row.hgtrends_health_grade || '',
+            'HG 90 Change': row.hgtrends_90day || '',
+            'HG 180 Change': row.hgtrends_180day || '',
+            'HG 360 Change': row.hgtrends_360day || '',
+            
+            // Upsell fields
+            'Active Upsells ACV': row.upsell_total_acv || 0,
+            'Active Upsells Count': row.upsell_total_opportunities || 0,
+            'Upsell Next Close FQ': row.upsell_FQ || '',
+            
+            'Last Renewal': this.formatLastRenewal(row.last_renewal_date, row.last_renewal_downsell_flag) || '',
+            
+            // Legacy fields for backwards compatibility
             Team: row.team_csm || row.bks_csm || '',
             QTR: row.bks_fq || '',
-            Baseline: row.bks_renewal_baseline_usd || '',
-            'FCST Delta': row.bks_forecast_delta || '',
-            Category: this.mapCategory(row.bks_stage) || '',
             'Credit Pacing %': row['% Pacing'] || '',
-            'Current HG': row.hgtrends_health_grade || '',
             'HG 90-Day Change': row.hgtrends_90day || '',
             'HG 180-Day Change': row.hgtrends_180day || '',
             'HG 360-Day Change': row.hgtrends_360day || '',
-            'Last Renewal': this.formatLastRenewal(row.last_renewal_date, row.last_renewal_downsell_flag) || '',
             'Support Package': row.hg_support_packages || '',
             'Ace Overview': row.hg_aceTeamMember || row.hg_acePackage || '',
             'Adoption Consultants': row['Adoption Consultants'] || '',
@@ -1069,6 +1101,66 @@ class SignalsRepository {
         const hasBillableHours = row.hg_billable_hours_remaining && parseFloat(row.hg_billable_hours_remaining) > 0;
         
         return (hasActiveProjects || hasServiceTeam || hasBillableHours) ? 'Yes' : 'No';
+    }
+    
+    /**
+     * Count signals by polarity for an account
+     * @param {string} accountId - Account ID to count signals for
+     * @param {Array} allSignals - All signals from data
+     * @returns {Object} - { riskCount, growthCount }
+     */
+    static countSignalsByPolarity(accountId, allSignals) {
+        if (!accountId || !allSignals || allSignals.length === 0) {
+            return { riskCount: 0, growthCount: 0 };
+        }
+        
+        const accountSignals = allSignals.filter(signal => {
+            const signalAccountId = signal.account_id || signal.bks_account_id || signal['Account Id'];
+            return signalAccountId === accountId;
+        });
+        
+        let riskCount = 0;
+        let growthCount = 0;
+        
+        accountSignals.forEach(signal => {
+            const polarity = (signal.signal_polarity || signal['Signal Polarity'] || '').toLowerCase().trim();
+            
+            if (polarity === 'risk' || polarity === 'risk signal') {
+                riskCount++;
+            } else if (polarity === 'growth' || polarity === 'growth lever' || polarity === 'enrichment') {
+                growthCount++;
+            }
+        });
+        
+        return { riskCount, growthCount };
+    }
+    
+    /**
+     * Count action IDs (Smart Actions/Recommendations) for an account
+     * @param {string} accountId - Account ID to count actions for
+     * @param {Array} allSignals - All signals from data (contains action_id)
+     * @returns {number} - Count of unique action_ids for this account
+     */
+    static countSmartActions(accountId, allSignals) {
+        if (!accountId || !allSignals || allSignals.length === 0) {
+            return 0;
+        }
+        
+        const accountSignals = allSignals.filter(signal => {
+            const signalAccountId = signal.account_id || signal.bks_account_id || signal['Account Id'];
+            return signalAccountId === accountId;
+        });
+        
+        // Get unique action_ids
+        const uniqueActionIds = new Set();
+        accountSignals.forEach(signal => {
+            const actionId = signal.action_id || signal['Action Id'];
+            if (actionId) {
+                uniqueActionIds.add(actionId);
+            }
+        });
+        
+        return uniqueActionIds.size;
     }
     
     /**
@@ -1187,18 +1279,54 @@ class SignalsRepository {
     static async loadActionPlans() {
         try {
             console.log('📋 Loading action plans...');
+            
+            // Clean up any invalid plans in localStorage (one-time cleanup)
+            this.cleanupInvalidLocalPlans();
+            
             const response = await domo.get('/domo/datastores/v1/collections/SignalAI.ActionPlans/documents');
             
             if (response && response.length > 0) {
                 console.log(`✅ Loaded ${response.length} action plans from API`);
                 // Extract content from wrapper if needed
-                return response.map(item => item.content || item);
+                const plans = response.map(item => item.content || item);
+                // Filter out plans with invalid actionId
+                return plans.filter(plan => plan.actionId && plan.actionId !== 'undefined');
             } else {
                 throw new Error('No action plans from API');
             }
         } catch (error) {
             console.log('Failed to load action plans from API:', error);
             return await this.loadFallbackActionPlans();
+        }
+    }
+    
+    /**
+     * Clean up invalid action plans from localStorage (one-time cleanup)
+     */
+    static cleanupInvalidLocalPlans() {
+        try {
+            const stored = localStorage.getItem('signalsai_action_plans');
+            if (!stored) return;
+            
+            const plans = JSON.parse(stored);
+            let cleanedCount = 0;
+            
+            // Remove plans with undefined or invalid actionId
+            Object.keys(plans).forEach(planId => {
+                const plan = plans[planId];
+                if (!plan.actionId || plan.actionId === 'undefined') {
+                    console.log(`🧹 Removing invalid plan from localStorage: ${planId} (actionId: ${plan.actionId})`);
+                    delete plans[planId];
+                    cleanedCount++;
+                }
+            });
+            
+            if (cleanedCount > 0) {
+                localStorage.setItem('signalsai_action_plans', JSON.stringify(plans));
+                console.log(`✅ Cleaned up ${cleanedCount} invalid plans from localStorage`);
+            }
+        } catch (error) {
+            console.warn('Could not clean up invalid plans:', error);
         }
     }
     
@@ -1219,7 +1347,7 @@ class SignalsRepository {
             
             // Transform the fallback data to match expected format
             // Extract content from the wrapper document structure and preserve Domo document ID
-            return data.map(planWrapper => {
+            const plans = data.map(planWrapper => {
                 const plan = planWrapper.content || planWrapper; // Handle both wrapped and unwrapped formats
                 const domoDocumentId = planWrapper.id; // Preserve Domo document ID from wrapper
                 
@@ -1252,6 +1380,9 @@ class SignalsRepository {
                     lastUpdatedByUserId: plan.lastUpdatedByUserId
                 };
             });
+            
+            // Filter out plans with invalid actionId
+            return plans.filter(plan => plan.actionId && plan.actionId !== 'undefined');
         } catch (error) {
             console.error('Failed to load fallback action plans:', error);
             return [];

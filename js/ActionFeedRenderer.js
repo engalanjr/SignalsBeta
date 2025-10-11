@@ -541,19 +541,29 @@ class ActionFeedRenderer {
         const state = store.getState();
         const actionPlans = state.actionPlans;
         
+        console.log(`🔍 Looking for plan with actionId: "${actionId}"`);
+        console.log(`📋 Total action plans in store: ${actionPlans.size}`);
+        
         // Find plan with matching actionId
         for (const [planId, plan] of actionPlans.entries()) {
+            console.log(`  Checking plan ${planId}: plan.actionId = "${plan.actionId}"`);
             if (plan.actionId === actionId) {
+                console.log(`  ✅ MATCH FOUND!`);
                 return plan;
             }
         }
         
+        console.log(`  ❌ No match found in store`);
+        
         // Fallback: check localStorage
         try {
             const localPlans = JSON.parse(localStorage.getItem('signalsai_action_plans') || '{}');
+            console.log(`📦 Checking localStorage, found ${Object.keys(localPlans).length} plans`);
             for (const planId in localPlans) {
                 const plan = localPlans[planId];
+                console.log(`  Checking localStorage plan ${planId}: plan.actionId = "${plan.actionId}"`);
                 if (plan.actionId === actionId) {
+                    console.log(`  ✅ MATCH FOUND in localStorage!`);
                     return plan;
                 }
             }
@@ -561,6 +571,7 @@ class ActionFeedRenderer {
             console.warn('Could not check local action plans:', error);
         }
         
+        console.log(`  ❌ No match found anywhere`);
         return null;
     }
 

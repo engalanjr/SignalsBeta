@@ -103,6 +103,12 @@ class ActionPlansService {
         }
         
         // Validate required parameters
+        if (!actionId || actionId === 'undefined') {
+            console.error('❌ Cannot create action plan: actionId is required');
+            dispatcher.dispatch(Actions.showMessage('Action ID is required for action plan creation', 'error'));
+            return null;
+        }
+        
         if (!accountId) {
             console.error('❌ Cannot create action plan: accountId is required');
             dispatcher.dispatch(Actions.showMessage('Account ID is required for action plan creation', 'error'));
