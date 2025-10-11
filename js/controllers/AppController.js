@@ -141,14 +141,16 @@ class AppController {
             createPlanBtn.addEventListener('click', () => {
                 console.log('🖱️ createPlanBtn clicked');
                 console.log('📋 currentDrawerData:', window.currentDrawerData);
-                
+                console.log('🔍 ActionFeedRenderer available?', typeof ActionFeedRenderer !== 'undefined');
+                console.log('🔍 window.ActionFeedRenderer available?', !!window.ActionFeedRenderer);
+
                 // Check which renderer opened the drawer
-                if (window.currentDrawerData && window.ActionFeedRenderer) {
+                if (window.currentDrawerData && typeof ActionFeedRenderer !== 'undefined') {
                     console.log('🎯 Calling ActionFeedRenderer.handleCreateOrUpdatePlan');
-                    window.ActionFeedRenderer.handleCreateOrUpdatePlan();
-                } else if (window.PortfolioRenderer) {
+                    ActionFeedRenderer.handleCreateOrUpdatePlan();
+                } else if (typeof PortfolioRenderer !== 'undefined') {
                     console.log('🎯 Calling PortfolioRenderer.createPlanFromDrawer');
-                    window.PortfolioRenderer.createPlanFromDrawer();
+                    PortfolioRenderer.createPlanFromDrawer();
                 }
             });
         } else {
@@ -157,22 +159,28 @@ class AppController {
         
         const cancelPlanBtn = document.getElementById('cancelPlanBtn');
         if (cancelPlanBtn) {
+            console.log('✅ cancelPlanBtn event listener attached');
             cancelPlanBtn.addEventListener('click', () => {
-                if (window.currentDrawerData && window.ActionFeedRenderer) {
-                    window.ActionFeedRenderer.closeAddToPlanDrawer();
-                } else if (window.PortfolioRenderer) {
-                    window.PortfolioRenderer.closeAddToPlanDrawer();
+                console.log('🖱️ cancelPlanBtn clicked');
+                if (window.currentDrawerData && typeof ActionFeedRenderer !== 'undefined') {
+                    console.log('🎯 Calling ActionFeedRenderer.closeAddToPlanDrawer');
+                    ActionFeedRenderer.closeAddToPlanDrawer();
+                } else if (typeof PortfolioRenderer !== 'undefined') {
+                    console.log('🎯 Calling PortfolioRenderer.closeAddToPlanDrawer');
+                    PortfolioRenderer.closeAddToPlanDrawer();
                 }
             });
+        } else {
+            console.warn('⚠️ cancelPlanBtn not found in DOM');
         }
         
         const closePlanDrawerBtn = document.getElementById('closePlanDrawerBtn');
         if (closePlanDrawerBtn) {
             closePlanDrawerBtn.addEventListener('click', () => {
-                if (window.currentDrawerData && window.ActionFeedRenderer) {
-                    window.ActionFeedRenderer.closeAddToPlanDrawer();
-                } else if (window.PortfolioRenderer) {
-                    window.PortfolioRenderer.closeAddToPlanDrawer();
+                if (window.currentDrawerData && typeof ActionFeedRenderer !== 'undefined') {
+                    ActionFeedRenderer.closeAddToPlanDrawer();
+                } else if (typeof PortfolioRenderer !== 'undefined') {
+                    PortfolioRenderer.closeAddToPlanDrawer();
                 }
             });
         }

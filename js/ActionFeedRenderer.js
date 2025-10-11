@@ -641,25 +641,39 @@ class ActionFeedRenderer {
      * Close the Add to Plan drawer
      */
     static closeAddToPlanDrawer() {
+        console.log('🚪 closeAddToPlanDrawer called');
         const drawer = document.getElementById('addToPlanDrawer');
         const backdrop = document.getElementById('addToPlanDrawerBackdrop');
-        
-        if (drawer) drawer.classList.remove('open');
-        if (backdrop) backdrop.classList.remove('open');
-        
+
+        if (drawer) {
+            drawer.classList.remove('open');
+            console.log('✅ Drawer closed');
+        } else {
+            console.warn('⚠️ Drawer element not found');
+        }
+
+        if (backdrop) {
+            backdrop.classList.remove('open');
+            console.log('✅ Backdrop closed');
+        } else {
+            console.warn('⚠️ Backdrop element not found');
+        }
+
         // Clear any errors when closing
         this.clearDrawerError();
-        
+
         window.currentDrawerData = null;
+        console.log('✅ Drawer data cleared');
     }
     
     /**
      * Load CS Plays for the drawer
      */
     static loadDrawerCSPlays(actionId, existingPlan = null) {
+        console.log('🎮 loadDrawerCSPlays called with actionId:', actionId);
         let csPlays = [];
         let selectedPlayIds = new Set();
-        
+
         // If editing, get selected plays from existing plan
         if (existingPlan && existingPlan.plays) {
             existingPlan.plays.forEach(play => {
@@ -671,22 +685,24 @@ class ActionFeedRenderer {
                 }
             });
         }
-        
+
         const store = window.signalsStore;
         if (!store || !actionId) {
-            console.warn('Cannot load plays: store or actionId not available');
+            console.warn('❌ Cannot load plays: store or actionId not available');
         } else {
             // Try to get the recommended action from normalized data
             let recommendedAction = null;
-            
+
             if (store.normalizedData && store.normalizedData.recommendedActions) {
                 recommendedAction = store.normalizedData.recommendedActions.get(actionId);
+                console.log('🔍 Found recommendedAction:', recommendedAction);
             }
-            
+
             // If we found the recommended action, extract its plays
             if (recommendedAction && recommendedAction.plays && Array.isArray(recommendedAction.plays)) {
-                csPlays = recommendedAction.plays.filter(play => 
-                    play && play.name && play.name.trim() && 
+                console.log('📦 Raw plays from action:', recommendedAction.plays);
+                csPlays = recommendedAction.plays.filter(play =>
+                    play && play.name && play.name.trim() &&
                     play.name !== 'N/A' && play.name !== ''
                 ).map(play => {
                     const playId = play.id || play.name;
@@ -698,9 +714,12 @@ class ActionFeedRenderer {
                         selected: selectedPlayIds.has(playId) || selectedPlayIds.has(play.name)
                     };
                 });
+                console.log(`✅ Loaded ${csPlays.length} plays for drawer`);
+            } else {
+                console.warn('⚠️ No plays found in recommendedAction');
             }
         }
-        
+
         // Render the plays in the drawer
         this.renderDrawerPlays(csPlays);
     }
@@ -815,7 +834,13 @@ class ActionFeedRenderer {
         
         if (selectedPlays.length === 0) {
             console.warn('⚠️ No plays selected');
-            this.showDrawerError('Please select at least one play');
+            this.showDrawerError('Please select at least one play from the toolbox below');
+
+            // Re-enable button
+            if (createPlanBtn) {
+                createPlanBtn.disabled = false;
+                createPlanBtn.textContent = originalText;
+            }
             return;
         }
         
@@ -869,24 +894,33 @@ class ActionFeedRenderer {
                 // Show success message
                 const message = drawerData.editMode ? 'Action plan updated successfully!' : 'Action plan created successfully!';
                 console.log('✅ Success:', message);
-                
-                // Success notification is already dispatched by the service, but we can add our own
+
+                // Show success notification
                 if (window.NotificationService) {
-                    window.NotificationService.show(message, 'success');
+                    try {
+                        window.NotificationService.showSuccess(message);
+                    } catch (notifError) {
+                        console.warn('⚠️ Notification service error:', notifError);
+                        alert(message);
+                    }
+                } else {
+                    // Fallback: show alert
+                    alert(message);
                 }
-                
+
                 // Close drawer immediately (optimistic)
                 console.log('🚪 Closing drawer...');
                 this.closeAddToPlanDrawer();
-                
-                // Re-render the action feed to update button states
-                console.log('🔄 Re-rendering feed to update buttons');
-                if (window.SignalsController) {
-                    setTimeout(() => {
-                        console.log('🎨 Executing render...');
-                        window.SignalsController.render();
-                    }, 100);
+
+                // Re-enable the button for next time
+                if (createPlanBtn) {
+                    createPlanBtn.disabled = false;
+                    createPlanBtn.textContent = originalText;
                 }
+
+                // Note: No need to manually refresh - the store automatically emits 'action_plan:created'
+                // which triggers RecommendationInboxController.refreshInbox() via subscription
+                console.log('✅ Action plan created - store will auto-refresh subscribed views');
             } else {
                 console.error('❌ Save failed:', result);
                 this.showDrawerError('Failed to save action plan. Please try again.');
@@ -899,12 +933,21 @@ class ActionFeedRenderer {
             }
         } catch (error) {
             console.error('❌ Error saving action plan:', error);
-            this.showDrawerError('An error occurred while saving the plan');
-            
-            // Re-enable button on error
-            if (createPlanBtn) {
-                createPlanBtn.disabled = false;
-                createPlanBtn.textContent = originalText;
+
+            // Only show error if the plan wasn't actually created
+            // Check if this is just a UI error after successful save
+            if (!result || !result.id) {
+                this.showDrawerError('An error occurred while saving the plan');
+
+                // Re-enable button on error
+                if (createPlanBtn) {
+                    createPlanBtn.disabled = false;
+                    createPlanBtn.textContent = originalText;
+                }
+            } else {
+                // Plan was created successfully, just a UI error - close drawer anyway
+                console.log('⚠️ Plan saved but UI error occurred, closing drawer');
+                this.closeAddToPlanDrawer();
             }
         }
     }
@@ -1086,4 +1129,7 @@ class ActionFeedRenderer {
         }
     }
 }
+
+// Make ActionFeedRenderer globally available
+window.ActionFeedRenderer = ActionFeedRenderer;
 

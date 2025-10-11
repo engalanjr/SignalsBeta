@@ -1316,6 +1316,8 @@ class SignalsStore extends Store {
         
         this.commitSnapshot(operationId);
         this.emitChange('action_plan:succeeded', plan);
+        // Also emit action_plan:created for RecommendationInboxController subscription
+        this.emitChange('action_plan:created', plan);
     }
     
     handleActionPlanFailed(payload) {

@@ -2127,7 +2127,10 @@ class PortfolioRenderer {
         
         const filterFY = parseInt(match[1]);
         const filterQ = parseInt(match[2]);
-        
+
         return renewalFY === filterFY && renewalQuarter === filterQ;
     }
 }
+
+// Make PortfolioRenderer globally available
+window.PortfolioRenderer = PortfolioRenderer;
